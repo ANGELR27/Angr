@@ -1,9 +1,10 @@
-import { Plus, FolderPlus, Eye, EyeOff, Code2, Terminal, Image, Save, RotateCcw, Keyboard } from 'lucide-react';
+import { Plus, FolderPlus, Eye, EyeOff, Code2, Terminal, Image, Save, RotateCcw, Keyboard, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 
-function TopBar({ showPreview, setShowPreview, onNewFile, onNewFolder, showTerminal, setShowTerminal, onOpenImageManager, onAddImageFile, onResetAll, onOpenShortcuts }) {
+function TopBar({ showPreview, setShowPreview, onNewFile, onNewFolder, showTerminal, setShowTerminal, onOpenImageManager, onAddImageFile, onResetAll, onOpenShortcuts, onExport }) {
   const imageInputRef = useRef(null);
   const [showSaved, setShowSaved] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   // Mostrar indicador de guardado
   useEffect(() => {
@@ -143,7 +144,23 @@ function TopBar({ showPreview, setShowPreview, onNewFile, onNewFolder, showTermi
             color-mix(in srgb, var(--theme-accent) 50%, transparent))`
         }}></div>
         
+        {/* Toggle para desplegar/ocultar acciones */}
         <button
+          onClick={() => setActionsOpen(v => !v)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-theme-bg-secondary rounded transition-all border"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--theme-secondary) 30%, transparent)',
+            color: 'var(--theme-text)'
+          }}
+          title={actionsOpen ? 'Ocultar acciones' : 'Mostrar acciones'}
+        >
+          {actionsOpen ? <ChevronUp className="w-4 h-4" style={{color:'var(--theme-secondary)'}} /> : <ChevronDown className="w-4 h-4" style={{color:'var(--theme-secondary)'}} />}
+          <span>Acciones</span>
+        </button>
+
+        {/* Grupo colapsable de acciones */}
+        <div className={`flex items-center gap-2 transition-all ${actionsOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'} origin-left`}>
+          <button
           onClick={() => setShowPreview(!showPreview)}
           className="flex items-center gap-2 px-3 py-1.5 text-sm bg-theme-bg-secondary rounded transition-all border"
           style={{
@@ -218,6 +235,30 @@ function TopBar({ showPreview, setShowPreview, onNewFile, onNewFolder, showTermi
           <span>Imágenes</span>
         </button>
 
+        {/* Botón Exportar */}
+        <button
+          onClick={onExport}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-theme-bg-secondary rounded transition-all border"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--theme-primary) 30%, transparent)',
+            color: 'var(--theme-text)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 20%, transparent)';
+            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-primary) 50%, transparent)';
+            e.currentTarget.style.boxShadow = '0 0 20px var(--theme-glow)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--theme-background-secondary)';
+            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-primary) 30%, transparent)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+          title="Exportar proyecto (HTML único)"
+        >
+          <Download className="w-4 h-4" style={{color:'var(--theme-primary)'}} />
+          <span>Exportar</span>
+        </button>
+
         <div className="w-px h-6 mx-2" style={{
           background: `linear-gradient(to bottom, 
             color-mix(in srgb, var(--theme-primary) 50%, transparent), 
@@ -268,6 +309,7 @@ function TopBar({ showPreview, setShowPreview, onNewFile, onNewFolder, showTermi
           <RotateCcw className="w-4 h-4 text-red-400" />
           <span>Reset</span>
         </button>
+        </div>
       </div>
     </div>
   );

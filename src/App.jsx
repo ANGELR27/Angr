@@ -475,6 +475,91 @@ function App() {
     setImages(images.filter(img => img.id !== imageId));
   };
 
+  // Exportar proyecto como ZIP con toda la estructura (HTML, CSS, JS, imágenes)
+  const handleExport = async () => {
+    try {
+      // Cargar JSZip dinámicamente (global UMD o ESM como fallback)
+      const ensureJSZip = async () => {
+        // 1) Global ya presente
+        if (typeof window.JSZip === 'function') return window.JSZip;
+        // 2) Intentar inyectar script UMD y esperar
+        await new Promise((resolve) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+          s.onload = resolve;
+          s.onerror = resolve; // seguimos con fallback ESM si falla
+          document.body.appendChild(s);
+        });
+        if (typeof window.JSZip === 'function') return window.JSZip;
+        // 3) Fallback ESM desde jsdelivr +esm
+        try {
+          const m = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+          if (m && (typeof m.default === 'function' || typeof m.JSZip === 'function')) {
+            return m.default || m.JSZip;
+          }
+        } catch {}
+        // 4) Fallback ESM desde skypack
+        try {
+          const m2 = await import('https://cdn.skypack.dev/jszip@3.10.1');
+          if (m2 && (typeof m2.default === 'function' || typeof m2.JSZip === 'function')) {
+            return m2.default || m2.JSZip;
+          }
+        } catch {}
+        throw new Error('No se pudo cargar JSZip');
+      };
+
+      const ZipCtor = await ensureJSZip();
+      if (typeof ZipCtor !== 'function') throw new Error('JSZip no está disponible');
+      const zip = new ZipCtor();
+
+      // Helper: convertir DataURL a Uint8Array
+      const dataURLToUint8 = (dataURL) => {
+        const [meta, data] = dataURL.split(',');
+        const isBase64 = /;base64$/i.test(meta) || /;base64;/i.test(meta);
+        const byteString = isBase64 ? atob(data) : decodeURIComponent(data);
+        const buf = new Uint8Array(byteString.length);
+        for (let i = 0; i < byteString.length; i++) buf[i] = byteString.charCodeAt(i);
+        return buf;
+      };
+
+      // Recorrer estructura y agregar al ZIP conservando rutas
+      const addTreeToZip = (folder, tree) => {
+        Object.entries(tree || {}).forEach(([key, item]) => {
+          if (item.type === 'folder') {
+            const sub = folder.folder(key);
+            addTreeToZip(sub, item.children);
+          } else if (item.type === 'file') {
+            // Determinar si es imagen por bandera isImage o por extensión
+            const isImg = !!item.isImage || /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(item.name);
+            if (isImg && item.content && item.content.startsWith('data:')) {
+              folder.file(key, dataURLToUint8(item.content), { binary: true });
+            } else {
+              folder.file(key, item.content || '');
+            }
+          }
+        });
+      };
+
+      addTreeToZip(zip, files);
+
+      // Generar y descargar ZIP
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'project.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (terminalRef.current) {
+        terminalRef.current.addLog('error', ['Export ZIP error:', String(e)]);
+        setShowTerminal(true);
+      }
+    }
+  };
+
   const performReset = () => {
     // Limpiar localStorage
     Object.values(STORAGE_KEYS).forEach(key => {
@@ -792,6 +877,7 @@ function App() {
         onAddImageFile={handleAddImageFile}
         onResetAll={handleResetAll}
         onOpenShortcuts={() => setShowShortcutsHelp(true)}
+        onExport={handleExport}
       />
       
       <ImageManager
