@@ -10,22 +10,6 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
 
-  // Si es una imagen, mostrar la imagen en lugar del editor
-  if (isImage && value) {
-    return (
-      <div className="h-full bg-editor-bg flex items-center justify-center p-8">
-        <div className="max-w-full max-h-full flex flex-col items-center gap-4">
-          <img 
-            src={value} 
-            alt="Preview" 
-            className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-2xl border border-blue-500/30"
-          />
-          <p className="text-sm text-gray-400">Vista previa de imagen</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleEditorChange = (value) => {
     onChange(value);
   };
@@ -564,98 +548,111 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className="h-full relative"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
-      
-      {/* Indicador visual de drag & drop */}
-      {isDraggingOver && (
-        <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 pointer-events-none z-50 flex items-center justify-center">
-          <div className="bg-blue-500/90 text-white px-6 py-4 rounded-lg shadow-2xl flex flex-col items-center gap-2 animate-pulse">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-lg font-bold">Suelta aquí para insertar imagen</span>
-            <span className="text-sm opacity-80">La etiqueta &lt;img&gt; se añadirá en la posición del cursor</span>
-          </div>
+    isImage && value ? (
+      <div className="h-full bg-editor-bg flex items-center justify-center p-8">
+        <div className="max-w-full max-h-full flex flex-col items-center gap-4">
+          <img
+            src={value}
+            alt="Preview"
+            className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-2xl border border-blue-500/30"
+          />
+          <p className="text-sm text-gray-400">Vista previa de imagen</p>
         </div>
-      )}
-      
-      <Editor
-        height="100%"
-        language={language}
-        value={value}
-        theme={currentTheme || "vs-dark"}
-        onChange={handleEditorChange}
-        onMount={handleEditorDidMount}
-        options={{
-          fontSize: fontSize,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          wordWrap: 'on',
-          automaticLayout: true,
-          ['semanticHighlighting.enabled']: false,
-          tabSize: 2,
-          lineNumbers: 'on',
-          renderLineHighlight: 'all',
-          selectOnLineNumbers: true,
-          roundedSelection: false,
-          readOnly: false,
-          cursorStyle: 'line',
-          fontFamily: "'Consolas', 'Courier New', monospace",
-          fontLigatures: true,
-          padding: { top: 16 },
-          // Autocompletado robusto
-          suggestOnTriggerCharacters: true,
-          quickSuggestions: {
-            other: true,
-            comments: false,
-            strings: true
-          },
-          parameterHints: { enabled: true },
-          acceptSuggestionOnCommitCharacter: true,
-          acceptSuggestionOnEnter: 'on',
-          tabCompletion: 'on',
-          wordBasedSuggestions: true,
-          suggest: {
-            showKeywords: true,
-            showSnippets: true,
-            showClasses: true,
-            showFunctions: true,
-            showVariables: true,
-            showModules: true,
-            showProperties: true,
-            showValues: true,
-            showColors: true
-          },
-          // Autocerrado robusto
-          autoClosingBrackets: 'always',
-          autoClosingQuotes: 'always',
-          autoClosingOvertype: 'always',
-          autoClosingDelete: 'always',
-          autoSurround: 'languageDefined',
-          bracketPairColorization: { enabled: true },
-          guides: {
-            bracketPairs: true,
-            indentation: true
-          },
-          // Formateo
-          formatOnPaste: true,
-          formatOnType: true,
-          // Mejorar experiencia
-          smoothScrolling: true,
-          cursorBlinking: 'smooth',
-          cursorSmoothCaretAnimation: 'on',
-          mouseWheelZoom: true,
-          dragAndDrop: true,
-        }}
-      />
-    </div>
+      </div>
+    ) : (
+      <div
+        ref={containerRef}
+        className="h-full relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+
+        {/* Indicador visual de drag & drop */}
+        {isDraggingOver && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-dashed border-blue-500 pointer-events-none z-50 flex items-center justify-center">
+            <div className="bg-blue-500/90 text-white px-6 py-4 rounded-lg shadow-2xl flex flex-col items-center gap-2 animate-pulse">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-lg font-bold">Suelta aquí para insertar imagen</span>
+              <span className="text-sm opacity-80">La etiqueta &lt;img&gt; se añadirá en la posición del cursor</span>
+            </div>
+          </div>
+        )}
+
+        <Editor
+          height="100%"
+          language={language}
+          value={value}
+          theme={currentTheme || "vs-dark"}
+          onChange={handleEditorChange}
+          onMount={handleEditorDidMount}
+          options={{
+            fontSize: fontSize,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            automaticLayout: true,
+            ['semanticHighlighting.enabled']: false,
+            tabSize: 2,
+            lineNumbers: 'on',
+            renderLineHighlight: 'all',
+            selectOnLineNumbers: true,
+            roundedSelection: false,
+            readOnly: false,
+            cursorStyle: 'line',
+            fontFamily: "'Consolas', 'Courier New', monospace",
+            fontLigatures: true,
+            padding: { top: 16 },
+            // Autocompletado robusto
+            suggestOnTriggerCharacters: true,
+            quickSuggestions: {
+              other: true,
+              comments: false,
+              strings: true
+            },
+            parameterHints: { enabled: true },
+            acceptSuggestionOnCommitCharacter: true,
+            acceptSuggestionOnEnter: 'on',
+            tabCompletion: 'on',
+            wordBasedSuggestions: true,
+            suggest: {
+              showKeywords: true,
+              showSnippets: true,
+              showClasses: true,
+              showFunctions: true,
+              showVariables: true,
+              showModules: true,
+              showProperties: true,
+              showValues: true,
+              showColors: true
+            },
+            // Autocerrado robusto
+            autoClosingBrackets: 'always',
+            autoClosingQuotes: 'always',
+            autoClosingOvertype: 'always',
+            autoClosingDelete: 'always',
+            autoSurround: 'languageDefined',
+            bracketPairColorization: { enabled: true },
+            guides: {
+              bracketPairs: true,
+              indentation: true
+            },
+            // Formateo
+            formatOnPaste: true,
+            formatOnType: true,
+            // Mejorar experiencia
+            smoothScrolling: true,
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            mouseWheelZoom: true,
+            dragAndDrop: true,
+          }}
+        />
+      </div>
+    )
   );
 }
 

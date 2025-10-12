@@ -10,26 +10,21 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
   const resolveImagePaths = (htmlContent) => {
     let processedContent = htmlContent;
 
-    // Reemplazar imágenes del proyecto por sus data URLs
+    // Reemplazar imágenes del proyecto por sus data URLs en atributos HTML
     if (projectImages && projectImages.length > 0) {
       projectImages.forEach(image => {
-        // Buscar referencias a la imagen por nombre
-        const regex = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
-        processedContent = processedContent.replace(regex, `$1="${image.data}"`);
+        const attrByName = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
+        processedContent = processedContent.replace(attrByName, `$1="${image.data}"`);
       });
     }
 
-    // Buscar archivos de imagen en el proyecto
+    // Buscar archivos de imagen en el árbol del proyecto
     const getAllImageFiles = (files, basePath = '') => {
       let images = [];
       Object.entries(files || {}).forEach(([key, item]) => {
         const currentPath = basePath ? `${basePath}/${key}` : key;
         if (item.type === 'file' && item.isImage && item.content) {
-          images.push({
-            path: currentPath,
-            name: item.name,
-            data: item.content
-          });
+          images.push({ path: currentPath, name: item.name, data: item.content });
         } else if (item.type === 'folder' && item.children) {
           images = images.concat(getAllImageFiles(item.children, currentPath));
         }
@@ -38,19 +33,40 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
     };
 
     const imageFiles = getAllImageFiles(projectFiles);
+
+    // Reemplazos en atributos HTML (src/href)
     imageFiles.forEach(image => {
-      // Reemplazar por nombre de archivo
-      const nameRegex = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
-      processedContent = processedContent.replace(nameRegex, `$1="${image.data}"`);
-      
-      // Reemplazar por ruta completa
-      const pathRegex = new RegExp(`(src|href)=["']${image.path}["']`, 'gi');
-      processedContent = processedContent.replace(pathRegex, `$1="${image.data}"`);
-      
-      // Reemplazar con ./ al inicio
-      const relPathRegex = new RegExp(`(src|href)=["\']./${image.path}["']`, 'gi');
-      processedContent = processedContent.replace(relPathRegex, `$1="${image.data}"`);
+      const byName = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
+      processedContent = processedContent.replace(byName, `$1="${image.data}"`);
+
+      const byPath = new RegExp(`(src|href)=["']${image.path}["']`, 'gi');
+      processedContent = processedContent.replace(byPath, `$1="${image.data}"`);
+
+      const byRelPath = new RegExp(`(src|href)=["']\\./${image.path}["']`, 'gi');
+      processedContent = processedContent.replace(byRelPath, `$1="${image.data}"`);
     });
+
+    // Reemplazos dentro de CSS: url(...)
+    const replaceCssUrl = (content, match, urlValue) => {
+      // urlValue puede venir con o sin comillas. Limpiar ./ inicial y comillas.
+      const cleaned = urlValue.trim().replace(/^['"]|['"]$/g, '').replace(/^\.\//, '');
+      // Buscar por nombre o por ruta completa
+      const img = imageFiles.find(img => img.name === cleaned || img.path === cleaned) ||
+                  (projectImages || []).find(img => img.name === cleaned);
+      if (img) {
+        return match.replace(urlValue, `'${img.data}'`);
+      }
+      // Intentar también coincidir si la URL venía como ./nombre
+      const cleanedNoDot = cleaned.replace(/^\.\//, '');
+      const img2 = imageFiles.find(img => img.name === cleanedNoDot || img.path === cleanedNoDot);
+      if (img2) {
+        return match.replace(urlValue, `'${img2.data}'`);
+      }
+      return match;
+    };
+
+    // Aplicar a todas las apariciones de url(...) en el documento completo (incluye <style> inyectado)
+    processedContent = processedContent.replace(/url\(([^)]+)\)/gi, (m, p1) => replaceCssUrl(processedContent, m, p1));
 
     return processedContent;
   };
