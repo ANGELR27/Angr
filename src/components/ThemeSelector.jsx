@@ -24,6 +24,9 @@ const THEMES = [
   { id: 'sunset', name: 'Sunset', description: 'Atardecer cálido' },
   { id: 'neon-dreams', name: 'Neon Dreams', description: 'Sueños de neón' },
   { id: 'forest', name: 'Forest', description: 'Bosque nocturno' },
+  { id: 'cyber-dark', name: 'Cyber Dark', description: 'Oscuro con acentos cian/verde' },
+  { id: 'neon-cyan', name: 'Neon Cyan', description: 'Oscuro con cian eléctrico' },
+  { id: 'aqua-night', name: 'Aqua Night', description: 'Noche aqua/menta' },
 ];
 
 function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
@@ -70,6 +73,9 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
       'sunset': { bg: '#2d1b2e', keyword: '#e76f51', string: '#f4d35e', comment: '#f4a261', number: '#ee964b' },
       'neon-dreams': { bg: '#10002b', keyword: '#9d4edd', string: '#ff006e', comment: '#b4a7d6', number: '#3a0ca3' },
       'forest': { bg: '#081c15', keyword: '#52b788', string: '#d8f3dc', comment: '#95d5b2', number: '#74c69d' },
+      'cyber-dark': { bg: '#0b0f14', keyword: '#22d3ee', string: '#34d399', comment: '#5eead4', number: '#67e8f9' },
+      'neon-cyan': { bg: '#0a0e13', keyword: '#22d3ee', string: '#a7f3d0', comment: '#94a3b8', number: '#67e8f9' },
+      'aqua-night': { bg: '#0b1220', keyword: '#2dd4bf', string: '#86efac', comment: '#60a5fa', number: '#7dd3fc' },
       'vs-dark': { bg: '#1e1e1e', keyword: '#569cd6', string: '#ce9178', comment: '#6a9955', number: '#b5cea8' },
       'vs': { bg: '#ffffff', keyword: '#0000ff', string: '#a31515', comment: '#008000', number: '#098658' },
       'hc-black': { bg: '#000000', keyword: '#569cd6', string: '#ce9178', comment: '#7ca668', number: '#b5cea8' },
@@ -154,6 +160,14 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                 color: 'var(--theme-accent)'
               }}>tema</kbd> en la terminal
             </p>
+            <div className="text-xs mt-1 flex items-center gap-2" style={{color: 'var(--theme-text-muted)'}}>
+              <span>Total de temas:</span>
+              <span className="px-2 py-0.5 rounded-full" style={{
+                backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)',
+                color: 'var(--theme-primary)',
+                border: '1px solid var(--theme-border)'
+              }}>{THEMES.length}</span>
+            </div>
           </div>
         </div>
 
@@ -265,6 +279,15 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                   )}
                   {theme.id === 'forest' && (
                     <div className="flex-1 bg-gradient-to-r from-green-900 via-green-600 to-green-400"></div>
+                  )}
+                  {theme.id === 'cyber-dark' && (
+                    <div className="flex-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400"></div>
+                  )}
+                  {theme.id === 'neon-cyan' && (
+                    <div className="flex-1 bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-300"></div>
+                  )}
+                  {theme.id === 'aqua-night' && (
+                    <div className="flex-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-300"></div>
                   )}
                 </div>
 

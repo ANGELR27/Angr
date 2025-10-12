@@ -1,10 +1,11 @@
 import Editor from '@monaco-editor/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getHTMLSnippets, getCSSSnippets, getJSSnippets } from '../utils/snippets';
 import { defineCustomThemes } from '../utils/themes';
 
 function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage }) {
   const editorRef = useRef(null);
+  const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
@@ -28,6 +29,18 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   const handleEditorChange = (value) => {
     onChange(value);
   };
+
+  // Aplicar tema del editor cuando cambia currentTheme (evita quedarse en blanco o tema incorrecto)
+  useEffect(() => {
+    if (monacoRef.current) {
+      try {
+        monacoRef.current.editor.setTheme(currentTheme || 'vs-dark');
+      } catch (e) {
+        // Si aún no está definido, mantener vs-dark
+        monacoRef.current.editor.setTheme('vs-dark');
+      }
+    }
+  }, [currentTheme]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -75,9 +88,14 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     // Definir temas personalizados
     defineCustomThemes(monaco);
+    // Aplicar tema actual al montar
+    try {
+      monaco.editor.setTheme(currentTheme || 'vs-dark');
+    } catch {}
 
     // ===== ATAJOS DE TECLADO ÚTILES =====
     
@@ -201,6 +219,122 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         }
 
         return { suggestions };
+      }
+    });
+
+    // HTML: completar valores de class="" a partir de clases detectadas en modelos abiertos (CSS/HTML)
+    monaco.languages.registerCompletionItemProvider('html', {
+      triggerCharacters: [' ', '"', '.'],
+      provideCompletionItems: (model, position) => {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        const inClassAttr = /class\s*=\s*["'][^"']*$/.test(textUntilPosition);
+        const inForAttr = /for\s*=\s*["'][^"']*$/.test(textUntilPosition);
+
+        if (!inClassAttr && !inForAttr) return { suggestions: [] };
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn
+        };
+
+        const models = monaco.editor.getModels();
+        const classes = new Set();
+        const ids = new Set();
+
+        models.forEach(m => {
+          const lang = monaco.editor.getModelLanguage(m.uri);
+          const text = m.getValue();
+          if (lang === 'css') {
+            const re = /\.([_a-zA-Z][-_a-zA-Z0-9]*)/g;
+            let match;
+            while ((match = re.exec(text))) classes.add(match[1]);
+          }
+          if (lang === 'html') {
+            const reClass = /class\s*=\s*["']([^"']+)["']/g;
+            let mClass;
+            while ((mClass = reClass.exec(text))) {
+              mClass[1].split(/\s+/).forEach(c => c && classes.add(c));
+            }
+            const reId = /id\s*=\s*["']([^"']+)["']/g;
+            let mId;
+            while ((mId = reId.exec(text))) ids.add(mId[1]);
+          }
+        });
+
+        if (inClassAttr) {
+          const items = Array.from(classes).sort().map((c, i) => ({
+            label: c,
+            kind: monaco.languages.CompletionItemKind.Class,
+            insertText: c,
+            sortText: `a${i}`,
+            range,
+            commitCharacters: [' ']
+          }));
+          return { suggestions: items };
+        }
+
+        if (inForAttr) {
+          const items = Array.from(ids).sort().map((idv, i) => ({
+            label: idv,
+            kind: monaco.languages.CompletionItemKind.Reference,
+            insertText: idv,
+            sortText: `a${i}`,
+            range
+          }));
+          return { suggestions: items };
+        }
+
+        return { suggestions: [] };
+      }
+    });
+
+    // CSS: sugerir clases usadas en HTML al escribir selectores .clase
+    monaco.languages.registerCompletionItemProvider('css', {
+      triggerCharacters: ['.'],
+      provideCompletionItems: (model, position) => {
+        const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+        const afterDot = /\.[-_a-zA-Z0-9]*$/.test(line);
+        if (!afterDot) return { suggestions: [] };
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn
+        };
+
+        const models = monaco.editor.getModels();
+        const classes = new Set();
+        models.forEach(m => {
+          const lang = monaco.editor.getModelLanguage(m.uri);
+          if (lang === 'html') {
+            const text = m.getValue();
+            const reClass = /class\s*=\s*["']([^"']+)["']/g;
+            let mClass;
+            while ((mClass = reClass.exec(text))) {
+              mClass[1].split(/\s+/).forEach(c => c && classes.add(c));
+            }
+          }
+        });
+
+        const items = Array.from(classes).sort().map((c, i) => ({
+          label: c,
+          kind: monaco.languages.CompletionItemKind.Class,
+          insertText: c,
+          sortText: `a${i}`,
+          range
+        }));
+        return { suggestions: items };
       }
     });
 
@@ -348,10 +482,22 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             addIfMissing('enctype', { label: 'enctype', kind: Kind, insertText: 'enctype="${1|application/x-www-form-urlencoded,multipart/form-data,text/plain|}"', documentation: 'Tipo de contenido', insertTextRules: Rule, range })
           ],
           input: [
-            addIfMissing('type', { label: 'type', kind: Kind, insertText: 'type="${1|text,number,email,password,checkbox,radio,file,date,color,range|}"', documentation: 'Tipo de input', insertTextRules: Rule, range }),
+            addIfMissing('type', { label: 'type', kind: Kind, insertText: 'type="${1|text,number,email,password,checkbox,radio,file,date,color,range,search,tel,url,time,datetime-local,month,week|}"', documentation: 'Tipo de input', insertTextRules: Rule, range }),
             addIfMissing('name', { label: 'name', kind: Kind, insertText: 'name="${1}"', documentation: 'Nombre de campo', insertTextRules: Rule, range }),
+            addIfMissing('id', { label: 'id', kind: Kind, insertText: 'id="${1}"', documentation: 'ID del campo', insertTextRules: Rule, range }),
             addIfMissing('placeholder', { label: 'placeholder', kind: Kind, insertText: 'placeholder="${1}"', documentation: 'Placeholder', insertTextRules: Rule, range }),
-            addIfMissing('required', { label: 'required', kind: Kind, insertText: 'required', documentation: 'Campo requerido', insertTextRules: Rule, range })
+            addIfMissing('required', { label: 'required', kind: Kind, insertText: 'required', documentation: 'Campo requerido', insertTextRules: Rule, range }),
+            addIfMissing('min', { label: 'min', kind: Kind, insertText: 'min="${1}"', documentation: 'Valor mínimo', insertTextRules: Rule, range }),
+            addIfMissing('max', { label: 'max', kind: Kind, insertText: 'max="${1}"', documentation: 'Valor máximo', insertTextRules: Rule, range }),
+            addIfMissing('step', { label: 'step', kind: Kind, insertText: 'step="${1}"', documentation: 'Incremento', insertTextRules: Rule, range }),
+            addIfMissing('minlength', { label: 'minlength', kind: Kind, insertText: 'minlength="${1}"', documentation: 'Longitud mínima', insertTextRules: Rule, range }),
+            addIfMissing('maxlength', { label: 'maxlength', kind: Kind, insertText: 'maxlength="${1}"', documentation: 'Longitud máxima', insertTextRules: Rule, range }),
+            addIfMissing('pattern', { label: 'pattern', kind: Kind, insertText: 'pattern="${1}"', documentation: 'Expresión regular', insertTextRules: Rule, range }),
+            addIfMissing('autocomplete', { label: 'autocomplete', kind: Kind, insertText: 'autocomplete="${1|on,off,name,email,username,new-password,current-password,one-time-code,street-address,postal-code,country|}"', documentation: 'Sugerencias del navegador', insertTextRules: Rule, range }),
+            addIfMissing('checked', { label: 'checked', kind: Kind, insertText: 'checked', documentation: 'Marcado (checkbox/radio)', insertTextRules: Rule, range }),
+            addIfMissing('value', { label: 'value', kind: Kind, insertText: 'value="${1}"', documentation: 'Valor inicial', insertTextRules: Rule, range }),
+            addIfMissing('multiple', { label: 'multiple', kind: Kind, insertText: 'multiple', documentation: 'Múltiples valores', insertTextRules: Rule, range }),
+            addIfMissing('accept', { label: 'accept', kind: Kind, insertText: 'accept="${1|image/*,audio/*,video/*,.pdf,.docx|}"', documentation: 'Tipos aceptados (file)', insertTextRules: Rule, range })
           ],
           source: [
             addIfMissing('src', { label: 'src', kind: Kind, insertText: 'src="${1}"', documentation: 'Origen de media', insertTextRules: Rule, range }),
@@ -359,66 +505,14 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           ],
           picture: [
             addIfMissing('media', { label: 'media', kind: Kind, insertText: 'media="${1:(max-width: 600px)}"', documentation: 'Media query', insertTextRules: Rule, range })
+          ],
+          label: [
+            addIfMissing('for', { label: 'for', kind: Kind, insertText: 'for="${1:id}"', documentation: 'Asociar con id de input', insertTextRules: Rule, range })
           ]
         };
 
         const tagAttrs = (byTag[tag] || []).filter(Boolean);
         const suggestions = [...generalAttrs, ...tagAttrs];
-        return { suggestions };
-      }
-    });
-
-    // CSS Snippets + Autocompletado de rutas
-    monaco.languages.registerCompletionItemProvider('css', {
-      provideCompletionItems: (model, position) => {
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        });
-
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn
-        };
-
-        let suggestions = getCSSSnippets(monaco, range);
-
-        // Detectar si estamos en url()
-        const inUrlFunction = /url\(["']?[^)"']*$/.test(textUntilPosition);
-        
-        if (inUrlFunction) {
-          // Agregar imágenes y archivos
-          const filePaths = getAllFilePaths(projectFiles);
-          const cssFiles = filePaths.filter(f => 
-            ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'woff', 'woff2', 'ttf'].includes(f.extension)
-          );
-
-          const fileCompletions = cssFiles.map(file => ({
-            label: file.path,
-            kind: monaco.languages.CompletionItemKind.File,
-            insertText: file.path,
-            documentation: `📁 ${file.name}`,
-            range
-          }));
-
-          // Imágenes cargadas
-          const imageCompletions = (projectImages || []).map((image, index) => ({
-            label: `${image.name} (cargada)`,
-            kind: monaco.languages.CompletionItemKind.File,
-            insertText: image.data,
-            documentation: `🖼️ ${image.name}`,
-            sortText: `0${index}`,
-            range
-          }));
-
-          suggestions = [...imageCompletions, ...fileCompletions, ...suggestions];
-        }
-
         return { suggestions };
       }
     });

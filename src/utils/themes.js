@@ -455,4 +455,73 @@ export const defineCustomThemes = (monaco) => {
       'editor.inactiveSelectionBackground': '#52b78833',
     }
   });
+
+  monaco.editor.defineTheme('cyber-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '5eead4', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '22d3ee', fontStyle: 'bold' },
+      { token: 'string', foreground: '34d399' },
+      { token: 'number', foreground: '67e8f9' },
+      { token: 'function', foreground: '06b6d4' },
+      { token: 'variable', foreground: 'e2e8f0' },
+      { token: 'type', foreground: '2dd4bf' },
+    ],
+    colors: {
+      'editor.background': '#0b0f14',
+      'editor.foreground': '#e2e8f0',
+      'editorCursor.foreground': '#22d3ee',
+      'editor.lineHighlightBackground': '#10151d',
+      'editorLineNumber.foreground': '#3f4b59',
+      'editor.selectionBackground': '#0ea5e944',
+      'editor.inactiveSelectionBackground': '#0ea5e933',
+    }
+  });
+
+  monaco.editor.defineTheme('neon-cyan', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '94a3b8', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '22d3ee', fontStyle: 'bold' },
+      { token: 'string', foreground: 'a7f3d0' },
+      { token: 'number', foreground: '67e8f9' },
+      { token: 'function', foreground: '38bdf8' },
+      { token: 'variable', foreground: 'e2e8f0' },
+      { token: 'type', foreground: '5eead4' },
+    ],
+    colors: {
+      'editor.background': '#0a0e13',
+      'editor.foreground': '#e2e8f0',
+      'editorCursor.foreground': '#67e8f9',
+      'editor.lineHighlightBackground': '#0f141b',
+      'editorLineNumber.foreground': '#475569',
+      'editor.selectionBackground': '#22d3ee33',
+      'editor.inactiveSelectionBackground': '#22d3ee22',
+    }
+  });
+
+  monaco.editor.defineTheme('aqua-night', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '60a5fa', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '2dd4bf', fontStyle: 'bold' },
+      { token: 'string', foreground: '86efac' },
+      { token: 'number', foreground: '7dd3fc' },
+      { token: 'function', foreground: '5eead4' },
+      { token: 'variable', foreground: 'e5e7eb' },
+      { token: 'type', foreground: '22d3ee' },
+    ],
+    colors: {
+      'editor.background': '#0b1220',
+      'editor.foreground': '#e5e7eb',
+      'editorCursor.foreground': '#2dd4bf',
+      'editor.lineHighlightBackground': '#0f192e',
+      'editorLineNumber.foreground': '#3d4a63',
+      'editor.selectionBackground': '#2dd4bf33',
+      'editor.inactiveSelectionBackground': '#2dd4bf22',
+    }
+  });
 };
