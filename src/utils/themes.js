@@ -12,6 +12,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '00ff88' },
       { token: 'variable', foreground: '7fff00' },
       { token: 'type', foreground: '00ffaa' },
+      // HTML specific
+      { token: 'tag', foreground: '00ff41', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '00ff41', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '00ff41' },
+      { token: 'attribute.name', foreground: '00ff88' },
+      { token: 'attribute.name.html', foreground: '00ff88' },
+      { token: 'attribute.value', foreground: '39ff14' },
+      { token: 'attribute.value.html', foreground: '39ff14' },
     ],
     colors: {
       'editor.background': '#0d0208',
@@ -36,6 +44,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '7aa2f7' },
       { token: 'variable', foreground: 'c0caf5' },
       { token: 'type', foreground: '2ac3de' },
+      // HTML specific
+      { token: 'tag', foreground: '7aa2f7', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '7aa2f7', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '7aa2f7' },
+      { token: 'attribute.name', foreground: 'bb9af7' },
+      { token: 'attribute.name.html', foreground: 'bb9af7' },
+      { token: 'attribute.value', foreground: '9ece6a' },
+      { token: 'attribute.value.html', foreground: '9ece6a' },
     ],
     colors: {
       'editor.background': '#1a1b26',
@@ -60,6 +76,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '50fa7b' },
       { token: 'variable', foreground: 'f8f8f2' },
       { token: 'type', foreground: '8be9fd' },
+      // HTML specific
+      { token: 'tag', foreground: 'bd93f9', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: 'bd93f9', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: 'bd93f9' },
+      { token: 'attribute.name', foreground: 'ff79c6' },
+      { token: 'attribute.name.html', foreground: 'ff79c6' },
+      { token: 'attribute.value', foreground: 'f1fa8c' },
+      { token: 'attribute.value.html', foreground: 'f1fa8c' },
     ],
     colors: {
       'editor.background': '#282a36',
@@ -84,6 +108,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'a6e22e' },
       { token: 'variable', foreground: 'f8f8f2' },
       { token: 'type', foreground: '66d9ef' },
+      // HTML specific
+      { token: 'tag', foreground: 'a6e22e', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: 'a6e22e', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: 'a6e22e' },
+      { token: 'attribute.name', foreground: 'ae81ff' },
+      { token: 'attribute.name.html', foreground: 'ae81ff' },
+      { token: 'attribute.value', foreground: 'e6db74' },
+      { token: 'attribute.value.html', foreground: 'e6db74' },
     ],
     colors: {
       'editor.background': '#272822',
@@ -108,6 +140,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'd2a8ff' },
       { token: 'variable', foreground: 'ffa657' },
       { token: 'type', foreground: '7ee787' },
+      // HTML specific
+      { token: 'tag', foreground: '58a6ff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '58a6ff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '58a6ff' },
+      { token: 'attribute.name', foreground: 'ff7b72' },
+      { token: 'attribute.name.html', foreground: 'ff7b72' },
+      { token: 'attribute.value', foreground: 'a5d6ff' },
+      { token: 'attribute.value.html', foreground: 'a5d6ff' },
     ],
     colors: {
       'editor.background': '#0d1117',
@@ -132,6 +172,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'ffc600' },
       { token: 'variable', foreground: 'ffffff' },
       { token: 'type', foreground: '80ffbb' },
+      // HTML specific
+      { token: 'tag', foreground: '0088ff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '0088ff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '0088ff' },
+      { token: 'attribute.name', foreground: 'ff9d00' },
+      { token: 'attribute.name.html', foreground: 'ff9d00' },
+      { token: 'attribute.value', foreground: '3ad900' },
+      { token: 'attribute.value.html', foreground: '3ad900' },
     ],
     colors: {
       'editor.background': '#193549',
@@ -156,6 +204,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '88c0d0' },
       { token: 'variable', foreground: 'd8dee9' },
       { token: 'type', foreground: '8fbcbb' },
+      // HTML specific
+      { token: 'tag', foreground: '88c0d0', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '88c0d0', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '88c0d0' },
+      { token: 'attribute.name', foreground: '81a1c1' },
+      { token: 'attribute.name.html', foreground: '81a1c1' },
+      { token: 'attribute.value', foreground: 'a3be8c' },
+      { token: 'attribute.value.html', foreground: 'a3be8c' },
     ],
     colors: {
       'editor.background': '#2e3440',
@@ -180,6 +236,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '61afef' },
       { token: 'variable', foreground: 'abb2bf' },
       { token: 'type', foreground: 'e5c07b' },
+      // HTML specific
+      { token: 'tag', foreground: '61afef', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '61afef', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '61afef' },
+      { token: 'attribute.name', foreground: 'c678dd' },
+      { token: 'attribute.name.html', foreground: 'c678dd' },
+      { token: 'attribute.value', foreground: '98c379' },
+      { token: 'attribute.value.html', foreground: '98c379' },
     ],
     colors: {
       'editor.background': '#282c34',
@@ -204,6 +268,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '268bd2' },
       { token: 'variable', foreground: '839496' },
       { token: 'type', foreground: 'b58900' },
+      // HTML specific
+      { token: 'tag', foreground: '268bd2', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '268bd2', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '268bd2' },
+      { token: 'attribute.name', foreground: '859900' },
+      { token: 'attribute.name.html', foreground: '859900' },
+      { token: 'attribute.value', foreground: '2aa198' },
+      { token: 'attribute.value.html', foreground: '2aa198' },
     ],
     colors: {
       'editor.background': '#002b36',
@@ -228,6 +300,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '82aaff' },
       { token: 'variable', foreground: 'eeffff' },
       { token: 'type', foreground: 'ffcb6b' },
+      // HTML specific
+      { token: 'tag', foreground: '82aaff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '82aaff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '82aaff' },
+      { token: 'attribute.name', foreground: 'c792ea' },
+      { token: 'attribute.name.html', foreground: 'c792ea' },
+      { token: 'attribute.value', foreground: 'c3e88d' },
+      { token: 'attribute.value.html', foreground: 'c3e88d' },
     ],
     colors: {
       'editor.background': '#263238',
@@ -252,6 +332,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'ffb454' },
       { token: 'variable', foreground: 'bfbdb6' },
       { token: 'type', foreground: '59c2ff' },
+      // HTML specific
+      { token: 'tag', foreground: '59c2ff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '59c2ff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '59c2ff' },
+      { token: 'attribute.name', foreground: 'ff8f40' },
+      { token: 'attribute.name.html', foreground: 'ff8f40' },
+      { token: 'attribute.value', foreground: 'aad94c' },
+      { token: 'attribute.value.html', foreground: 'aad94c' },
     ],
     colors: {
       'editor.background': '#0a0e14',
@@ -276,6 +364,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '82aaff' },
       { token: 'variable', foreground: 'a6accd' },
       { token: 'type', foreground: 'ffcb6b' },
+      // HTML specific
+      { token: 'tag', foreground: '82aaff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '82aaff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '82aaff' },
+      { token: 'attribute.name', foreground: 'c792ea' },
+      { token: 'attribute.name.html', foreground: 'c792ea' },
+      { token: 'attribute.value', foreground: 'c3e88d' },
+      { token: 'attribute.value.html', foreground: 'c3e88d' },
     ],
     colors: {
       'editor.background': '#292d3e',
@@ -300,6 +396,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'fabd2f' },
       { token: 'variable', foreground: 'ebdbb2' },
       { token: 'type', foreground: '8ec07c' },
+      // HTML specific
+      { token: 'tag', foreground: 'fabd2f', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: 'fabd2f', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: 'fabd2f' },
+      { token: 'attribute.name', foreground: 'fb4934' },
+      { token: 'attribute.name.html', foreground: 'fb4934' },
+      { token: 'attribute.value', foreground: 'b8bb26' },
+      { token: 'attribute.value.html', foreground: 'b8bb26' },
     ],
     colors: {
       'editor.background': '#282828',
@@ -324,6 +428,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '36f9f6' },
       { token: 'variable', foreground: 'ffffff' },
       { token: 'type', foreground: 'ff7edb' },
+      // HTML specific
+      { token: 'tag', foreground: '36f9f6', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '36f9f6', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '36f9f6' },
+      { token: 'attribute.name', foreground: 'ff7edb' },
+      { token: 'attribute.name.html', foreground: 'ff7edb' },
+      { token: 'attribute.value', foreground: 'fede5d' },
+      { token: 'attribute.value.html', foreground: 'fede5d' },
     ],
     colors: {
       'editor.background': '#262335',
@@ -348,6 +460,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '8338ec' },
       { token: 'variable', foreground: 'fcf6f5' },
       { token: 'type', foreground: 'fb5607' },
+      // HTML specific
+      { token: 'tag', foreground: '00f5ff', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '00f5ff', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '00f5ff' },
+      { token: 'attribute.name', foreground: 'ff006e' },
+      { token: 'attribute.name.html', foreground: 'ff006e' },
+      { token: 'attribute.value', foreground: 'ffbe0b' },
+      { token: 'attribute.value.html', foreground: 'ffbe0b' },
     ],
     colors: {
       'editor.background': '#0a0014',
@@ -372,6 +492,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '0096c7' },
       { token: 'variable', foreground: 'caf0f8' },
       { token: 'type', foreground: '023e8a' },
+      // HTML specific
+      { token: 'tag', foreground: '00b4d8', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '00b4d8', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '00b4d8' },
+      { token: 'attribute.name', foreground: '48cae4' },
+      { token: 'attribute.name.html', foreground: '48cae4' },
+      { token: 'attribute.value', foreground: '90e0ef' },
+      { token: 'attribute.value.html', foreground: '90e0ef' },
     ],
     colors: {
       'editor.background': '#03045e',
@@ -396,6 +524,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: 'f95738' },
       { token: 'variable', foreground: 'fefae0' },
       { token: 'type', foreground: 'e63946' },
+      // HTML specific
+      { token: 'tag', foreground: 'f4d35e', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: 'f4d35e', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: 'f4d35e' },
+      { token: 'attribute.name', foreground: 'e76f51' },
+      { token: 'attribute.name.html', foreground: 'e76f51' },
+      { token: 'attribute.value', foreground: 'f4d35e' },
+      { token: 'attribute.value.html', foreground: 'f4d35e' },
     ],
     colors: {
       'editor.background': '#2d1b2e',
@@ -420,6 +556,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '7209b7' },
       { token: 'variable', foreground: 'e0aaff' },
       { token: 'type', foreground: 'c77dff' },
+      // HTML specific
+      { token: 'tag', foreground: '9d4edd', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '9d4edd', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '9d4edd' },
+      { token: 'attribute.name', foreground: 'ff006e' },
+      { token: 'attribute.name.html', foreground: 'ff006e' },
+      { token: 'attribute.value', foreground: 'e0aaff' },
+      { token: 'attribute.value.html', foreground: 'e0aaff' },
     ],
     colors: {
       'editor.background': '#10002b',
@@ -444,6 +588,14 @@ export const defineCustomThemes = (monaco) => {
       { token: 'function', foreground: '40916c' },
       { token: 'variable', foreground: 'e8f5e9' },
       { token: 'type', foreground: '2d6a4f' },
+      // HTML specific
+      { token: 'tag', foreground: '52b788', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '52b788', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '52b788' },
+      { token: 'attribute.name', foreground: '74c69d' },
+      { token: 'attribute.name.html', foreground: '74c69d' },
+      { token: 'attribute.value', foreground: 'd8f3dc' },
+      { token: 'attribute.value.html', foreground: 'd8f3dc' },
     ],
     colors: {
       'editor.background': '#081c15',
