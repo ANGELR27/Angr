@@ -599,6 +599,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           scrollBeyondLastLine: false,
           wordWrap: 'on',
           automaticLayout: true,
+          ['semanticHighlighting.enabled']: false,
           tabSize: 2,
           lineNumbers: 'on',
           renderLineHighlight: 'all',
