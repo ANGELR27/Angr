@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Palette, X, Code2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Palette, X, Code2, Search } from 'lucide-react';
 
 const THEMES = [
   { id: 'vs-dark', name: 'VS Dark', description: 'Tema oscuro por defecto' },
@@ -32,6 +32,16 @@ const THEMES = [
 function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
   const [selectedTheme, setSelectedTheme] = useState(currentTheme);
   const [hoveredTheme, setHoveredTheme] = useState(null);
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return THEMES;
+    return THEMES.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q) ||
+      t.id.toLowerCase().includes(q)
+    );
+  }, [query]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -88,7 +98,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm" style={{backgroundColor: 'rgba(0, 0, 0, 0.5)'}} onClick={onClose}>
       <div 
-        className="rounded-lg w-[600px] max-h-[70vh] flex flex-col shadow-mixed-glow"
+        className="rounded-lg w-[960px] max-h-[80vh] flex flex-col shadow-mixed-glow"
         style={{
           backgroundColor: 'var(--theme-background-secondary)',
           border: '1px solid color-mix(in srgb, var(--theme-primary) 40%, transparent)',
@@ -128,11 +138,11 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
         </div>
 
         {/* Info */}
-        <div className="px-4 py-3 border-b" style={{
+        <div className="px-5 py-4 border-b" style={{
           backgroundColor: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)',
           borderBottomColor: 'var(--theme-border)'
         }}>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             <p className="text-xs" style={{color: 'var(--theme-text-secondary)'}}>
               <kbd className="px-2 py-1 rounded border" style={{
                 backgroundColor: 'var(--theme-background-tertiary)',
@@ -160,35 +170,59 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                 color: 'var(--theme-accent)'
               }}>tema</kbd> en la terminal
             </p>
-            <div className="text-xs mt-1 flex items-center gap-2" style={{color: 'var(--theme-text-muted)'}}>
-              <span>Total de temas:</span>
-              <span className="px-2 py-0.5 rounded-full" style={{
-                backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)',
-                color: 'var(--theme-primary)',
-                border: '1px solid var(--theme-border)'
-              }}>{THEMES.length}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs flex items-center gap-2" style={{color: 'var(--theme-text-muted)'}}>
+                <span>Total de temas:</span>
+                <span className="px-2 py-0.5 rounded-full" style={{
+                  backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)',
+                  color: 'var(--theme-primary)',
+                  border: '1px solid var(--theme-border)'
+                }}>{THEMES.length}</span>
+                <span className="ml-2">Mostrando:</span>
+                <span className="px-2 py-0.5 rounded-full" style={{
+                  backgroundColor: 'color-mix(in srgb, var(--theme-secondary) 15%, transparent)',
+                  color: 'var(--theme-secondary)',
+                  border: '1px solid var(--theme-border)'
+                }}>{filtered.length}</span>
+              </div>
+              <div className="relative flex-1 max-w-xs">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2" style={{color: 'var(--theme-text-muted)'}}>
+                  <Search className="w-4 h-4" />
+                </div>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar tema..."
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-md outline-none"
+                  style={{
+                    backgroundColor: 'var(--theme-background-tertiary)',
+                    border: '1px solid var(--theme-border)',
+                    color: 'var(--theme-text)'
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Themes Grid */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 gap-3">
-            {THEMES.map((theme, index) => (
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="grid grid-cols-3 gap-4">
+            {filtered.map((theme, index) => (
               <div
                 key={theme.id}
                 onClick={() => handleThemeSelect(theme.id)}
-                className="p-4 rounded-lg cursor-pointer transition-all border-2 relative group"
+                className="p-5 rounded-xl cursor-pointer transition-all border-2 relative group"
                 style={{
                   borderColor: selectedTheme === theme.id ? 'var(--theme-primary)' : 'var(--theme-border)',
                   backgroundColor: selectedTheme === theme.id ? 'color-mix(in srgb, var(--theme-primary) 25%, transparent)' : 'var(--theme-background-tertiary)',
-                  boxShadow: selectedTheme === theme.id ? '0 0 20px var(--theme-glow)' : 'none'
+                  boxShadow: selectedTheme === theme.id ? '0 0 24px var(--theme-glow)' : '0 0 0 rgba(0,0,0,0)'
                 }}
                 onMouseEnter={(e) => {
                   setHoveredTheme(theme.id);
                   if (selectedTheme !== theme.id) {
                     e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-primary) 60%, transparent)';
-                    e.currentTarget.style.backgroundColor = 'var(--theme-surface)';
+                    e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 10%, var(--theme-background-tertiary))';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -213,7 +247,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                 <p className="text-xs" style={{color: 'var(--theme-text-muted)'}}>{theme.description}</p>
                 
                 {/* Preview color bar */}
-                <div className="mt-3 h-2 rounded-full overflow-hidden flex">
+                <div className="mt-3 h-2.5 rounded-full overflow-hidden flex">
                   {theme.id === 'matrix' && (
                     <div className="flex-1 bg-gradient-to-r from-green-600 via-green-500 to-green-400"></div>
                   )}
@@ -294,7 +328,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                 {/* Preview de código al hover */}
                 {hoveredTheme === theme.id && (
                   <div 
-                    className={`absolute top-0 z-50 w-80 rounded-lg shadow-2xl border-2 overflow-hidden ${
+                    className={`absolute top-0 z-50 w-96 rounded-xl shadow-2xl border-2 overflow-hidden ${
                       index % 2 === 0 ? 'left-full ml-4' : 'right-full mr-4'
                     }`}
                     style={{ 
@@ -302,7 +336,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                       borderColor: 'color-mix(in srgb, var(--theme-primary) 60%, transparent)'
                     }}
                   >
-                    <div className="p-4 font-mono text-xs leading-relaxed">
+                    <div className="p-5 font-mono text-xs leading-relaxed">
                       <div className="flex items-center gap-2 mb-3 pb-2" style={{borderBottom: '1px solid var(--theme-border)'}}>
                         <Code2 className="w-4 h-4" style={{color: 'var(--theme-primary)'}} />
                         <span className="text-xs" style={{color: 'var(--theme-text-muted)'}}>Vista Previa</span>
@@ -340,7 +374,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
         </div>
 
         {/* Footer */}
-        <div className="h-10 border-t px-4 flex items-center justify-between rounded-b-lg text-xs" style={{
+        <div className="h-12 border-t px-5 flex items-center justify-between rounded-b-lg text-xs" style={{
           backgroundColor: 'var(--theme-background-tertiary)',
           borderTopColor: 'var(--theme-border)',
           color: 'var(--theme-text-secondary)'
