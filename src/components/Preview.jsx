@@ -34,7 +34,13 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
 
     const imageFiles = getAllImageFiles(projectFiles);
 
-    // Reemplazos en atributos HTML (src/href)
+    // Helpers de normalización
+    const stripQuotes = (s) => s.replace(/^['"]|['"]$/g, '');
+    const stripLeadingDots = (s) => s.replace(/^(\.\/)+/, '').replace(/^(\.\.\/)+/, '');
+    const stripLeadingSlashes = (s) => s.replace(/^\/+/, '');
+    const basename = (s) => s.split('?')[0].split('#')[0].split('/').pop();
+
+    // Reemplazos en atributos HTML (src/href) directos y relativos
     imageFiles.forEach(image => {
       const byName = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
       processedContent = processedContent.replace(byName, `$1="${image.data}"`);
@@ -44,21 +50,51 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
 
       const byRelPath = new RegExp(`(src|href)=["']\\./${image.path}["']`, 'gi');
       processedContent = processedContent.replace(byRelPath, `$1="${image.data}"`);
+
+      // Cualquier ruta que termine en el nombre (con ./, ../ y subcarpetas)
+      const byAnyEndingWithName = new RegExp(`(src|href)=["'](?:\./|(?:\.\./)+)?[^"']*?${image.name}["']`, 'gi');
+      processedContent = processedContent.replace(byAnyEndingWithName, (m) => m.replace(/(src|href)=["'][^"']+["']/, `$1="${image.data}"`));
     });
+
+    // Pase genérico: (src|href)="..." => si basename coincide, reemplazar
+    processedContent = processedContent.replace(/\b(src|href)=["']([^"']+)["']/gi, (full, attr, url) => {
+      const clean = stripLeadingSlashes(stripLeadingDots(stripQuotes(url)));
+      const base = basename(clean);
+      const found = imageFiles.find(img => img.name === base) || (projectImages || []).find(img => img.name === base);
+      return found ? `${attr}="${found.data}"` : full;
+    });
+
+    // Manejar srcset: lista separada por comas con descriptores (1x, 2x, widths)
+    const replaceSrcset = (srcsetValue) => {
+      return srcsetValue.split(',').map(part => {
+        const trimmed = part.trim();
+        const [urlPart, descriptor] = trimmed.split(/\s+/, 2);
+        const clean = stripLeadingSlashes(stripLeadingDots(stripQuotes(urlPart)));
+        const base = basename(clean);
+        const found = imageFiles.find(img => img.name === base) || (projectImages || []).find(img => img.name === base);
+        const newUrl = found ? found.data : urlPart;
+        return descriptor ? `${newUrl} ${descriptor}` : newUrl;
+      }).join(', ');
+    };
+
+    processedContent = processedContent.replace(/\bsrcset=["']([^"']+)["']/gi, (full, val) => `srcset="${replaceSrcset(val)}"`);
 
     // Reemplazos dentro de CSS: url(...)
     const replaceCssUrl = (content, match, urlValue) => {
-      // urlValue puede venir con o sin comillas. Limpiar ./ inicial y comillas.
-      const cleaned = urlValue.trim().replace(/^['"]|['"]$/g, '').replace(/^\.\//, '');
-      // Buscar por nombre o por ruta completa
-      const img = imageFiles.find(img => img.name === cleaned || img.path === cleaned) ||
-                  (projectImages || []).find(img => img.name === cleaned);
+      // urlValue puede venir con o sin comillas. Limpiar ./ y ../ iniciales y comillas.
+      const cleanedRaw = urlValue.trim();
+      const cleanedNoQuotes = stripQuotes(cleanedRaw);
+      const cleaned = stripLeadingSlashes(stripLeadingDots(cleanedNoQuotes));
+      const cleanBase = basename(cleaned);
+      // Buscar por ruta exacta, luego por nombre de archivo (basename)
+      const img = imageFiles.find(img => img.path === cleaned || img.name === cleaned || img.name === cleanBase) ||
+                  (projectImages || []).find(img => img.name === cleaned || img.name === cleanBase);
       if (img) {
         return match.replace(urlValue, `'${img.data}'`);
       }
-      // Intentar también coincidir si la URL venía como ./nombre
-      const cleanedNoDot = cleaned.replace(/^\.\//, '');
-      const img2 = imageFiles.find(img => img.name === cleanedNoDot || img.path === cleanedNoDot);
+      // Intento adicional: quitar más ../ profundos y comparar por basename
+      const cleanedMore = cleaned.replace(/^(\.\.\/)+/, '');
+      const img2 = imageFiles.find(img => img.name === basename(cleanedMore) || img.path === cleanedMore);
       if (img2) {
         return match.replace(urlValue, `'${img2.data}'`);
       }

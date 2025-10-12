@@ -153,6 +153,21 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       return paths;
     };
 
+    // Función auxiliar para obtener todas las rutas de carpetas (para sugerir "img/" etc.)
+    const getAllFolderPaths = (files, basePath = '') => {
+      let folders = [];
+      Object.entries(files || {}).forEach(([key, item]) => {
+        const currentPath = basePath ? `${basePath}/${key}` : key;
+        if (item.type === 'folder') {
+          folders.push({ path: currentPath + '/', name: item.name });
+          if (item.children) {
+            folders = folders.concat(getAllFolderPaths(item.children, currentPath));
+          }
+        }
+      });
+      return folders;
+    };
+
     // HTML Snippets + Autocompletado de rutas
     monaco.languages.registerCompletionItemProvider('html', {
       provideCompletionItems: (model, position) => {
@@ -188,6 +203,17 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             range
           }));
 
+          // Agregar carpetas del proyecto
+          const folderPaths = getAllFolderPaths(projectFiles);
+          const folderCompletions = folderPaths.map((folder, index) => ({
+            label: folder.path,
+            kind: monaco.languages.CompletionItemKind.Folder,
+            insertText: folder.path,
+            documentation: `📂 Carpeta: ${folder.name}`,
+            sortText: `0${index}`,
+            range
+          }));
+
           // Agregar imágenes cargadas
           const imageCompletions = (projectImages || []).map((image, index) => ({
             label: `${image.name} (imagen cargada)`,
@@ -199,10 +225,54 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             range
           }));
 
-          suggestions = [...imageCompletions, ...fileCompletions, ...suggestions];
+          suggestions = [...folderCompletions, ...imageCompletions, ...fileCompletions, ...suggestions];
         }
 
         return { suggestions };
+      }
+    });
+
+    // CSS: autocompletar rutas dentro de url(...)
+    monaco.languages.registerCompletionItemProvider('css', {
+      triggerCharacters: ['/', '.', '"', "'", '('],
+      provideCompletionItems: (model, position) => {
+        const lineContent = model.getLineContent(position.lineNumber);
+        const before = lineContent.slice(0, position.column - 1);
+        // Detectar si estamos dentro de url( ... ) sin cerrar
+        const insideUrl = /url\([^\)]*$/.test(before);
+        if (!insideUrl) return { suggestions: [] };
+
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn
+        };
+
+        const allFiles = getAllFilePaths(projectFiles);
+        const imageExts = new Set(['png','jpg','jpeg','gif','svg','webp','avif']);
+        const imageFiles = allFiles.filter(f => imageExts.has(String(f.extension || '').toLowerCase()));
+        const folders = getAllFolderPaths(projectFiles);
+
+        const fileItems = imageFiles.map(f => ({
+          label: f.path,
+          kind: monaco.languages.CompletionItemKind.File,
+          insertText: f.path,
+          documentation: `🖼️ ${f.name}`,
+          range
+        }));
+
+        const folderItems = folders.map((d, i) => ({
+          label: d.path,
+          kind: monaco.languages.CompletionItemKind.Folder,
+          insertText: d.path,
+          documentation: `📂 Carpeta: ${d.name}`,
+          sortText: `0${i}`,
+          range
+        }));
+
+        return { suggestions: [...folderItems, ...fileItems] };
       }
     });
 

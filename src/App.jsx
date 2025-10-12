@@ -274,17 +274,27 @@ function App() {
 
   const getFileByPath = (path) => {
     const parts = path.split('/');
-    let current = files;
-    
-    for (const part of parts) {
-      if (current[part]) {
-        current = current[part];
+    let currentLevel = files;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const entry = currentLevel ? currentLevel[part] : undefined;
+      if (!entry) return null;
+
+      // Si es la última parte, devolver el elemento encontrado
+      if (i === parts.length - 1) {
+        return entry;
+      }
+
+      // Si es carpeta, bajar a sus children, si no, el path es inválido
+      if (entry.type === 'folder' && entry.children) {
+        currentLevel = entry.children;
       } else {
         return null;
       }
     }
-    
-    return current;
+
+    return null;
   };
 
   const handleFileSelect = (filePath) => {
