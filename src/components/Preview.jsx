@@ -111,12 +111,16 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
   useEffect(() => {
     if (iframeRef.current) {
       const iframe = iframeRef.current;
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      
-      // Inyectar código para interceptar console.log
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+
       const consoleInterceptor = `
         <script>
           (function() {
+            // Evitar múltiples inicializaciones
+            if (window.__consoleInterceptorInitialized) return;
+            window.__consoleInterceptorInitialized = true;
+            
             const originalLog = console.log;
             const originalError = console.error;
             const originalWarn = console.warn;
@@ -126,16 +130,7 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
               window.parent.postMessage({
                 type: 'console',
                 method: 'log',
-                args: args.map(arg => {
-                  if (typeof arg === 'object') {
-                    try {
-                      return JSON.stringify(arg, null, 2);
-                    } catch (e) {
-                      return String(arg);
-                    }
-                  }
-                  return String(arg);
-                })
+                args: args.map(arg => String(arg))
               }, '*');
               originalLog.apply(console, args);
             };
@@ -174,7 +169,7 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
               const errorMsg = 'Error: ' + e.message;
               if (errorMsg === lastError) {
                 errorCount++;
-                if (errorCount > 3) return; // No enviar si se repite más de 3 veces
+                if (errorCount > 3) return;
               } else {
                 lastError = errorMsg;
                 errorCount = 1;
@@ -200,7 +195,7 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
       doc.write(processedContent);
       doc.close();
     }
-  }, [content, key, projectFiles, projectImages]);
+  }, [content, key]);
 
   useEffect(() => {
     const handleMessage = (event) => {

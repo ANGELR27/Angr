@@ -278,6 +278,18 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  const onDragEndItem = (e) => {
+    // Limpiar estados al terminar el drag (sea exitoso o cancelado)
+    // Usar setTimeout para asegurar que se ejecute después del drop
+    setTimeout(() => {
+      setIsDraggingInternalToRoot(false);
+      setDragOverFolder(null);
+      setIsDraggingOver(false);
+      setDragFileCount(0);
+      setDragFileTypes([]);
+    }, 0);
+  };
+
   const onDragOverFolder = (e, folderPath) => {
     e.preventDefault();
     e.stopPropagation();
@@ -438,6 +450,8 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               onClick={() => toggleFolder(currentPath)}
               onContextMenu={(e) => handleContextMenu(e, currentPath, 'folder')}
               draggable
+              onDragStart={(e) => onDragStartItem(e, currentPath)}
+              onDragEnd={onDragEndItem}
               onDragOver={(e) => onDragOverFolder(e, currentPath)}
               onDragLeave={(e) => onDragLeaveFolder(e, currentPath)}
               onDrop={(e) => onDropToFolder(e, currentPath)}
@@ -485,6 +499,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           onContextMenu={(e) => handleContextMenu(e, currentPath, 'file')}
           draggable
           onDragStart={(e) => onDragStartItem(e, currentPath)}
+          onDragEnd={onDragEndItem}
           className={`flex items-center gap-2 cursor-pointer transition-all group rounded-sm mx-1 border`}
           style={{
             padding: isLite ? '4px 6px' : '6px 12px',
@@ -501,13 +516,14 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
 
   return (
     <div 
-      className="w-64 border-r overflow-y-auto relative" 
+      className="w-64 h-full border-r overflow-y-auto relative" 
       style={{ backgroundColor: 'var(--theme-background-tertiary)', borderColor: 'var(--theme-border)' }}
       onClick={closeContextMenu}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onDragEnd={onDragEndItem}
     >
       
       {/* Overlay para movimiento interno a raíz */}

@@ -8,8 +8,16 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     { type: 'info', text: '> Los console.log de tu código aparecerán aquí' }
   ]);
   const [input, setInput] = useState('');
+  const [fontSize, setFontSize] = useState(14); // Siempre inicia en 14px al recargar
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Resetear zoom al abrir/cerrar la terminal
+  useEffect(() => {
+    if (isOpen) {
+      setFontSize(14); // Resetear al valor por defecto cuando se abre
+    }
+  }, [isOpen]);
 
   // Exponer método para agregar logs desde fuera
   useImperativeHandle(ref, () => ({
@@ -196,12 +204,57 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       case 'command': return 'text-cyan-400';
       case 'success': return 'text-green-400';
       case 'error': return 'text-red-400';
-      case 'warning': return 'text-yellow-400';
+      case 'warning': return 'text-yellow-300';
       case 'info': return 'text-blue-300';
       case 'console': return 'text-gray-100';
       default: return 'text-white';
     }
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      // Ctrl + '+' o Ctrl + '=' para aumentar
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        setFontSize(prev => Math.min(prev + 2, 32));
+      }
+      // Ctrl + '-' para disminuir
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setFontSize(prev => Math.max(prev - 2, 8));
+      }
+      // Ctrl + '0' para resetear
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        setFontSize(14);
+      }
+    };
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          // Scroll up = zoom in
+          setFontSize(prev => Math.min(prev + 1, 32));
+        } else {
+          // Scroll down = zoom out
+          setFontSize(prev => Math.max(prev - 1, 8));
+        }
+      }
+    };
+
+    const terminalElement = terminalRef.current;
+    
+    window.addEventListener('keydown', handleKeyDown);
+    terminalElement?.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      terminalElement?.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -273,7 +326,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       <div
         ref={terminalRef}
         className="flex-1 overflow-y-auto font-mono"
-        style={{ padding: isLite ? '8px' : '12px', fontSize: isLite ? '12px' : '14px', color: 'var(--theme-text)' }}
+        style={{ padding: isLite ? '8px' : '12px', fontSize: `${fontSize}px`, color: 'var(--theme-text)' }}
         onClick={() => inputRef.current?.focus()}
       >
         {history.map((item, index) => (
