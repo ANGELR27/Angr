@@ -713,35 +713,45 @@ export const defineCustomThemes = (monaco) => {
     }
   });
 
-  // Lite Theme (compacto, limpio, verde predominante)
+  // Lite Theme (compacto, limpio, verde primario + morado secundario + blanco)
   monaco.editor.defineTheme('lite', {
     base: 'vs-dark',
     inherit: true,
     rules: [
       { token: 'comment', foreground: '8ea06a', fontStyle: 'italic' },
       { token: 'keyword', foreground: 'D0FC01', fontStyle: 'bold' },
-      { token: 'string', foreground: 'D0FC01' },
-      { token: 'number', foreground: 'D0FC01' },
+      { token: 'string', foreground: '8F68F9' },
+      { token: 'number', foreground: 'a78bfa' },
       { token: 'function', foreground: 'D0FC01' },
       { token: 'variable', foreground: 'EAEAEA' },
-      { token: 'type', foreground: 'D0FC01' },
+      { token: 'type', foreground: 'c4fc64' },
+      { token: 'operator', foreground: 'D0FC01' },
+      { token: 'class', foreground: 'c4fc64' },
       // HTML
       { token: 'tag', foreground: 'D0FC01', fontStyle: 'bold' },
       { token: 'tag.html', foreground: 'D0FC01', fontStyle: 'bold' },
       { token: 'delimiter.html', foreground: 'D0FC01' },
-      { token: 'attribute.name', foreground: 'EAEAEA' },
-      { token: 'attribute.name.html', foreground: 'EAEAEA' },
-      { token: 'attribute.value', foreground: 'D0FC01' },
-      { token: 'attribute.value.html', foreground: 'D0FC01' },
+      { token: 'attribute.name', foreground: 'c4fc64' },
+      { token: 'attribute.name.html', foreground: 'c4fc64' },
+      { token: 'attribute.value', foreground: '8F68F9' },
+      { token: 'attribute.value.html', foreground: '8F68F9' },
+      // CSS
+      { token: 'attribute.name.css', foreground: 'D0FC01' },
+      { token: 'attribute.value.css', foreground: '8F68F9' },
+      { token: 'property.css', foreground: 'c4fc64' },
+      // JavaScript
+      { token: 'identifier', foreground: 'EAEAEA' },
+      { token: 'delimiter.bracket', foreground: 'D0FC01' },
+      { token: 'delimiter.parenthesis', foreground: 'D0FC01' },
     ],
     colors: {
       'editor.background': '#1B1718',
-      'editor.foreground': '#D0FC01',
+      'editor.foreground': '#EAEAEA',
       'editorCursor.foreground': '#D0FC01',
       'editor.lineHighlightBackground': '#211D1E',
       'editorLineNumber.foreground': '#6b6b6b',
-      'editor.selectionBackground': '#D0FC011A',
-      'editor.inactiveSelectionBackground': '#D0FC010D',
+      'editor.selectionBackground': '#D0FC0133',
+      'editor.inactiveSelectionBackground': '#D0FC011A',
       'editor.selectionHighlightBackground': '#D0FC011A',
       'editor.wordHighlightBackground': '#D0FC011A',
       'editorIndentGuide.activeBackground': '#343031',

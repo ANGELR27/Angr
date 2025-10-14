@@ -428,7 +428,7 @@ function App() {
   };
 
   const handleMoveItem = (sourcePath, targetFolderPath) => {
-    if (!sourcePath || !targetFolderPath || sourcePath === targetFolderPath) return;
+    if (!sourcePath || sourcePath === targetFolderPath) return;
 
     const pathParts = sourcePath.split('/');
     const itemName = pathParts[pathParts.length - 1];
@@ -476,19 +476,37 @@ function App() {
     };
 
     // No permitir mover carpeta dentro de sí misma
-    if (targetFolderPath.startsWith(sourcePath)) return;
+    if (targetFolderPath && targetFolderPath.startsWith(sourcePath)) return;
 
     const { newTree, item } = extractItem(files, pathParts);
-    const targetParts = targetFolderPath.split('/');
-    const updated = insertItem(newTree, targetParts, item);
-    setFiles(updated);
+    
+    // Si targetFolderPath es null, mover a la raíz
+    if (targetFolderPath === null || targetFolderPath === undefined) {
+      const updated = {
+        ...newTree,
+        [item.name]: item
+      };
+      setFiles(updated);
+      
+      // Actualizar tabs y pestaña activa
+      const newPath = item.name;
+      if (openTabs.includes(sourcePath)) {
+        setOpenTabs(openTabs.map(t => (t === sourcePath ? newPath : t)));
+      }
+      if (activeTab === sourcePath) setActiveTab(newPath);
+    } else {
+      // Mover a una carpeta específica
+      const targetParts = targetFolderPath.split('/');
+      const updated = insertItem(newTree, targetParts, item);
+      setFiles(updated);
 
-    // Actualizar tabs y pestaña activa si cambió el path
-    const newPath = `${targetFolderPath}/${itemName}`;
-    if (openTabs.includes(sourcePath)) {
-      setOpenTabs(openTabs.map(t => (t === sourcePath ? newPath : t)));
+      // Actualizar tabs y pestaña activa si cambió el path
+      const newPath = `${targetFolderPath}/${itemName}`;
+      if (openTabs.includes(sourcePath)) {
+        setOpenTabs(openTabs.map(t => (t === sourcePath ? newPath : t)));
+      }
+      if (activeTab === sourcePath) setActiveTab(newPath);
     }
-    if (activeTab === sourcePath) setActiveTab(newPath);
   };
 
   const handleRemoveImage = (imageId) => {
@@ -718,16 +736,17 @@ function App() {
     }
   };
 
-  const handleNewFile = (fileName, parentPath = null) => {
+  const handleNewFile = (fileName, parentPath = null, initialContent = '') => {
     const language = fileName.endsWith('.html') ? 'html' :
                     fileName.endsWith('.css') ? 'css' :
-                    fileName.endsWith('.js') ? 'javascript' : 'plaintext';
+                    fileName.endsWith('.js') ? 'javascript' :
+                    fileName.endsWith('.json') ? 'json' : 'plaintext';
     
     const newFile = {
       name: fileName,
       type: 'file',
       language,
-      content: ''
+      content: initialContent
     };
 
     if (!parentPath) {
@@ -1031,6 +1050,7 @@ function App() {
                       onConsoleLog={handleConsoleLog}
                       projectFiles={files}
                       projectImages={images}
+                      currentTheme={currentTheme}
                     />
                   </div>
                 </>

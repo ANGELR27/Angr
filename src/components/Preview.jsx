@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 
-function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
+function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTheme }) {
   const iframeRef = useRef(null);
   const [key, setKey] = useState(0);
   const [previewWindow, setPreviewWindow] = useState(null);
+  const isLite = currentTheme === 'lite';
 
   // Función para resolver rutas de imágenes
   const resolveImagePaths = (htmlContent) => {
@@ -246,23 +247,66 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
 
   return (
     <div className="h-full flex flex-col bg-white relative">
-      <div className="h-10 bg-tab-bg border-b border-purple-500/30 flex items-center justify-between px-4 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-transparent pointer-events-none"></div>
-        <span className="text-sm text-purple-200 font-medium relative z-10">Vista Previa</span>
+      <div 
+        className="h-10 border-b flex items-center justify-between px-4 relative"
+        style={{
+          backgroundColor: 'var(--theme-background-tertiary)',
+          borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.3)'
+        }}
+      >
+        {!isLite && (
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-transparent pointer-events-none"></div>
+        )}
+        <span 
+          className="text-sm font-medium relative z-10"
+          style={{ color: isLite ? 'var(--theme-secondary)' : '#c4b5fd' }}
+        >
+          Vista Previa
+        </span>
         <div className="flex items-center gap-2 relative z-10">
           <button
             onClick={handleOpenInNewTab}
-            className="p-1.5 hover:bg-green-500/20 rounded transition-all border border-transparent hover:border-green-500/40 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+            className="p-1.5 rounded transition-all border"
+            style={{
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
+              color: isLite ? 'var(--theme-secondary)' : '#4ade80'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isLite ? 'rgba(208, 252, 1, 0.1)' : 'rgba(34, 197, 94, 0.2)';
+              e.currentTarget.style.borderColor = isLite ? 'var(--theme-secondary)' : 'rgba(34, 197, 94, 0.4)';
+              e.currentTarget.style.boxShadow = isLite ? '0 0 15px rgba(208, 252, 1, 0.3)' : '0 0 15px rgba(34, 197, 94, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
             title="Abrir en nueva pestaña (Live Server)"
           >
-            <ExternalLink className="w-4 h-4 text-green-400" />
+            <ExternalLink className="w-4 h-4" />
           </button>
           <button
             onClick={handleRefresh}
-            className="p-1.5 hover:bg-purple-500/20 rounded transition-all border border-transparent hover:border-purple-500/40 hover:shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+            className="p-1.5 rounded transition-all border"
+            style={{
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
+              color: isLite ? '#8F68F9' : '#c084fc'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isLite ? 'rgba(143, 104, 249, 0.1)' : 'rgba(147, 51, 234, 0.2)';
+              e.currentTarget.style.borderColor = isLite ? '#8F68F9' : 'rgba(147, 51, 234, 0.4)';
+              e.currentTarget.style.boxShadow = isLite ? '0 0 15px rgba(143, 104, 249, 0.3)' : '0 0 15px rgba(147, 51, 234, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
             title="Refrescar preview"
           >
-            <RefreshCw className="w-4 h-4 text-purple-400" />
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
