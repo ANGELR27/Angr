@@ -616,7 +616,6 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         <h2 className="text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--theme-secondary)'}}>
           Explorador
         </h2>
-        <p className="text-xs mt-1" style={{color: 'var(--theme-text-secondary)'}}>Arrastra archivos aquí 📁</p>
       </div>
       {importToast && (
         <div className="absolute bottom-3 left-3 right-3 z-50 flex justify-center animate-fade-in">
