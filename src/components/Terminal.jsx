@@ -199,15 +199,27 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     }
   };
 
-  const getTextColor = (type) => {
-    switch (type) {
-      case 'command': return 'text-cyan-400';
-      case 'success': return 'text-green-400';
-      case 'error': return 'text-red-400';
-      case 'warning': return 'text-yellow-300';
-      case 'info': return 'text-blue-300';
-      case 'console': return 'text-gray-100';
-      default: return 'text-white';
+  const getTextColor = (type, isLite) => {
+    if (isLite) {
+      switch (type) {
+        case 'command': return 'text-cyan-600';
+        case 'success': return 'text-green-600';
+        case 'error': return 'text-red-600';
+        case 'warning': return 'text-yellow-600';
+        case 'info': return 'text-blue-600';
+        case 'console': return 'text-gray-700';
+        default: return 'text-gray-800';
+      }
+    } else {
+      switch (type) {
+        case 'command': return 'text-cyan-400';
+        case 'success': return 'text-green-400';
+        case 'error': return 'text-red-400';
+        case 'warning': return 'text-yellow-300';
+        case 'info': return 'text-blue-300';
+        case 'console': return 'text-gray-100';
+        default: return 'text-white';
+      }
     }
   };
 
@@ -323,32 +335,50 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       </div>
 
       {/* Content */}
-      <div
-        ref={terminalRef}
-        className="flex-1 overflow-y-auto font-mono"
-        style={{ padding: isLite ? '8px' : '12px', fontSize: `${fontSize}px`, color: 'var(--theme-text)' }}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {history.map((item, index) => (
-          <div key={index} className={`${getTextColor(item.type)} mb-1`}>
-            {item.text}
-          </div>
-        ))}
+      <div className="flex-1 relative overflow-hidden">
+        <div
+          ref={terminalRef}
+          className="h-full overflow-y-auto font-mono"
+          style={{ 
+            padding: isLite ? '8px' : '12px', 
+            paddingBottom: '24px',
+            fontSize: `${fontSize}px`, 
+            color: 'var(--theme-text)' 
+          }}
+          onClick={() => inputRef.current?.focus()}
+        >
+          {history.map((item, index) => (
+            <div key={index} className={`${getTextColor(item.type, isLite)} mb-1`}>
+              {item.text}
+            </div>
+          ))}
 
-        {/* Input line */}
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 mt-2">
-          <span style={{ color: isLite ? 'var(--theme-secondary)' : '#22d3ee' }}>$</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="flex-1 bg-transparent outline-none"
-            style={{ color: 'var(--theme-text)' }}
-            autoFocus
-            spellCheck={false}
-          />
-        </form>
+          {/* Input line */}
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 mt-2">
+            <span style={{ color: isLite ? 'var(--theme-secondary)' : '#22d3ee' }}>$</span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1 bg-transparent outline-none"
+              style={{ color: 'var(--theme-text)' }}
+              autoFocus
+              spellCheck={false}
+            />
+          </form>
+        </div>
+
+        {/* Gradiente de fade en la parte inferior */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 pointer-events-none"
+          style={{
+            height: '40px',
+            background: isLite 
+              ? 'linear-gradient(to bottom, transparent, var(--theme-background))' 
+              : 'linear-gradient(to bottom, transparent, var(--theme-background))'
+          }}
+        />
       </div>
     </div>
   );
