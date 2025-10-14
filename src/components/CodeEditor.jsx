@@ -893,7 +893,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           options={{
             fontSize: fontSize,
             minimap: { enabled: false },
-            scrollBeyondLastLine: false,
+            scrollBeyondLastLine: true,
             wordWrap: 'on',
             automaticLayout: true,
             ['semanticHighlighting.enabled']: false,
@@ -906,7 +906,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             cursorStyle: 'line',
             fontFamily: "'Consolas', 'Courier New', monospace",
             fontLigatures: true,
-            padding: { top: 16 },
+            padding: { top: 16, bottom: 120 },
             // Autocompletado robusto
             suggestOnTriggerCharacters: true,
             quickSuggestions: {
