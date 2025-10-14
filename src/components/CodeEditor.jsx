@@ -3,12 +3,67 @@ import { useEffect, useRef, useState } from 'react';
 import { getHTMLSnippets, getCSSSnippets, getJSSnippets } from '../utils/snippets';
 import { defineCustomThemes } from '../utils/themes';
 
-function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage }) {
+function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
+  const disposablesRef = useRef([]);
+  const projectFilesRef = useRef(projectFiles);
+  const projectImagesRef = useRef(projectImages);
+  const activePathRef = useRef(activePath);
+
+  // Memo: listas aplanadas de archivos/carpetas
+  const buildAllFilePaths = (files, basePath = '') => {
+    let paths = [];
+    Object.entries(files || {}).forEach(([key, item]) => {
+      const currentPath = basePath ? `${basePath}/${key}` : key;
+      if (item.type === 'file') {
+        paths.push({ path: currentPath, name: item.name, extension: item.name.split('.').pop(), isImage: !!item.isImage, data: item.isImage ? item.content : undefined });
+      } else if (item.type === 'folder' && item.children) {
+        paths = paths.concat(buildAllFilePaths(item.children, currentPath));
+      }
+    });
+    return paths;
+  };
+  const buildAllFolderPaths = (files, basePath = '') => {
+    let folders = [];
+    Object.entries(files || {}).forEach(([key, item]) => {
+      const currentPath = basePath ? `${basePath}/${key}` : key;
+      if (item.type === 'folder') {
+        folders.push({ path: currentPath + '/', name: item.name });
+        if (item.children) folders = folders.concat(buildAllFolderPaths(item.children, currentPath));
+      }
+    });
+    return folders;
+  };
+
+  useEffect(() => { projectFilesRef.current = projectFiles; }, [projectFiles]);
+  useEffect(() => { projectImagesRef.current = projectImages; }, [projectImages]);
+  useEffect(() => { activePathRef.current = activePath; }, [activePath]);
+
+  // Cache simple por referencia del objeto
+  const filesCacheRef = useRef({ key: null, files: [], folders: [] });
+  const getCachedPaths = () => {
+    const key = projectFilesRef.current;
+    if (filesCacheRef.current.key !== key) {
+      filesCacheRef.current = {
+        key,
+        files: buildAllFilePaths(key),
+        folders: buildAllFolderPaths(key)
+      };
+    }
+    return filesCacheRef.current;
+  };
+
+  // Cleanup providers al desmontar
+  useEffect(() => () => {
+    disposablesRef.current.forEach(d => {
+      try { d && d.dispose && d.dispose(); } catch {}
+    });
+    disposablesRef.current = [];
+  }, []);
 
   const handleEditorChange = (value) => {
     onChange(value);
@@ -43,29 +98,105 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
     e.stopPropagation();
     setIsDraggingOver(false);
 
+    // 0) Movimiento desde FileExplorer hacia el editor (inserción de referencia)
+    const explorerPath = e.dataTransfer.getData('text/source-path');
+    if (explorerPath && editorRef.current) {
+      const editor = editorRef.current;
+      const position = editor.getPosition();
+      const fromDir = activePathRef.current ? activePathRef.current.split('/').slice(0, -1).join('/') : '';
+      const rel = (function relativePath(fromDir, toPath){
+        if (!fromDir) return toPath;
+        const fp = fromDir.split('/').filter(Boolean);
+        const tp = toPath.split('/').filter(Boolean);
+        let i=0; while(i<fp.length && i<tp.length && fp[i]===tp[i]) i++;
+        const up = new Array(fp.length - i).fill('..');
+        const down = tp.slice(i);
+        const r = [...up, ...down].join('/');
+        return r || './';
+      })(fromDir, explorerPath);
+
+      const ext = (explorerPath.split('.').pop() || '').toLowerCase();
+      const isImg = ['png','jpg','jpeg','gif','svg','webp','avif'].includes(ext);
+
+      let insertText = rel;
+      if (language === 'html') {
+        insertText = isImg ? `<img src="${rel}" alt="${explorerPath.split('/').pop().split('.')[0]}" />` : rel;
+      } else if (language === 'css') {
+        insertText = isImg ? `url('${rel}')` : rel;
+      }
+
+      editor.executeEdits('drop-explorer', [{
+        range: { startLineNumber: position.lineNumber, startColumn: position.column, endLineNumber: position.lineNumber, endColumn: position.column },
+        text: insertText
+      }]);
+      editor.setPosition({ lineNumber: position.lineNumber, column: position.column + insertText.length });
+      editor.focus();
+      return; // no continuar con otros manejos
+    }
+
+    // 1) Archivos externos (imágenes)
+    const filesList = e.dataTransfer.files;
+    if (filesList && filesList.length > 0) {
+      const imgFiles = Array.from(filesList).filter(f => f.type && f.type.startsWith('image/'));
+      if (imgFiles.length && onAddImageFile && editorRef.current) {
+        const editor = editorRef.current;
+        const position = editor.getPosition();
+        const fromDir = activePathRef.current ? activePathRef.current.split('/').slice(0, -1).join('/') : '';
+
+        imgFiles.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataUrl = ev.target.result;
+            const imageData = { name: file.name, data: dataUrl, size: file.size, type: file.type };
+            const parentPath = fromDir || null;
+            // Crear archivo de imagen en el árbol
+            onAddImageFile(imageData, parentPath);
+            // Ruta creada
+            const createdPath = parentPath ? `${parentPath}/${file.name}` : file.name;
+            // Insertar referencia relativa según lenguaje
+            const rel = (function relativePath(fromDir, toPath){
+              if (!fromDir) return toPath;
+              const fp = fromDir.split('/').filter(Boolean);
+              const tp = toPath.split('/').filter(Boolean);
+              let i=0; while(i<fp.length && i<tp.length && fp[i]===tp[i]) i++;
+              const up = new Array(fp.length - i).fill('..');
+              const down = tp.slice(i);
+              const r = [...up, ...down].join('/');
+              return r || './';
+            })(fromDir, createdPath);
+
+            let insertText = rel;
+            if (language === 'html') {
+              insertText = `<img src="${rel}" alt="${file.name.split('.')[0]}" />`;
+            } else if (language === 'css') {
+              insertText = `url('${rel}')`;
+            }
+
+            editor.executeEdits('drop-image', [{
+              range: { startLineNumber: position.lineNumber, startColumn: position.column, endLineNumber: position.lineNumber, endColumn: position.column },
+              text: insertText
+            }]);
+            editor.setPosition({ lineNumber: position.lineNumber, column: position.column + insertText.length });
+            editor.focus();
+          };
+          reader.readAsDataURL(file);
+        });
+        return; // no procesar texto si se manejaron archivos
+      }
+    }
+
+    // 2) Texto arrastrado (desde gestor de imágenes u otras fuentes)
     const text = e.dataTransfer.getData('text/plain');
     if (text && editorRef.current) {
       const editor = editorRef.current;
       const position = editor.getPosition();
-      
       editor.executeEdits('drop', [{
-        range: {
-          startLineNumber: position.lineNumber,
-          startColumn: position.column,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column
-        },
-        text: text
+        range: { startLineNumber: position.lineNumber, startColumn: position.column, endLineNumber: position.lineNumber, endColumn: position.column },
+        text
       }]);
-      
-      // Mover cursor al final del texto insertado
       const lines = text.split('\n');
       const lastLine = lines[lines.length - 1];
-      editor.setPosition({
-        lineNumber: position.lineNumber + lines.length - 1,
-        column: lines.length === 1 ? position.column + text.length : lastLine.length + 1
-      });
-      
+      editor.setPosition({ lineNumber: position.lineNumber + lines.length - 1, column: lines.length === 1 ? position.column + text.length : lastLine.length + 1 });
       editor.focus();
     }
   };
@@ -168,8 +299,62 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       return folders;
     };
 
+    // Utils ruta relativa
+    const getDirname = (p) => {
+      if (!p) return '';
+      const parts = p.split('/');
+      if (parts.length <= 1) return '';
+      parts.pop();
+      return parts.join('/');
+    };
+    const relativePath = (fromDir, toPath) => {
+      if (!fromDir) return toPath;
+      const fromParts = fromDir.split('/').filter(Boolean);
+      const toParts = toPath.split('/').filter(Boolean);
+      // encontrar común
+      let i = 0;
+      while (i < fromParts.length && i < toParts.length && fromParts[i] === toParts[i]) i++;
+      const up = new Array(fromParts.length - i).fill('..');
+      const down = toParts.slice(i);
+      const rel = [...up, ...down].join('/');
+      return rel || './';
+    };
+
+    // Fuzzy score simple
+    const normalize = (s) => (s || '').toLowerCase();
+    const fuzzyScore = (label, q) => {
+      if (!q) return 0;
+      const L = normalize(label);
+      const Q = normalize(q);
+      if (L === Q) return 1000;
+      if (L.startsWith(Q)) return 800 - (L.length - Q.length);
+      if (L.includes('/' + Q)) return 700;
+      if (L.includes(Q)) return 500 - (L.indexOf(Q));
+      // subsequence score
+      let i = 0; for (const ch of Q) { const pos = L.indexOf(ch, i); if (pos === -1) return 0; i = pos + 1; }
+      return 300 - (L.length - Q.length);
+    };
+    const sortByFuzzy = (items, getLabel, q) => {
+      if (!q) return items;
+      return items
+        .map(it => ({ it, s: fuzzyScore(getLabel(it), q) }))
+        .filter(x => x.s > 0)
+        .sort((a,b) => b.s - a.s)
+        .map(x => x.it);
+    };
+    const extractHtmlAttrQuery = (textUntilPosition) => {
+      // intenta obtener texto dentro de "... o '...
+      const m = textUntilPosition.match(/(?:src|href|data)=["']([^"']*)$/);
+      return m ? m[1] : '';
+    };
+    const extractCssUrlQuery = (before) => {
+      const m = before.match(/url\(([^)]*)$/); // contenido antes de )
+      if (!m) return '';
+      return m[1].replace(/^\s*["']?/, '').replace(/["']?\s*$/, '');
+    };
+
     // HTML Snippets + Autocompletado de rutas
-    monaco.languages.registerCompletionItemProvider('html', {
+    const htmlProvider = monaco.languages.registerCompletionItemProvider('html', {
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
@@ -193,47 +378,72 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         
         if (inSrcAttribute) {
           // Agregar archivos del proyecto
-          const filePaths = getAllFilePaths(projectFiles);
+          const { files: filePaths } = getCachedPaths();
+          const fromDir = getDirname(activePathRef.current || '');
+          const query = extractHtmlAttrQuery(textUntilPosition);
           const fileCompletions = filePaths.map(file => ({
             label: file.path,
             kind: monaco.languages.CompletionItemKind.File,
-            insertText: file.path,
-            documentation: `📁 Archivo del proyecto: ${file.name}`,
+            insertText: relativePath(fromDir, file.path),
+            documentation: file.isImage && file.data
+              ? { value: `📁 Archivo del proyecto: ${file.name}\n\n![${file.name}](${file.data})` }
+              : `📁 Archivo del proyecto: ${file.name}`,
             detail: `Tipo: ${file.extension}`,
             range
           }));
 
           // Agregar carpetas del proyecto
-          const folderPaths = getAllFolderPaths(projectFiles);
+          const { folders: folderPaths } = getCachedPaths();
           const folderCompletions = folderPaths.map((folder, index) => ({
             label: folder.path,
             kind: monaco.languages.CompletionItemKind.Folder,
-            insertText: folder.path,
+            insertText: relativePath(fromDir, folder.path.replace(/\/$/,'/')),
             documentation: `📂 Carpeta: ${folder.name}`,
             sortText: `0${index}`,
             range
           }));
 
           // Agregar imágenes cargadas
-          const imageCompletions = (projectImages || []).map((image, index) => ({
+          const imageCompletions = (projectImagesRef.current || []).map((image, index) => ({
             label: `${image.name} (imagen cargada)`,
             kind: monaco.languages.CompletionItemKind.File,
             insertText: image.data,
-            documentation: `🖼️ Imagen cargada: ${image.name} (${(image.size / 1024).toFixed(1)} KB)`,
+            documentation: { value: `🖼️ Imagen cargada: ${image.name} (${(image.size / 1024).toFixed(1)} KB)\n\n![${image.name}](${image.data})` },
             detail: 'Data URL',
             sortText: `0${index}`, // Prioridad alta
             range
           }));
 
-          suggestions = [...folderCompletions, ...imageCompletions, ...fileCompletions, ...suggestions];
+          // Snippets especiales para imágenes del proyecto
+          const imgExts = new Set(['png','jpg','jpeg','gif','svg','webp','avif']);
+          const imageFileSnippets = filePaths
+            .filter(f => imgExts.has(String(f.extension||'').toLowerCase()))
+            .map((f, i) => ({
+              label: `img: ${f.path}`,
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              insertText: `<img src="${relativePath(fromDir, f.path)}" alt="${f.name.split('.')[0]}" width="\${1:300}" height="\${2:auto}" />`,
+              documentation: `Insertar etiqueta <img> para ${f.name}`,
+              sortText: `1${i}`,
+              range
+            }));
+
+          const ranked = [
+            ...sortByFuzzy(folderCompletions, x => x.label, query),
+            ...sortByFuzzy(imageCompletions, x => x.label || '', query),
+            ...sortByFuzzy(imageFileSnippets, x => x.label, query),
+            ...sortByFuzzy(fileCompletions, x => x.label, query)
+          ];
+          suggestions = [...ranked, ...suggestions];
         }
 
         return { suggestions };
       }
     });
+    disposablesRef.current.push(htmlProvider);
 
     // CSS: autocompletar rutas dentro de url(...)
-    monaco.languages.registerCompletionItemProvider('css', {
+    const cssUrlProvider = monaco.languages.registerCompletionItemProvider('css', {
       triggerCharacters: ['/', '.', '"', "'", '('],
       provideCompletionItems: (model, position) => {
         const lineContent = model.getLineContent(position.lineNumber);
@@ -250,31 +460,52 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           endColumn: word.endColumn
         };
 
-        const allFiles = getAllFilePaths(projectFiles);
+        const { files: allFiles, folders } = getCachedPaths();
+        const fromDir = getDirname(activePathRef.current || '');
         const imageExts = new Set(['png','jpg','jpeg','gif','svg','webp','avif']);
         const imageFiles = allFiles.filter(f => imageExts.has(String(f.extension || '').toLowerCase()));
-        const folders = getAllFolderPaths(projectFiles);
+        const query = extractCssUrlQuery(before);
 
         const fileItems = imageFiles.map(f => ({
           label: f.path,
           kind: monaco.languages.CompletionItemKind.File,
-          insertText: f.path,
-          documentation: `🖼️ ${f.name}`,
+          insertText: relativePath(fromDir, f.path),
+          documentation: f.isImage && f.data
+            ? { value: `🖼️ ${f.name}\n\n![${f.name}](${f.data})` }
+            : `🖼️ ${f.name}`,
           range
         }));
 
         const folderItems = folders.map((d, i) => ({
           label: d.path,
           kind: monaco.languages.CompletionItemKind.Folder,
-          insertText: d.path,
+          insertText: relativePath(fromDir, d.path),
           documentation: `📂 Carpeta: ${d.name}`,
           sortText: `0${i}`,
           range
         }));
 
-        return { suggestions: [...folderItems, ...fileItems] };
+        // Snippets de background para imágenes
+        const bgSnippets = imageFiles.map((f, i) => ({
+          label: `background-cover: ${f.path}`,
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          insertText: `background: url('${relativePath(fromDir, f.path)}') center/cover no-repeat;`,
+          documentation: `background con cover para ${f.name}`,
+          sortText: `1${i}`,
+          range
+        }));
+
+        const ranked = [
+          ...sortByFuzzy(folderItems, x => x.label, query),
+          ...sortByFuzzy(fileItems, x => x.label, query),
+          ...sortByFuzzy(bgSnippets, x => x.label, query)
+        ];
+
+        return { suggestions: ranked };
       }
     });
+    disposablesRef.current.push(cssUrlProvider);
 
     // HTML: completar valores de class="" a partir de clases detectadas en modelos abiertos (CSS/HTML)
     monaco.languages.registerCompletionItemProvider('html', {

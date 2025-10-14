@@ -5,6 +5,7 @@ const THEMES = [
   { id: 'vs-dark', name: 'VS Dark', description: 'Tema oscuro por defecto' },
   { id: 'vs', name: 'VS Light', description: 'Tema claro' },
   { id: 'hc-black', name: 'High Contrast', description: 'Alto contraste' },
+  { id: 'lite', name: 'Lite', description: 'Compacto, limpio, negro con verde' },
   { id: 'matrix', name: 'Matrix', description: 'Estilo Matrix verde' },
   { id: 'tokyo-night', name: 'Tokyo Night', description: 'Tokyo Night oscuro' },
   { id: 'dracula', name: 'Dracula', description: 'Tema Dracula' },
@@ -64,6 +65,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
 
   const getThemeColors = (themeId) => {
     const colors = {
+      'lite': { bg: '#1B1718', keyword: '#D0FC01', string: '#D0FC01', comment: '#8ea06a', number: '#D0FC01' },
       'matrix': { bg: '#0d0208', keyword: '#00ff41', string: '#39ff14', comment: '#00ff00', number: '#00ff88' },
       'tokyo-night': { bg: '#1a1b26', keyword: '#bb9af7', string: '#9ece6a', comment: '#565f89', number: '#ff9e64' },
       'dracula': { bg: '#282a36', keyword: '#ff79c6', string: '#f1fa8c', comment: '#6272a4', number: '#bd93f9' },
@@ -250,6 +252,9 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                 <div className="mt-3 h-2.5 rounded-full overflow-hidden flex">
                   {theme.id === 'matrix' && (
                     <div className="flex-1 bg-gradient-to-r from-green-600 via-green-500 to-green-400"></div>
+                  )}
+                  {theme.id === 'lite' && (
+                    <div className="flex-1 bg-gradient-to-r from-[#1B1718] via-[#343031] to-[#D0FC01]"></div>
                   )}
                   {theme.id === 'tokyo-night' && (
                     <div className="flex-1 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400"></div>

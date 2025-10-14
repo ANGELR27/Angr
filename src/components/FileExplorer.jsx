@@ -1,12 +1,43 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronDown, FileCode2, Folder, FolderOpen, FileJson, Braces, Palette, Trash2, FileImage, Upload, Edit3, Plus, FolderPlus } from 'lucide-react';
 
-function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder }) {
+function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set(['components', 'examples']));
   const [contextMenu, setContextMenu] = useState(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dragOverFolder, setDragOverFolder] = useState(null);
   const [modal, setModal] = useState({ open: false, type: null, path: null, value: '' });
+  const [importToast, setImportToast] = useState(null);
+  const isLite = currentTheme === 'lite';
+
+  // Helpers de árbol
+  const getChildrenOfPath = (tree, path) => {
+    if (!path) return tree; // raíz
+    const parts = path.split('/');
+    let current = tree;
+    for (let i = 0; i < parts.length; i++) {
+      const key = parts[i];
+      const entry = current?.[key];
+      if (!entry || entry.type !== 'folder') return null;
+      current = entry.children;
+    }
+    return current;
+  };
+  const getUniqueName = (baseName, childrenObj) => {
+    if (!childrenObj) return baseName;
+    if (!childrenObj[baseName]) return baseName;
+    const extIdx = baseName.lastIndexOf('.');
+    const name = extIdx > 0 ? baseName.slice(0, extIdx) : baseName;
+    const ext = extIdx > 0 ? baseName.slice(extIdx) : '';
+    let i = 1;
+    let candidate = `${name} (${i})${ext}`;
+    while (childrenObj[candidate]) { i++; candidate = `${name} (${i})${ext}`; }
+    return candidate;
+  };
+  const showToast = (text) => {
+    setImportToast(text);
+    setTimeout(() => setImportToast(null), 2000);
+  };
 
   const toggleFolder = (path) => {
     const newExpanded = new Set(expandedFolders);
@@ -60,10 +91,20 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     setContextMenu(null);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingOver(true);
+    // Mostrar overlay solo si es un drag EXTERNO de archivos (no movimiento interno)
+    const dt = e.dataTransfer;
+    const hasInternalPath = !!dt.getData('text/source-path');
+    const hasFiles = dt.types && Array.from(dt.types).includes('Files');
+    if (!hasInternalPath && hasFiles) setIsDraggingOver(true);
+  };
+
+  const handleDragOver = (e) => {
+    // Siempre prevenir para permitir drop fiable (navegadores requieren preventDefault)
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleDragLeave = (e) => {
@@ -76,29 +117,55 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(false);
+    const dt = e.dataTransfer;
+    const rootChildren = getChildrenOfPath(files, null);
 
-    const files = e.dataTransfer.files;
-    
-    if (files && files.length > 0) {
-      Array.from(files).forEach(file => {
-        // Verificar si es una imagen
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          
-          reader.onload = (event) => {
-            if (onAddImageFile) {
-              onAddImageFile({
-                name: file.name,
-                data: event.target.result,
-                size: file.size,
-                type: file.type
-              }, null);
-            }
-          };
-          
-          reader.readAsDataURL(file);
+    const importImages = [];
+    const processFile = (file, targetPath = null) => {
+      if (!file || !file.type) return;
+      if (!file.type.startsWith('image/')) return; // por ahora solo imágenes
+      const children = getChildrenOfPath(files, targetPath);
+      const unique = getUniqueName(file.name, children);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        onAddImageFile && onAddImageFile({
+          name: unique,
+          data: event.target.result,
+          size: file.size,
+          type: file.type
+        }, targetPath);
+      };
+      reader.readAsDataURL(file);
+      importImages.push(unique);
+    };
+
+    // Carpetas (webkit entries) si están disponibles
+    if (dt.items && dt.items.length && typeof dt.items[0].webkitGetAsEntry === 'function') {
+      const entries = Array.from(dt.items).map(it => it.webkitGetAsEntry()).filter(Boolean);
+      let pending = 0;
+      const walk = (entry, basePath = null) => {
+        if (entry.isFile) {
+          pending++;
+          entry.file((file) => { processFile(file, basePath); pending--; if (pending === 0) showToast(`Importadas ${importImages.length} imágenes`); });
+        } else if (entry.isDirectory) {
+          const dirReader = entry.createReader();
+          pending++;
+          dirReader.readEntries((ents) => {
+            ents.forEach(en => walk(en, basePath ? `${basePath}/${entry.name}` : entry.name));
+            pending--; if (pending === 0) showToast(`Importadas ${importImages.length} imágenes`);
+          });
         }
-      });
+      };
+      entries.forEach(en => walk(en, null));
+      if (!entries.length) showToast('Nada para importar');
+      return;
+    }
+
+    // Archivos sueltos
+    const fileList = dt.files;
+    if (fileList && fileList.length) {
+      Array.from(fileList).forEach(f => processFile(f, null));
+      if (importImages.length) showToast(`Importadas ${importImages.length} imágenes`);
     }
   };
 
@@ -132,23 +199,43 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
       return;
     }
 
-    // 2) archivos externos (imágenes)
-    const extFiles = e.dataTransfer.files;
-    if (extFiles && extFiles.length > 0) {
-      Array.from(extFiles).forEach(file => {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            onAddImageFile && onAddImageFile({
-              name: file.name,
-              data: event.target.result,
-              size: file.size,
-              type: file.type
-            }, folderPath);
-          };
-          reader.readAsDataURL(file);
+    const dt = e.dataTransfer;
+    const importImages = [];
+    const processFile = (file) => {
+      if (!file || !file.type) return;
+      if (!file.type.startsWith('image/')) return;
+      const children = getChildrenOfPath(files, folderPath);
+      const unique = getUniqueName(file.name, children);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        onAddImageFile && onAddImageFile({ name: unique, data: event.target.result, size: file.size, type: file.type }, folderPath);
+      };
+      reader.readAsDataURL(file);
+      importImages.push(unique);
+    };
+
+    if (dt.items && dt.items.length && typeof dt.items[0].webkitGetAsEntry === 'function') {
+      const entries = Array.from(dt.items).map(it => it.webkitGetAsEntry()).filter(Boolean);
+      let pending = 0;
+      const walk = (entry, base = folderPath) => {
+        if (entry.isFile) {
+          pending++;
+          entry.file((file) => { processFile(file); pending--; if (pending === 0) showToast(`Importadas ${importImages.length} imágenes a ${folderPath}`); });
+        } else if (entry.isDirectory) {
+          const reader = entry.createReader();
+          pending++;
+          reader.readEntries((ents) => { ents.forEach(en => walk(en, base)); pending--; if (pending === 0) showToast(`Importadas ${importImages.length} imágenes a ${folderPath}`); });
         }
-      });
+      };
+      entries.forEach(en => walk(en));
+      if (!entries.length) showToast('Nada para importar');
+      return;
+    }
+
+    const extFiles = dt.files;
+    if (extFiles && extFiles.length > 0) {
+      Array.from(extFiles).forEach(file => processFile(file));
+      if (importImages.length) showToast(`Importadas ${importImages.length} imágenes a ${folderPath}`);
     }
   };
 
@@ -156,21 +243,21 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'];
     
     if (imageExtensions.some(ext => fileName.endsWith(ext))) {
-      return <FileImage className="w-4 h-4 text-pink-400" />;
+      return <FileImage className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#f472b6'}} />;
     }
     if (fileName.endsWith('.html')) {
-      return <FileCode2 className="w-4 h-4 text-orange-400" />;
+      return <FileCode2 className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#fb923c'}} />;
     }
     if (fileName.endsWith('.css')) {
-      return <Palette className="w-4 h-4 text-blue-400" />;
+      return <Palette className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#60a5fa'}} />;
     }
     if (fileName.endsWith('.js')) {
-      return <Braces className="w-4 h-4 text-yellow-400" />;
+      return <Braces className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#facc15'}} />;
     }
     if (fileName.endsWith('.json')) {
-      return <FileJson className="w-4 h-4 text-green-400" />;
+      return <FileJson className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#4ade80'}} />;
     }
-    return <FileCode2 className="w-4 h-4 text-gray-400" />;
+    return <FileCode2 className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#9ca3af'}} />;
   };
 
   const renderFileTree = (items, path = '') => {
@@ -189,19 +276,25 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               onDragOver={(e) => onDragOverFolder(e, currentPath)}
               onDragLeave={(e) => onDragLeaveFolder(e, currentPath)}
               onDrop={(e) => onDropToFolder(e, currentPath)}
-              className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all group rounded-sm mx-1 border ${dragOverFolder === currentPath ? 'border-yellow-400 bg-yellow-500/10' : 'border-transparent hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:shadow-[0_0_15px_rgba(234,179,8,0.2)]'}`}
+              className={`flex items-center gap-2 cursor-pointer transition-all group rounded-sm mx-1 border`
+              }
+              style={{
+                padding: isLite ? '4px 6px' : '6px 12px',
+                backgroundColor: dragOverFolder === currentPath ? (isLite ? 'var(--theme-background-secondary)' : 'rgba(234,179,8,0.1)') : 'transparent',
+                borderColor: dragOverFolder === currentPath ? (isLite ? 'var(--theme-border)' : 'rgba(234,179,8,0.4)') : 'transparent'
+              }}
             >
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-yellow-400" />
+                <ChevronDown className="w-4 h-4" style={{color: 'var(--theme-secondary)'}} />
               ) : (
-                <ChevronRight className="w-4 h-4 text-yellow-400" />
+                <ChevronRight className="w-4 h-4" style={{color: 'var(--theme-secondary)'}} />
               )}
               {isExpanded ? (
-                <FolderOpen className="w-4 h-4 text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                <FolderOpen className="w-4 h-4" style={{color: 'var(--theme-secondary)'}} />
               ) : (
-                <Folder className="w-4 h-4 text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                <Folder className="w-4 h-4" style={{color: 'var(--theme-secondary)'}} />
               )}
-              <span className="text-sm text-gray-200 group-hover:text-yellow-200">{item.name}</span>
+              <span className="text-sm" style={{color: 'var(--theme-text)'}}>{item.name}</span>
             </div>
             {isExpanded && item.children && (
               <div className="ml-4">
@@ -219,16 +312,15 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           onContextMenu={(e) => handleContextMenu(e, currentPath, 'file')}
           draggable
           onDragStart={(e) => onDragStartItem(e, currentPath)}
-          className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all group rounded-sm mx-1 border ${
-            isActive 
-              ? 'bg-blue-500/20 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
-              : 'border-transparent hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-          }`}
+          className={`flex items-center gap-2 cursor-pointer transition-all group rounded-sm mx-1 border`}
+          style={{
+            padding: isLite ? '4px 6px' : '6px 12px',
+            backgroundColor: isActive ? (isLite ? 'var(--theme-background-secondary)' : 'rgba(59,130,246,0.2)') : 'transparent',
+            borderColor: isActive ? (isLite ? 'var(--theme-border)' : 'rgba(59,130,246,0.4)') : 'transparent'
+          }}
         >
           <span className="ml-6">{getFileIcon(item.name)}</span>
-          <span className={`text-sm ${isActive ? 'text-blue-100 font-medium' : 'text-gray-300 group-hover:text-blue-200'}`}>
-            {item.name}
-          </span>
+          <span className="text-sm" style={{color: 'var(--theme-text)'}}>{item.name}</span>
         </div>
       );
     });
@@ -239,6 +331,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
       className="w-64 border-r overflow-y-auto relative" 
       style={{ backgroundColor: 'var(--theme-background-tertiary)', borderColor: 'var(--theme-border)' }}
       onClick={closeContextMenu}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -246,21 +339,27 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
       
       {/* Overlay de drag & drop */}
       {isDraggingOver && (
-        <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-400 z-50 flex items-center justify-center backdrop-blur-sm">
-          <div className="text-center">
-            <Upload className="w-12 h-12 text-blue-400 mx-auto mb-3 animate-bounce" />
-            <p className="text-lg font-bold text-blue-200">Suelta la imagen aquí</p>
-            <p className="text-sm text-blue-300 mt-1">Se agregará al explorador</p>
+        <div className="absolute inset-0 z-30 pointer-events-none">
+          <div className="absolute inset-0 bg-blue-500/15 border-2 border-dashed border-blue-400 rounded" />
+          <div className="absolute inset-x-2 bottom-4 flex items-center justify-center">
+            <div className="px-3 py-1.5 rounded text-xs" style={{backgroundColor:'rgba(30,58,138,0.6)', color:'#cfe3ff'}}>Suelta archivos de tu PC para importarlos</div>
           </div>
         </div>
       )}
       
-      <div className="px-3 py-3 border-b border-border-color relative z-10">
-        <h2 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+      <div className="px-3 py-2 border-b border-border-color relative z-10">
+        <h2 className="text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--theme-secondary)'}}>
           Explorador
         </h2>
-        <p className="text-xs text-gray-500 mt-1">Arrastra imágenes aquí</p>
+        <p className="text-xs mt-1" style={{color: 'var(--theme-text-secondary)'}}>Arrastra imágenes aquí</p>
       </div>
+      {importToast && (
+        <div className="absolute bottom-3 left-3 right-3 z-50 flex justify-center">
+          <div className="px-3 py-1.5 text-xs rounded border shadow" style={{backgroundColor:'var(--theme-background-secondary)', borderColor:'var(--theme-border)', color:'var(--theme-text)'}}>
+            {importToast}
+          </div>
+        </div>
+      )}
       <div className="py-2 relative z-10">
         {renderFileTree(files)}
       </div>
@@ -268,34 +367,38 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
       {/* Menú Contextual */}
       {contextMenu && (
         <div
-          className="fixed bg-gray-800 border border-blue-500/30 rounded-lg shadow-2xl z-50 py-1 min-w-[200px]"
+          className="fixed rounded-lg z-50 py-1 min-w-[200px]"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={handleNewFileClick}
-            className="w-full px-4 py-2 text-left text-sm text-green-400 hover:bg-green-500/20 flex items-center gap-2 transition-all"
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
+            style={{ color: 'var(--theme-text)', backgroundColor: 'var(--theme-background-secondary)', borderBottom: '1px solid var(--theme-border)' }}
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo archivo</span>
           </button>
           <button
             onClick={handleNewFolderClick}
-            className="w-full px-4 py-2 text-left text-sm text-yellow-400 hover:bg-yellow-500/20 flex items-center gap-2 transition-all"
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
+            style={{ color: 'var(--theme-text)', backgroundColor: 'var(--theme-background-secondary)', borderBottom: '1px solid var(--theme-border)' }}
           >
             <FolderPlus className="w-4 h-4" />
             <span>Nueva carpeta</span>
           </button>
           <button
             onClick={handleRenameClick}
-            className="w-full px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20 flex items-center gap-2 transition-all"
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
+            style={{ color: 'var(--theme-text)', backgroundColor: 'var(--theme-background-secondary)', borderBottom: '1px solid var(--theme-border)' }}
           >
             <Edit3 className="w-4 h-4" />
             <span>Renombrar {contextMenu.type === 'folder' ? 'carpeta' : 'archivo'}</span>
           </button>
           <button
             onClick={handleDeleteClick}
-            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/20 flex items-center gap-2 transition-all"
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
+            style={{ color: 'var(--theme-text)', backgroundColor: 'var(--theme-background-secondary)' }}
           >
             <Trash2 className="w-4 h-4" />
             <span>Eliminar {contextMenu.type === 'folder' ? 'carpeta' : 'archivo'}</span>

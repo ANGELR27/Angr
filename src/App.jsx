@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import FileExplorer from './components/FileExplorer'
-import TabBar from './components/TabBar'
 import CodeEditor from './components/CodeEditor'
 import Preview from './components/Preview'
 import TopBar from './components/TopBar'
@@ -182,7 +181,7 @@ function App() {
     return loadFromStorage(STORAGE_KEYS.IMAGES, []);
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    return loadFromStorage(STORAGE_KEYS.SIDEBAR_WIDTH, 250);
+    return loadFromStorage(STORAGE_KEYS.SIDEBAR_WIDTH, 280);
   });
   const [previewWidth, setPreviewWidth] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.PREVIEW_WIDTH, 50);
@@ -194,6 +193,7 @@ function App() {
   const isResizingSidebar = useRef(false);
   const isResizingPreview = useRef(false);
   const isResizingTerminal = useRef(false);
+  const prevThemeRef = useRef('vs-dark');
 
   // Guardar archivos en localStorage cuando cambien
   useEffect(() => {
@@ -250,6 +250,16 @@ function App() {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.TERMINAL_HEIGHT, terminalHeight);
   }, [terminalHeight]);
+
+  // Toggle modo lite conservando el tema previo
+  const handleToggleLite = () => {
+    if (currentTheme === 'lite') {
+      setCurrentTheme(prevThemeRef.current || 'vs-dark');
+    } else {
+      prevThemeRef.current = currentTheme;
+      setCurrentTheme('lite');
+    }
+  };
 
   // Listener para atajos de teclado globales
   useEffect(() => {
@@ -822,8 +832,9 @@ function App() {
     const container = document.querySelector('.editor-preview-container');
     if (!container) return;
     const containerRect = container.getBoundingClientRect();
-    const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-    setPreviewWidth(Math.max(20, Math.min(80, newWidth)));
+    const mouseX = e.clientX - containerRect.left;
+    const newPreviewWidth = ((containerRect.width - mouseX) / containerRect.width) * 100;
+    setPreviewWidth(Math.max(20, Math.min(80, newPreviewWidth)));
   };
 
   const handleTerminalResize = (e) => {
@@ -888,6 +899,12 @@ function App() {
         onResetAll={handleResetAll}
         onOpenShortcuts={() => setShowShortcutsHelp(true)}
         onExport={handleExport}
+        currentTheme={currentTheme}
+        onToggleLite={handleToggleLite}
+        tabs={openTabs}
+        activeTab={activeTab}
+        onTabClick={setActiveTab}
+        onTabClose={handleTabClose}
       />
       
       <ImageManager
@@ -947,6 +964,7 @@ function App() {
             onMoveItem={handleMoveItem}
             onCreateFile={handleNewFile}
             onCreateFolder={handleNewFolder}
+            currentTheme={currentTheme}
           />
         </div>
         
@@ -964,25 +982,17 @@ function App() {
           }}
         />
         
-        <div className="flex-1 flex flex-col min-w-0">
-          <TabBar 
-            tabs={openTabs}
-            activeTab={activeTab}
-            onTabClick={setActiveTab}
-            onTabClose={handleTabClose}
-            getFileByPath={getFileByPath}
-          />
-          
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <div className="flex-1 flex flex-col overflow-hidden main-content-area">
             <div 
               className="flex overflow-hidden editor-preview-container"
               style={{ 
-                height: showTerminal ? `calc(100% - ${terminalHeight}px)` : '100%' 
+                height: showTerminal ? `calc(100% - ${terminalHeight}px - 4px)` : '100%' 
               }}
             >
               <div 
-                style={{ width: showPreview ? `${previewWidth}%` : '100%' }}
-                className="border-r border-border-color flex-shrink-0 shadow-mixed-glow"
+                style={{ width: showPreview ? `${100 - previewWidth}%` : '100%' }}
+                className="flex-shrink-0 shadow-mixed-glow overflow-hidden"
               >
                 <CodeEditor
                   value={activeFile?.content || ''}
@@ -992,6 +1002,8 @@ function App() {
                   projectImages={images}
                   currentTheme={currentTheme}
                   isImage={activeFile?.isImage || false}
+                  activePath={activeTab}
+                  onAddImageFile={handleAddImageFile}
                 />
               </div>
               
@@ -999,7 +1011,7 @@ function App() {
                 <>
                   {/* Resize handle para preview */}
                   <div
-                    className="w-1 cursor-col-resize resize-handle transition-colors shadow-yellow-glow"
+                    className="w-1 cursor-col-resize resize-handle transition-colors shadow-yellow-glow flex-shrink-0"
                     style={{
                       background: 'linear-gradient(to bottom, rgba(234, 179, 8, 0.3), rgba(59, 130, 246, 0.3))'
                     }}
@@ -1010,7 +1022,10 @@ function App() {
                       document.body.style.userSelect = 'none';
                     }}
                   />
-                  <div className="flex-1 min-w-0 shadow-yellow-glow">
+                  <div 
+                    style={{ width: `${previewWidth}%` }}
+                    className="flex-shrink-0 shadow-yellow-glow overflow-hidden"
+                  >
                     <Preview 
                       content={getPreviewContent()}
                       onConsoleLog={handleConsoleLog}
@@ -1026,7 +1041,7 @@ function App() {
               <>
                 {/* Resize handle para terminal */}
                 <div
-                  className="h-1 cursor-row-resize resize-handle transition-colors shadow-mixed-glow"
+                  className="h-1 cursor-row-resize resize-handle transition-colors shadow-mixed-glow flex-shrink-0"
                   style={{
                     background: 'linear-gradient(to right, rgba(59, 130, 246, 0.3), rgba(234, 179, 8, 0.3), rgba(147, 51, 234, 0.3))'
                   }}
@@ -1037,15 +1052,16 @@ function App() {
                     document.body.style.userSelect = 'none';
                   }}
                 />
-                <div style={{ height: `${terminalHeight}px` }} className="shadow-blue-glow-strong">
+                <div style={{ height: `${terminalHeight}px` }} className="shadow-blue-glow-strong flex-shrink-0">
                   <Terminal 
                     ref={terminalRef}
                     isOpen={showTerminal}
                     onClose={() => setShowTerminal(false)}
-                    onToggleSize={() => setIsTerminalMaximized(!isTerminalMaximized)}
+                    onToggleSize={() => setIsTerminalMaximized(v => !v)}
                     isMaximized={isTerminalMaximized}
                     onExecuteCode={handleExecuteCode}
                     onOpenThemes={() => setShowThemeSelector(true)}
+                    currentTheme={currentTheme}
                   />
                 </div>
               </>

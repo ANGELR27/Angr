@@ -184,6 +184,7 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages }) {
                 args: [errorMsg + ' at line ' + e.lineno]
               }, '*');
             });
+
           })();
         </script>
       `;
