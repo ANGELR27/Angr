@@ -17,6 +17,7 @@ import {
   Braces,
   Palette,
   FileJson,
+  Users,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { validateFileName, sanitizeFileName } from "../utils/validation";
@@ -39,6 +40,9 @@ function TopBar({
   activeTab,
   onTabClick,
   onTabClose,
+  onOpenCollaboration,
+  isCollaborating,
+  collaborationUsers,
 }) {
   const imageInputRef = useRef(null);
   const [showSaved, setShowSaved] = useState(false);
@@ -438,6 +442,44 @@ function TopBar({
               className="w-4 h-4"
               style={{ color: "var(--theme-secondary)" }}
             />
+          </button>
+        )}
+
+        {!isLite && onOpenCollaboration && (
+          <button
+            onClick={onOpenCollaboration}
+            className="flex items-center justify-center rounded transition-all border relative"
+            style={{
+              padding: "6px",
+              backgroundColor: isCollaborating
+                ? "color-mix(in srgb, var(--theme-primary) 25%, transparent)"
+                : "var(--theme-background-secondary)",
+              borderColor: isCollaborating
+                ? "color-mix(in srgb, var(--theme-primary) 50%, transparent)"
+                : "color-mix(in srgb, var(--theme-primary) 30%, transparent)",
+              boxShadow: isCollaborating
+                ? "0 0 15px color-mix(in srgb, var(--theme-primary) 40%, transparent)"
+                : "none",
+              color: "var(--theme-text)",
+            }}
+            title={isCollaborating ? "Panel de colaboración" : "Iniciar colaboración en tiempo real"}
+          >
+            <Users
+              className="w-4 h-4"
+              style={{ color: isCollaborating ? "var(--theme-primary)" : "var(--theme-secondary)" }}
+            />
+            {isCollaborating && collaborationUsers > 1 && (
+              <span 
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+                style={{
+                  backgroundColor: "var(--theme-primary)",
+                  color: "white",
+                  border: "2px solid var(--theme-background-tertiary)",
+                }}
+              >
+                {collaborationUsers}
+              </span>
+            )}
           </button>
         )}
 

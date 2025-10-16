@@ -8,9 +8,13 @@ import ImageManager from './components/ImageManager'
 import ThemeSelector from './components/ThemeSelector'
 import ShortcutsHelp from './components/ShortcutsHelp'
 import AutoSaveIndicator from './components/AutoSaveIndicator'
+import SessionManager from './components/SessionManager'
+import CollaborationPanel from './components/CollaborationPanel'
+import CollaborationBanner from './components/CollaborationBanner'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
 import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
+import { useCollaboration } from './hooks/useCollaboration'
 
 // Archivos de ejemplo iniciales
 const initialFiles = {
@@ -176,6 +180,8 @@ function App() {
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showSessionManager, setShowSessionManager] = useState(false);
+  const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'vs-dark');
   });
@@ -217,6 +223,22 @@ function App() {
     [STORAGE_KEYS.PREVIEW_WIDTH]: previewWidth,
     [STORAGE_KEYS.TERMINAL_HEIGHT]: terminalHeight,
   }, 1000, handleSaveStatusChange);
+
+  // Hook de colaboración en tiempo real
+  const {
+    isCollaborating,
+    activeUsers,
+    currentSession,
+    currentUser,
+    remoteCursors,
+    isConfigured: isCollaborationConfigured,
+    createSession,
+    joinSession,
+    broadcastFileChange,
+    broadcastCursorMove,
+    changeUserPermissions,
+    leaveSession,
+  } = useCollaboration(files, setFiles);
 
   // Aplicar tema cuando cambia
   useEffect(() => {
@@ -329,6 +351,11 @@ function App() {
     };
     
     setFiles(updateNestedFile(files, parts, value));
+
+    // Transmitir cambios si hay colaboración activa
+    if (isCollaborating) {
+      broadcastFileChange(activeTab, value, null);
+    }
   };
 
   const handleConsoleLog = (method, args) => {
@@ -605,6 +632,34 @@ function App() {
   };
 
   const handleResetAll = () => setShowResetModal(true);
+
+  // Handlers de colaboración
+  const handleCreateSession = async (sessionData) => {
+    const result = await createSession(sessionData);
+    setShowCollaborationPanel(true);
+    return result;
+  };
+
+  const handleJoinSession = async (sessionId, userData) => {
+    const result = await joinSession(sessionId, userData);
+    setShowCollaborationPanel(true);
+    return result;
+  };
+
+  const handleLeaveSession = async () => {
+    await leaveSession();
+    setShowCollaborationPanel(false);
+  };
+
+  // Detectar si hay un ID de sesión en la URL al cargar
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    
+    if (sessionId && !isCollaborating) {
+      setShowSessionManager(true);
+    }
+  }, [isCollaborating]);
 
   const handleExecuteCode = () => {
     const activeFile = getFileByPath(activeTab);
@@ -901,12 +956,23 @@ function App() {
         activeTab={activeTab}
         onTabClick={setActiveTab}
         onTabClose={handleTabClose}
+        onOpenCollaboration={() => isCollaborating ? setShowCollaborationPanel(true) : setShowSessionManager(true)}
+        isCollaborating={isCollaborating}
+        collaborationUsers={activeUsers.length}
       />
 
       {/* Indicador de guardado automático */}
       <div className="fixed top-16 right-4 z-50">
         <AutoSaveIndicator status={saveStatus} currentTheme={currentTheme} />
       </div>
+
+      {/* Banner de colaboración */}
+      <CollaborationBanner
+        isCollaborating={isCollaborating}
+        activeUsers={activeUsers}
+        currentUser={currentUser}
+        onOpenPanel={() => setShowCollaborationPanel(true)}
+      />
       
       <ImageManager
         isOpen={showImageManager}
@@ -926,6 +992,26 @@ function App() {
       <ShortcutsHelp
         isOpen={showShortcutsHelp}
         onClose={() => setShowShortcutsHelp(false)}
+      />
+
+      <SessionManager
+        isOpen={showSessionManager}
+        onClose={() => setShowSessionManager(false)}
+        onCreateSession={handleCreateSession}
+        onJoinSession={handleJoinSession}
+        isConfigured={isCollaborationConfigured}
+      />
+
+      <CollaborationPanel
+        isOpen={showCollaborationPanel}
+        onClose={() => setShowCollaborationPanel(false)}
+        currentUser={currentUser}
+        activeUsers={activeUsers}
+        currentSession={currentSession}
+        onChangePermissions={changeUserPermissions}
+        onLeaveSession={handleLeaveSession}
+        remoteCursors={remoteCursors}
+        activeFile={activeTab}
       />
 
       {/* Modal Reset */}

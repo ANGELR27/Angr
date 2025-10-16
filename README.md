@@ -4,6 +4,16 @@ Un editor de código moderno tipo VS Code construido con React y Monaco Editor, 
 
 ## ✨ Características Principales
 
+### 🤝 **Colaboración en Tiempo Real** ✨ NUEVO
+- **Edición colaborativa** estilo Google Docs
+- **Sesiones compartidas** con enlace directo
+- **Control de acceso** con 3 niveles de permisos (Owner, Editor, Viewer)
+- **Sincronización instantánea** de cambios entre usuarios
+- **Indicadores visuales** de usuarios activos
+- **Sesiones públicas o privadas** con contraseña
+- 🚀 [Inicio Rápido (5 minutos)](./INICIO_RAPIDO_COLABORACION.md)
+- 📖 [Documentación Completa](./COLABORACION.md)
+
 ### 🎨 **Editor Avanzado**
 - **Monaco Editor** (mismo motor que Visual Studio Code)
 - Syntax highlighting para HTML, CSS y JavaScript
@@ -82,11 +92,32 @@ npm install
 
 ## 🚀 Desarrollo
 
+### Uso Local (Solo en tu PC):
 ```bash
 npm run dev
 ```
 
-El editor se abrirá automáticamente en **http://localhost:3000**
+El editor se abrirá en **http://localhost:3000**
+
+### Uso Público (Para Colaborar con Otros):
+
+**Método Simple (Recomendado):**
+
+```bash
+# Terminal 1 - Inicia el servidor
+npm run dev
+
+# Terminal 2 - Inicia ngrok  
+ngrok http 3000
+```
+
+1. Copia la URL de ngrok (ej: `https://abc123.ngrok-free.app`)
+2. **Abre esa URL en tu navegador** (NO localhost)
+3. Crea una sesión desde el botón 👥
+4. El enlace generado será público automáticamente
+5. ¡Compártelo con tus compañeros!
+
+📖 **Guía detallada:** [SOLUCION_SIMPLE_NGROK.md](./SOLUCION_SIMPLE_NGROK.md)
 
 ## 🏗️ Build para Producción
 
@@ -105,6 +136,9 @@ Lee la [**Guía de Uso Completa**](./GUIA_DE_USO.md) para más detalles sobre to
 - **Monaco Editor** - Motor de VS Code
 - **TailwindCSS** - Estilos utilitarios
 - **Lucide Icons** - Iconos elegantes y ligeros
+- **Supabase Realtime** - Colaboración en tiempo real
+- **Yjs** - Algoritmos CRDT para sincronización
+- **UUID** - Generación de identificadores únicos
 
 ## 🎨 Estructura del Proyecto
 
@@ -138,6 +172,7 @@ editorr/
 4. **Autocompletado**: Empieza a escribir y aparecen sugerencias
 5. **Terminal**: Click en botón "Terminal" (verde)
 6. **Preview**: Toggle con botón "Preview" (púrpura)
+7. **Colaborar**: Click en botón 👥 → Crear o unirse a sesión
 
 ## 🌟 Características Especiales
 
