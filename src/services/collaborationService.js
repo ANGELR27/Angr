@@ -37,10 +37,28 @@ class CollaborationService {
   // Crear una nueva sesión de colaboración
   async createSession(sessionData) {
     if (!this.supabase) {
-      throw new Error('Supabase no está configurado. Agrega las credenciales en el archivo .env');
+      throw new Error('Supabase no está configurado. Verifica que las variables de entorno VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY estén configuradas correctamente.');
     }
 
-    const sessionId = uuidv4();
+    // Validación robusta de datos de entrada
+    if (!sessionData) {
+      throw new Error('Los datos de la sesión son requeridos');
+    }
+
+    if (!sessionData.userName || sessionData.userName.trim().length === 0) {
+      throw new Error('El nombre de usuario es requerido');
+    }
+
+    if (sessionData.userName.trim().length > 50) {
+      throw new Error('El nombre de usuario no puede exceder 50 caracteres');
+    }
+
+    if (sessionData.sessionName && sessionData.sessionName.length > 100) {
+      throw new Error('El nombre de la sesión no puede exceder 100 caracteres');
+    }
+
+    // ID más corto (5 caracteres) para facilitar compartir
+    const sessionId = uuidv4().substring(0, 5);
     const userId = uuidv4();
     
     this.currentUser = {
@@ -97,7 +115,20 @@ class CollaborationService {
   // Unirse a una sesión existente
   async joinSession(sessionId, userData) {
     if (!this.supabase) {
-      throw new Error('Supabase no está configurado');
+      throw new Error('Supabase no está configurado. Verifica que las variables de entorno estén configuradas correctamente.');
+    }
+
+    // Validación de datos
+    if (!sessionId || sessionId.trim().length === 0) {
+      throw new Error('El ID de sesión es requerido');
+    }
+
+    if (!userData || !userData.userName || userData.userName.trim().length === 0) {
+      throw new Error('El nombre de usuario es requerido para unirse');
+    }
+
+    if (userData.userName.trim().length > 50) {
+      throw new Error('El nombre de usuario no puede exceder 50 caracteres');
     }
 
     const userId = uuidv4();

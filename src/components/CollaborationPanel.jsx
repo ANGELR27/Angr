@@ -89,7 +89,29 @@ export default function CollaborationPanel({
             {currentSession?.name || 'Sin nombre'}
           </span>
         </div>
+
+        {/* Session ID */}
+        <div className="flex items-center justify-between mb-2 p-2 bg-[#1e1e1e] rounded border border-[#3e3e42]">
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-400">ID de Sesión:</span>
+            <span className="text-sm text-blue-400 font-bold font-mono">
+              {currentSession?.id || 'N/A'}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(currentSession?.id || '');
+              setCopiedLink(true);
+              setTimeout(() => setCopiedLink(false), 2000);
+            }}
+            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center gap-1"
+          >
+            {copiedLink ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {copiedLink ? 'Copiado' : 'Copiar'}
+          </button>
+        </div>
         
+        {/* Share Link */}
         {shareLink && (
           <div className="flex gap-1">
             <input
