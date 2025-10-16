@@ -1064,6 +1064,8 @@ function App() {
                     onExecuteCode={handleExecuteCode}
                     onOpenThemes={() => setShowThemeSelector(true)}
                     currentTheme={currentTheme}
+                    projectFiles={files}
+                    onFileSelect={handleFileSelect}
                   />
                 </div>
               </>

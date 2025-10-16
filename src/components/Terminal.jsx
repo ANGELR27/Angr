@@ -1,14 +1,21 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Terminal as TerminalIcon, X, Minus, Maximize2, Play } from 'lucide-react';
+import * as termCmd from '../utils/terminalCommands';
 
-const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExecuteCode, onOpenThemes, currentTheme }, ref) => {
+const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExecuteCode, onOpenThemes, currentTheme, projectFiles, onFileSelect }, ref) => {
   const [history, setHistory] = useState([
     { type: 'info', text: '> Terminal de Code Editor v1.0' },
     { type: 'success', text: '> ¡Bienvenido! Escribe "help" para ver comandos disponibles.' },
-    { type: 'info', text: '> Los console.log de tu código aparecerán aquí' }
+    { type: 'info', text: '> Usa Tab para autocompletar, ↑↓ para historial' }
   ]);
   const [input, setInput] = useState('');
-  const [fontSize, setFontSize] = useState(14); // Siempre inicia en 14px al recargar
+  const [fontSize, setFontSize] = useState(14);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [variables, setVariables] = useState({});
+  const [aliases, setAliases] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -173,35 +180,375 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     }
   }, [history]);
 
+  // Expandir variables en un string
+  const expandVariables = (text) => {
+    return text.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, varName) => {
+      return variables[varName] || match;
+    });
+  };
+
+  // Lista de comandos disponibles
+  const availableCommands = [
+    'help', 'clear', 'date', 'time', 'version', 'theme', 'tema',
+    'ls', 'cat', 'find', 'grep', 'tree', 'stats',
+    'calc', 'json', 'base64', 'base64d', 'hash',
+    'env', 'set', 'unset', 'alias', 'unalias',
+    'pwd', 'whoami', 'sysinfo', 'history', 'echo'
+  ];
+
   const executeCommand = (cmd) => {
-    const command = cmd.trim().toLowerCase();
+    if (!cmd.trim()) return;
+
+    const originalCmd = cmd;
     
-    setHistory(prev => [...prev, { type: 'command', text: `$ ${cmd}` }]);
+    // Expandir alias
+    const firstWord = cmd.trim().split(' ')[0];
+    if (aliases[firstWord]) {
+      cmd = cmd.replace(firstWord, aliases[firstWord]);
+    }
+    
+    // Expandir variables
+    cmd = expandVariables(cmd);
+    
+    // Agregar al historial de comandos
+    setCommandHistory(prev => [...prev, originalCmd]);
+    setHistoryIndex(-1);
+    
+    setHistory(prev => [...prev, { type: 'command', text: `$ ${originalCmd}` }]);
+    
+    // Manejar pipes
+    const pipes = termCmd.parsePipes(cmd);
+    if (pipes.length > 1) {
+      executeWithPipes(pipes);
+      return;
+    }
+    
+    // Manejar redirección
+    const redirection = termCmd.parseRedirection(cmd);
+    if (redirection) {
+      // TODO: implementar redirección a archivo
+      setHistory(prev => [...prev, { type: 'warning', text: 'Redirección a archivos aún no implementada' }]);
+      return;
+    }
+    
+    const parts = cmd.trim().split(' ');
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
     
     switch (command) {
       case 'help':
         setHistory(prev => [...prev, 
-          { type: 'info', text: 'Comandos disponibles:' },
-          { type: 'info', text: '  help    - Muestra esta ayuda' },
-          { type: 'info', text: '  clear   - Limpia la terminal' },
-          { type: 'info', text: '  date    - Muestra la fecha y hora' },
-          { type: 'info', text: '  echo    - Imprime un mensaje' },
-          { type: 'info', text: '  version - Muestra la versión del editor' },
-          { type: 'info', text: '  tema    - Abre el selector de temas' },
-          { type: 'info', text: '  theme   - Abre el selector de temas (alternativa)' }
+          { type: 'info', text: '═══ Comandos Disponibles ═══' },
+          { type: 'info', text: '' },
+          { type: 'success', text: '📁 Archivos:' },
+          { type: 'info', text: '  ls [ruta]        - Lista archivos y carpetas' },
+          { type: 'info', text: '  cat <archivo>    - Muestra contenido de archivo' },
+          { type: 'info', text: '  find <patrón>    - Busca archivos por nombre' },
+          { type: 'info', text: '  grep <texto>     - Busca texto en archivos' },
+          { type: 'info', text: '  tree             - Árbol de directorios' },
+          { type: 'info', text: '  stats            - Estadísticas del proyecto' },
+          { type: 'info', text: '' },
+          { type: 'success', text: '🛠️  Utilidades:' },
+          { type: 'info', text: '  calc <expr>      - Calculadora (ej: calc 2+2*3)' },
+          { type: 'info', text: '  json <texto>     - Formatea JSON' },
+          { type: 'info', text: '  base64 <texto>   - Codifica en base64' },
+          { type: 'info', text: '  base64d <texto>  - Decodifica base64' },
+          { type: 'info', text: '  hash <texto>     - Genera hash simple' },
+          { type: 'info', text: '' },
+          { type: 'success', text: '⚙️  Sistema:' },
+          { type: 'info', text: '  env              - Variables de entorno' },
+          { type: 'info', text: '  set VAR=valor    - Define variable' },
+          { type: 'info', text: '  unset VAR        - Elimina variable' },
+          { type: 'info', text: '  alias nom=cmd    - Define alias' },
+          { type: 'info', text: '  history          - Historial de comandos' },
+          { type: 'info', text: '  sysinfo          - Información del sistema' },
+          { type: 'info', text: '' },
+          { type: 'success', text: '🎨 General:' },
+          { type: 'info', text: '  clear / cls      - Limpia terminal' },
+          { type: 'info', text: '  echo <texto>     - Imprime texto (usa $VAR)' },
+          { type: 'info', text: '  date / time      - Fecha y hora' },
+          { type: 'info', text: '  version          - Versión del editor' },
+          { type: 'info', text: '  theme            - Selector de temas' },
+          { type: 'info', text: '' },
+          { type: 'info', text: '💡 Usa Tab para autocompletar, ↑↓ para historial' }
         ]);
         break;
       
       case 'clear':
+      case 'cls':
         setHistory([]);
         break;
       
+      case 'ls':
+        const lsResult = termCmd.listFiles(projectFiles || {}, args[0] || '', { sort: true });
+        if (lsResult.error) {
+          setHistory(prev => [...prev, { type: 'error', text: lsResult.error }]);
+        } else {
+          const items = lsResult.items.map(item => {
+            if (item.type === 'folder') {
+              return `📁 ${item.name}/ (${item.count} items)`;
+            } else {
+              const size = termCmd.formatBytes(item.size);
+              return `📄 ${item.name} (${size}) [${item.language}]`;
+            }
+          });
+          setHistory(prev => [...prev, 
+            { type: 'success', text: `Total: ${items.length} items` },
+            ...items.map(text => ({ type: 'info', text }))
+          ]);
+        }
+        break;
+      
+      case 'cat':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: cat <archivo>' }]);
+          break;
+        }
+        const catResult = termCmd.catFile(projectFiles || {}, args[0]);
+        if (catResult.error) {
+          setHistory(prev => [...prev, { type: 'error', text: catResult.error }]);
+        } else {
+          const lines = catResult.content.split('\n').slice(0, 100); // Límite 100 líneas
+          setHistory(prev => [...prev,
+            { type: 'info', text: `─── ${args[0]} (${catResult.language}) ───` },
+            ...lines.map(line => ({ type: 'console', text: line })),
+            ...(catResult.content.split('\n').length > 100 ? 
+              [{ type: 'warning', text: `... (mostrando primeras 100 líneas de ${catResult.content.split('\n').length})` }] : []
+            )
+          ]);
+        }
+        break;
+      
+      case 'find':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: find <patrón>' }]);
+          break;
+        }
+        const findResults = termCmd.findFiles(projectFiles || {}, args[0]);
+        if (findResults.length === 0) {
+          setHistory(prev => [...prev, { type: 'warning', text: 'No se encontraron archivos' }]);
+        } else {
+          setHistory(prev => [...prev,
+            { type: 'success', text: `Encontrados ${findResults.length} resultados:` },
+            ...findResults.map(r => ({ 
+              type: 'info', 
+              text: `${r.type === 'folder' ? '📁' : '📄'} ${r.path}`
+            }))
+          ]);
+        }
+        break;
+      
+      case 'grep':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: grep <texto>' }]);
+          break;
+        }
+        const grepResults = termCmd.grepFiles(projectFiles || {}, args.join(' '), { caseInsensitive: false });
+        if (grepResults.length === 0) {
+          setHistory(prev => [...prev, { type: 'warning', text: 'No se encontraron coincidencias' }]);
+        } else {
+          const limited = grepResults.slice(0, 50);
+          setHistory(prev => [...prev,
+            { type: 'success', text: `Encontradas ${grepResults.length} coincidencias (mostrando ${limited.length}):` },
+            ...limited.map(r => ({ 
+              type: 'info', 
+              text: `${r.file}:${r.line} | ${r.content}`
+            }))
+          ]);
+        }
+        break;
+      
+      case 'stats':
+        const stats = termCmd.getProjectStats(projectFiles || {});
+        setHistory(prev => [...prev,
+          { type: 'success', text: '═══ Estadísticas del Proyecto ═══' },
+          { type: 'info', text: `📁 Carpetas: ${stats.folders}` },
+          { type: 'info', text: `📄 Archivos: ${stats.files}` },
+          { type: 'info', text: `💾 Tamaño total: ${termCmd.formatBytes(stats.totalSize)}` },
+          { type: 'info', text: `📦 Archivo más grande: ${stats.largestFile.name} (${termCmd.formatBytes(stats.largestFile.size)})` },
+          { type: 'info', text: '' },
+          { type: 'success', text: 'Por lenguaje:' },
+          ...Object.entries(stats.byLanguage).map(([lang, data]) => ({
+            type: 'info',
+            text: `  ${lang}: ${data.count} archivos (${termCmd.formatBytes(data.size)})`
+          }))
+        ]);
+        break;
+      
+      case 'calc':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: calc <expresión>' }]);
+          break;
+        }
+        const calcResult = termCmd.calculate(args.join(' '));
+        if (calcResult.error) {
+          setHistory(prev => [...prev, { type: 'error', text: calcResult.error }]);
+        } else {
+          setHistory(prev => [...prev, { type: 'success', text: `= ${calcResult.result}` }]);
+        }
+        break;
+      
+      case 'json':
+        const jsonResult = termCmd.formatJSON(args.join(' '));
+        if (jsonResult.error) {
+          setHistory(prev => [...prev, { type: 'error', text: jsonResult.error }]);
+        } else {
+          setHistory(prev => [...prev, 
+            ...jsonResult.result.split('\n').map(line => ({ type: 'console', text: line }))
+          ]);
+        }
+        break;
+      
+      case 'base64':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: base64 <texto>' }]);
+          break;
+        }
+        const b64Result = termCmd.base64Encode(args.join(' '));
+        if (b64Result.error) {
+          setHistory(prev => [...prev, { type: 'error', text: b64Result.error }]);
+        } else {
+          setHistory(prev => [...prev, { type: 'success', text: b64Result.result }]);
+        }
+        break;
+      
+      case 'base64d':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: base64d <texto>' }]);
+          break;
+        }
+        const b64dResult = termCmd.base64Decode(args.join(' '));
+        if (b64dResult.error) {
+          setHistory(prev => [...prev, { type: 'error', text: b64dResult.error }]);
+        } else {
+          setHistory(prev => [...prev, { type: 'success', text: b64dResult.result }]);
+        }
+        break;
+      
+      case 'hash':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: hash <texto>' }]);
+          break;
+        }
+        const hashResult = termCmd.simpleHash(args.join(' '));
+        setHistory(prev => [...prev, { type: 'success', text: hashResult.result }]);
+        break;
+      
+      case 'env':
+        if (Object.keys(variables).length === 0) {
+          setHistory(prev => [...prev, { type: 'warning', text: 'No hay variables definidas' }]);
+        } else {
+          setHistory(prev => [...prev,
+            { type: 'success', text: 'Variables:' },
+            ...Object.entries(variables).map(([key, val]) => ({
+              type: 'info',
+              text: `  ${key}=${val}`
+            }))
+          ]);
+        }
+        break;
+      
+      case 'set':
+        if (!args[0] || !args[0].includes('=')) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: set VAR=valor' }]);
+          break;
+        }
+        const [varName, ...varValue] = args.join(' ').split('=');
+        setVariables(prev => ({ ...prev, [varName.trim()]: varValue.join('=').trim() }));
+        setHistory(prev => [...prev, { type: 'success', text: `Variable ${varName} definida` }]);
+        break;
+      
+      case 'unset':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: unset VAR' }]);
+          break;
+        }
+        setVariables(prev => {
+          const newVars = { ...prev };
+          delete newVars[args[0]];
+          return newVars;
+        });
+        setHistory(prev => [...prev, { type: 'success', text: `Variable ${args[0]} eliminada` }]);
+        break;
+      
+      case 'alias':
+        if (!args[0]) {
+          if (Object.keys(aliases).length === 0) {
+            setHistory(prev => [...prev, { type: 'warning', text: 'No hay alias definidos' }]);
+          } else {
+            setHistory(prev => [...prev,
+              { type: 'success', text: 'Alias:' },
+              ...Object.entries(aliases).map(([key, val]) => ({
+                type: 'info',
+                text: `  ${key}='${val}'`
+              }))
+            ]);
+          }
+          break;
+        }
+        if (!args[0].includes('=')) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: alias nombre=comando' }]);
+          break;
+        }
+        const [aliasName, ...aliasValue] = args.join(' ').split('=');
+        setAliases(prev => ({ ...prev, [aliasName.trim()]: aliasValue.join('=').trim() }));
+        setHistory(prev => [...prev, { type: 'success', text: `Alias ${aliasName} definido` }]);
+        break;
+      
+      case 'unalias':
+        if (!args[0]) {
+          setHistory(prev => [...prev, { type: 'error', text: 'Uso: unalias nombre' }]);
+          break;
+        }
+        setAliases(prev => {
+          const newAliases = { ...prev };
+          delete newAliases[args[0]];
+          return newAliases;
+        });
+        setHistory(prev => [...prev, { type: 'success', text: `Alias ${args[0]} eliminado` }]);
+        break;
+      
+      case 'history':
+        if (commandHistory.length === 0) {
+          setHistory(prev => [...prev, { type: 'warning', text: 'Historial vacío' }]);
+        } else {
+          setHistory(prev => [...prev,
+            ...commandHistory.slice(-50).map((cmd, i) => ({
+              type: 'info',
+              text: `${i + 1}. ${cmd}`
+            }))
+          ]);
+        }
+        break;
+      
+      case 'sysinfo':
+        const sysInfo = termCmd.getSystemInfo();
+        setHistory(prev => [...prev,
+          { type: 'success', text: '═══ Información del Sistema ═══' },
+          { type: 'info', text: `🖥️  Plataforma: ${sysInfo.platform}` },
+          { type: 'info', text: `🌐 Idioma: ${sysInfo.language}` },
+          { type: 'info', text: `🔌 Online: ${sysInfo.online ? 'Sí' : 'No'}` },
+          { type: 'info', text: `⚙️  Núcleos: ${sysInfo.cores}` },
+          { type: 'info', text: `💾 Memoria: ${sysInfo.memory}` },
+          { type: 'info', text: `📺 Pantalla: ${sysInfo.screen}` },
+          { type: 'info', text: `🎨 Color: ${sysInfo.colorDepth}` }
+        ]);
+        break;
+      
       case 'date':
-        setHistory(prev => [...prev, { type: 'success', text: new Date().toLocaleDateString('es-ES') }]);
+        setHistory(prev => [...prev, { type: 'success', text: new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }]);
         break;
       
       case 'time':
         setHistory(prev => [...prev, { type: 'success', text: new Date().toLocaleTimeString('es-ES') }]);
+        break;
+      
+      case 'pwd':
+        setHistory(prev => [...prev, { type: 'success', text: '/' }]);
+        break;
+      
+      case 'whoami':
+        setHistory(prev => [...prev, { type: 'success', text: 'developer' }]);
         break;
       
       case 'version':
@@ -221,21 +568,23 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         }
         break;
       
-      case '':
-        // No hacer nada si está vacío
+      case 'echo':
+        setHistory(prev => [...prev, { type: 'success', text: args.join(' ') }]);
         break;
       
       default:
-        if (command.startsWith('echo ')) {
-          const message = cmd.substring(5);
-          setHistory(prev => [...prev, { type: 'success', text: message }]);
-        } else {
-          setHistory(prev => [...prev, 
-            { type: 'error', text: `Comando no reconocido: ${command}` },
-            { type: 'info', text: 'Escribe "help" para ver los comandos disponibles' }
-          ]);
-        }
+        setHistory(prev => [...prev, 
+          { type: 'error', text: `Comando no reconocido: ${command}` },
+          { type: 'info', text: 'Escribe "help" para ver los comandos disponibles' }
+        ]);
     }
+  };
+
+  const executeWithPipes = (pipes) => {
+    // Placeholder para pipes - funcionalidad avanzada
+    setHistory(prev => [...prev, { type: 'warning', text: 'Pipes detectados pero aún no completamente implementados' }]);
+    // Ejecutar el primer comando por ahora
+    executeCommand(pipes[0]);
   };
 
   const handleSubmit = (e) => {
@@ -243,8 +592,117 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     if (input.trim()) {
       executeCommand(input);
       setInput('');
+      setShowSuggestions(false);
     }
   };
+
+  // Manejar teclas especiales (flechas, tab)
+  const handleKeyDown = (e) => {
+    // Flecha arriba - navegar historial hacia atrás
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      
+      const newIndex = historyIndex === -1 
+        ? commandHistory.length - 1 
+        : Math.max(0, historyIndex - 1);
+      
+      setHistoryIndex(newIndex);
+      setInput(commandHistory[newIndex]);
+      setShowSuggestions(false);
+    }
+    
+    // Flecha abajo - navegar historial hacia adelante
+    else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      
+      const newIndex = historyIndex + 1;
+      
+      if (newIndex >= commandHistory.length) {
+        setHistoryIndex(-1);
+        setInput('');
+      } else {
+        setHistoryIndex(newIndex);
+        setInput(commandHistory[newIndex]);
+      }
+      setShowSuggestions(false);
+    }
+    
+    // Tab - autocompletado
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      handleAutoComplete();
+    }
+    
+    // Escape - cerrar sugerencias
+    else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Autocompletado inteligente
+  const handleAutoComplete = () => {
+    if (!input.trim()) return;
+    
+    const parts = input.split(' ');
+    
+    // Autocompletar comando (primer palabra)
+    if (parts.length === 1) {
+      const cmdSuggestions = termCmd.getCommandSuggestions(parts[0], availableCommands);
+      
+      if (cmdSuggestions.length === 1) {
+        setInput(cmdSuggestions[0] + ' ');
+        setShowSuggestions(false);
+      } else if (cmdSuggestions.length > 1) {
+        setSuggestions(cmdSuggestions);
+        setShowSuggestions(true);
+        // Mostrar sugerencias en el historial
+        setHistory(prev => [...prev,
+          { type: 'info', text: `Sugerencias: ${cmdSuggestions.join(', ')}` }
+        ]);
+      }
+    }
+    // Autocompletar ruta de archivo (comandos que requieren archivos)
+    else {
+      const command = parts[0].toLowerCase();
+      const fileCommands = ['cat', 'ls', 'find', 'grep'];
+      
+      if (fileCommands.includes(command) && projectFiles) {
+        const currentPath = parts[parts.length - 1];
+        const pathSuggestions = termCmd.getPathSuggestions(currentPath, projectFiles);
+        
+        if (pathSuggestions.length === 1) {
+          parts[parts.length - 1] = pathSuggestions[0].path + (pathSuggestions[0].isFolder ? '/' : '');
+          setInput(parts.join(' '));
+          setShowSuggestions(false);
+        } else if (pathSuggestions.length > 1) {
+          const names = pathSuggestions.map(s => s.name).join(', ');
+          setHistory(prev => [...prev,
+            { type: 'info', text: `Sugerencias: ${names}` }
+          ]);
+        }
+      }
+    }
+  };
+
+  // Actualizar sugerencias mientras se escribe
+  useEffect(() => {
+    if (!input.trim()) {
+      setShowSuggestions(false);
+      return;
+    }
+    
+    const parts = input.split(' ');
+    if (parts.length === 1) {
+      const cmdSuggestions = termCmd.getCommandSuggestions(parts[0], availableCommands);
+      if (cmdSuggestions.length > 0 && cmdSuggestions.length < 10) {
+        setSuggestions(cmdSuggestions);
+      } else {
+        setShowSuggestions(false);
+      }
+    }
+  }, [input]);
 
   const getTextColor = (type, isLite) => {
     if (isLite) {
@@ -408,10 +866,12 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="flex-1 bg-transparent outline-none"
               style={{ color: 'var(--theme-text)' }}
               autoFocus
               spellCheck={false}
+              placeholder="Escribe un comando (Tab para autocompletar, ↑↓ para historial)"
             />
           </form>
         </div>

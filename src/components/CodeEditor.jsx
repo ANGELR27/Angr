@@ -1,12 +1,17 @@
 import Editor from '@monaco-editor/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { getHTMLSnippets, getCSSSnippets, getJSSnippets } from '../utils/snippets';
 import { defineCustomThemes } from '../utils/themes';
+import { analyzeProject, getHTMLAttributeSuggestions } from '../utils/intellisense';
+import SearchWidget from './SearchWidget';
+import CommandPalette from './CommandPalette';
 
 function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showSearchWidget, setShowSearchWidget] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
   const disposablesRef = useRef([]);
@@ -42,6 +47,11 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   useEffect(() => { projectFilesRef.current = projectFiles; }, [projectFiles]);
   useEffect(() => { projectImagesRef.current = projectImages; }, [projectImages]);
   useEffect(() => { activePathRef.current = activePath; }, [activePath]);
+
+  // Analizar proyecto para IntelliSense (con memoization)
+  const projectData = useMemo(() => {
+    return analyzeProject(projectFiles);
+  }, [projectFiles]);
 
   // Cache simple por referencia del objeto
   const filesCacheRef = useRef({ key: null, files: [], folders: [] });
@@ -227,6 +237,16 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       setFontSize(14); // Reset zoom
     });
 
+    // Buscar (Ctrl+F) - Abre nuestro widget personalizado
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+      setShowSearchWidget(true);
+    });
+
+    // Panel de comandos (Ctrl+Shift+P)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
+      setShowCommandPalette(true);
+    });
+
     // Formatear código (Ctrl+Shift+F ya está integrado, pero lo hacemos más explícito)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
       editor.getAction('editor.action.formatDocument')?.run();
@@ -240,6 +260,48 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
     // Seleccionar todas las ocurrencias (Ctrl+Shift+L)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL, () => {
       editor.getAction('editor.action.selectHighlights')?.run();
+    });
+
+    // Comentar/Descomentar línea (Ctrl+/)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
+      editor.getAction('editor.action.commentLine')?.run();
+    });
+
+    // Mover línea arriba (Alt+Up)
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => {
+      editor.getAction('editor.action.moveLinesUpAction')?.run();
+    });
+
+    // Mover línea abajo (Alt+Down)
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => {
+      editor.getAction('editor.action.moveLinesDownAction')?.run();
+    });
+
+    // Eliminar línea (Ctrl+Shift+K)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyK, () => {
+      editor.getAction('editor.action.deleteLines')?.run();
+    });
+
+    // Expandir selección (Shift+Alt+Right)
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.RightArrow, () => {
+      editor.getAction('editor.action.smartSelect.expand')?.run();
+    });
+
+    // Contraer selección (Shift+Alt+Left)
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.LeftArrow, () => {
+      editor.getAction('editor.action.smartSelect.shrink')?.run();
+    });
+
+    // Ir a línea (Ctrl+G)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG, () => {
+      editor.getAction('editor.action.gotoLine')?.run();
+    });
+
+    // Toggle minimap (Ctrl+M)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyM, () => {
+      const currentOptions = editor.getOptions();
+      const minimapEnabled = currentOptions.get(monaco.editor.EditorOption.minimap).enabled;
+      editor.updateOptions({ minimap: { enabled: !minimapEnabled } });
     });
 
     // Guardar (Ctrl+S) - mensaje visual
@@ -869,6 +931,25 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         onDrop={handleDrop}
       >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
+
+        {/* Widget de búsqueda y reemplazo */}
+        <SearchWidget 
+          isOpen={showSearchWidget}
+          onClose={() => setShowSearchWidget(false)}
+          editor={editorRef.current}
+          currentTheme={currentTheme}
+        />
+
+        {/* Panel de comandos */}
+        <CommandPalette 
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          editor={editorRef.current}
+          onExecuteCommand={(cmd) => {
+            if (cmd === 'search') setShowSearchWidget(true);
+          }}
+          currentTheme={currentTheme}
+        />
 
         {/* Indicador visual de drag & drop */}
         {isDraggingOver && (
