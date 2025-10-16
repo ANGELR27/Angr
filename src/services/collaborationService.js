@@ -82,6 +82,9 @@ class CollaborationService {
     // Conectar al canal de Supabase Realtime
     await this.connectToChannel(sessionId);
 
+    // Anunciar que el creador está en línea (útil para cuando otros se unan después)
+    await this.broadcastUserJoined();
+
     // Intentar obtener la URL pública de ngrok
     let publicUrl = window.location.origin;
     
@@ -169,7 +172,29 @@ class CollaborationService {
 
     // Escuchar usuarios que se unen
     this.channel.on('broadcast', { event: 'user-joined' }, (payload) => {
-      if (this.callbacks.onUserJoined) {
+      if (this.callbacks.onUserJoined && payload.payload.id !== this.currentUser?.id) {
+        this.callbacks.onUserJoined(payload.payload);
+      }
+    });
+
+    // Responder a solicitudes de lista de usuarios
+    this.channel.on('broadcast', { event: 'request-user-list' }, async (payload) => {
+      // Si alguien pide la lista, respondo con mi información
+      if (this.currentUser && payload.payload.requesterId !== this.currentUser.id) {
+        await this.channel.send({
+          type: 'broadcast',
+          event: 'user-response',
+          payload: {
+            ...this.currentUser,
+            timestamp: Date.now()
+          }
+        });
+      }
+    });
+
+    // Recibir respuestas de otros usuarios
+    this.channel.on('broadcast', { event: 'user-response' }, (payload) => {
+      if (this.callbacks.onUserJoined && payload.payload.id !== this.currentUser?.id) {
         this.callbacks.onUserJoined(payload.payload);
       }
     });
@@ -253,10 +278,22 @@ class CollaborationService {
   async broadcastUserJoined() {
     if (!this.channel || !this.currentUser) return;
 
+    // 1. Anunciar mi llegada a todos
     await this.channel.send({
       type: 'broadcast',
       event: 'user-joined',
       payload: this.currentUser,
+    });
+
+    // 2. Solicitar lista de usuarios existentes
+    // Esto hará que todos los demás usuarios respondan con su información
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'request-user-list',
+      payload: {
+        requesterId: this.currentUser.id,
+        timestamp: Date.now()
+      }
     });
   }
 

@@ -146,6 +146,10 @@ export function useCollaboration(files, onFilesChange) {
       setCurrentSession({ id: sessionId });
       setCurrentUser(collaborationService.getCurrentUser());
       
+      // IMPORTANTE: Inicializar con el usuario actual
+      // Los demás usuarios se agregarán vía el listener 'userJoined'
+      setActiveUsers([collaborationService.getCurrentUser()]);
+      
       return result;
     } catch (error) {
       console.error('Error al unirse a la sesión:', error);
