@@ -19,6 +19,7 @@ import {
   FileJson,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import { validateFileName, sanitizeFileName } from "../utils/validation";
 
 function TopBar({
   showPreview,
@@ -55,18 +56,35 @@ function TopBar({
     const fileName = prompt(
       "Nombre del nuevo archivo (ej: archivo.html, styles.css, script.js, imagen.png):"
     );
-    if (fileName) {
-      // Verificar si es una imagen
-      const imageExtensions = ["png", "jpg", "jpeg", "gif", "svg", "webp"];
-      const extension = fileName.split(".").pop()?.toLowerCase();
+    
+    if (!fileName) return;
 
-      if (imageExtensions.includes(extension)) {
-        // Trigger file input para subir imagen
-        imageInputRef.current?.click();
-        imageInputRef.current.dataset.fileName = fileName;
-      } else {
-        onNewFile(fileName);
-      }
+    // Validar nombre del archivo
+    const validation = validateFileName(fileName.trim(), false);
+    
+    if (!validation.valid) {
+      alert(validation.error);
+      return;
+    }
+
+    // Mostrar advertencia si existe
+    if (validation.warning) {
+      const confirmed = confirm(validation.warning + "\n\n¿Deseas continuar?");
+      if (!confirmed) return;
+    }
+
+    const sanitized = sanitizeFileName(fileName.trim());
+
+    // Verificar si es una imagen
+    const imageExtensions = ["png", "jpg", "jpeg", "gif", "svg", "webp"];
+    const extension = sanitized.split(".").pop()?.toLowerCase();
+
+    if (imageExtensions.includes(extension)) {
+      // Trigger file input para subir imagen
+      imageInputRef.current?.click();
+      imageInputRef.current.dataset.fileName = sanitized;
+    } else {
+      onNewFile(sanitized);
     }
   };
 
@@ -92,9 +110,19 @@ function TopBar({
 
   const handleNewFolder = () => {
     const folderName = prompt("Nombre de la nueva carpeta:");
-    if (folderName) {
-      onNewFolder(folderName);
+    
+    if (!folderName) return;
+
+    // Validar nombre de carpeta
+    const validation = validateFileName(folderName.trim(), true);
+    
+    if (!validation.valid) {
+      alert(validation.error);
+      return;
     }
+
+    const sanitized = sanitizeFileName(folderName.trim());
+    onNewFolder(sanitized);
   };
 
   const getFileIcon = (fileName) => {

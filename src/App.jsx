@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import FileExplorer from './components/FileExplorer'
 import CodeEditor from './components/CodeEditor'
 import Preview from './components/Preview'
@@ -7,8 +7,10 @@ import Terminal from './components/Terminal'
 import ImageManager from './components/ImageManager'
 import ThemeSelector from './components/ThemeSelector'
 import ShortcutsHelp from './components/ShortcutsHelp'
+import AutoSaveIndicator from './components/AutoSaveIndicator'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
+import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
 
 // Archivos de ejemplo iniciales
 const initialFiles = {
@@ -189,30 +191,35 @@ function App() {
   const [terminalHeight, setTerminalHeight] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.TERMINAL_HEIGHT, 250);
   });
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error
   const terminalRef = useRef(null);
   const isResizingSidebar = useRef(false);
   const isResizingPreview = useRef(false);
   const isResizingTerminal = useRef(false);
   const prevThemeRef = useRef('vs-dark');
 
-  // Guardar archivos en localStorage cuando cambien
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.FILES, files);
-  }, [files]);
+  // Callback para actualizar estado de guardado
+  const handleSaveStatusChange = useCallback((status) => {
+    setSaveStatus(status);
+  }, []);
 
-  // Guardar pestañas abiertas
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.OPEN_TABS, openTabs);
-  }, [openTabs]);
+  // Guardado optimizado con debounce centralizado
+  // Todos los datos se guardan con un solo debounce de 1000ms
+  useDebouncedSaveMultiple({
+    [STORAGE_KEYS.FILES]: files,
+    [STORAGE_KEYS.OPEN_TABS]: openTabs,
+    [STORAGE_KEYS.ACTIVE_TAB]: activeTab,
+    [STORAGE_KEYS.THEME]: currentTheme,
+    [STORAGE_KEYS.IMAGES]: images,
+    [STORAGE_KEYS.SHOW_PREVIEW]: showPreview,
+    [STORAGE_KEYS.SHOW_TERMINAL]: showTerminal,
+    [STORAGE_KEYS.SIDEBAR_WIDTH]: sidebarWidth,
+    [STORAGE_KEYS.PREVIEW_WIDTH]: previewWidth,
+    [STORAGE_KEYS.TERMINAL_HEIGHT]: terminalHeight,
+  }, 1000, handleSaveStatusChange);
 
-  // Guardar pestaña activa
+  // Aplicar tema cuando cambia
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.ACTIVE_TAB, activeTab);
-  }, [activeTab]);
-
-  // Guardar tema y aplicar colores globales
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.THEME, currentTheme);
     applyGlobalTheme(currentTheme);
   }, [currentTheme]);
 
@@ -220,36 +227,6 @@ function App() {
   useEffect(() => {
     applyGlobalTheme(currentTheme);
   }, []);
-
-  // Guardar imágenes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.IMAGES, images);
-  }, [images]);
-
-  // Guardar estado de preview
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SHOW_PREVIEW, showPreview);
-  }, [showPreview]);
-
-  // Guardar estado de terminal
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SHOW_TERMINAL, showTerminal);
-  }, [showTerminal]);
-
-  // Guardar ancho del sidebar
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SIDEBAR_WIDTH, sidebarWidth);
-  }, [sidebarWidth]);
-
-  // Guardar ancho del preview
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.PREVIEW_WIDTH, previewWidth);
-  }, [previewWidth]);
-
-  // Guardar altura del terminal
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.TERMINAL_HEIGHT, terminalHeight);
-  }, [terminalHeight]);
 
   // Toggle modo lite conservando el tema previo
   const handleToggleLite = () => {
@@ -925,6 +902,11 @@ function App() {
         onTabClick={setActiveTab}
         onTabClose={handleTabClose}
       />
+
+      {/* Indicador de guardado automático */}
+      <div className="fixed top-16 right-4 z-50">
+        <AutoSaveIndicator status={saveStatus} currentTheme={currentTheme} />
+      </div>
       
       <ImageManager
         isOpen={showImageManager}

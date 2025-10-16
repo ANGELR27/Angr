@@ -48,61 +48,99 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       { type: 'command', text: `$ Ejecutando código JavaScript...` }
     ]);
 
+    // Validar que el código no esté vacío
+    if (!code || code.trim() === '') {
+      setHistory(prev => [...prev, 
+        { type: 'warning', text: `[${timestamp}] ⚠ No hay código para ejecutar` }
+      ]);
+      return;
+    }
+
     try {
       // Crear contexto de ejecución con console capturado
       const logs = [];
+      const errors = [];
+      
       const customConsole = {
         log: (...args) => {
-          const text = args.map(arg => {
-            if (typeof arg === 'object') {
-              try {
-                return JSON.stringify(arg, null, 2);
-              } catch (e) {
-                return String(arg);
+          try {
+            const text = args.map(arg => {
+              if (typeof arg === 'object' && arg !== null) {
+                try {
+                  return JSON.stringify(arg, null, 2);
+                } catch (e) {
+                  return String(arg);
+                }
               }
-            }
-            return String(arg);
-          }).join(' ');
-          logs.push({ type: 'console', text: `[${timestamp}] ${text}` });
+              return String(arg);
+            }).join(' ');
+            logs.push({ type: 'console', text: `[${timestamp}] ${text}` });
+          } catch (e) {
+            errors.push(`Error al procesar log: ${e.message}`);
+          }
         },
         error: (...args) => {
-          const text = args.map(arg => String(arg)).join(' ');
-          logs.push({ type: 'error', text: `[${timestamp}] ${text}` });
+          try {
+            const text = args.map(arg => String(arg)).join(' ');
+            logs.push({ type: 'error', text: `[${timestamp}] ${text}` });
+          } catch (e) {
+            errors.push(`Error al procesar error: ${e.message}`);
+          }
         },
         warn: (...args) => {
-          const text = args.map(arg => String(arg)).join(' ');
-          logs.push({ type: 'warning', text: `[${timestamp}] ${text}` });
+          try {
+            const text = args.map(arg => String(arg)).join(' ');
+            logs.push({ type: 'warning', text: `[${timestamp}] ${text}` });
+          } catch (e) {
+            errors.push(`Error al procesar warning: ${e.message}`);
+          }
         },
         info: (...args) => {
-          const text = args.map(arg => String(arg)).join(' ');
-          logs.push({ type: 'info', text: `[${timestamp}] ${text}` });
+          try {
+            const text = args.map(arg => String(arg)).join(' ');
+            logs.push({ type: 'info', text: `[${timestamp}] ${text}` });
+          } catch (e) {
+            errors.push(`Error al procesar info: ${e.message}`);
+          }
         },
         table: (...args) => {
-          const text = args.map(arg => {
-            if (typeof arg === 'object') {
-              try {
-                return JSON.stringify(arg, null, 2);
-              } catch (e) {
-                return String(arg);
+          try {
+            const text = args.map(arg => {
+              if (typeof arg === 'object' && arg !== null) {
+                try {
+                  return JSON.stringify(arg, null, 2);
+                } catch (e) {
+                  return String(arg);
+                }
               }
-            }
-            return String(arg);
-          }).join(' ');
-          logs.push({ type: 'console', text: `[${timestamp}] ${text}` });
+              return String(arg);
+            }).join(' ');
+            logs.push({ type: 'console', text: `[${timestamp}] TABLE:\n${text}` });
+          } catch (e) {
+            errors.push(`Error al procesar table: ${e.message}`);
+          }
         }
       };
 
-      // Ejecutar código con console personalizado
+      // Ejecutar código con console personalizado en un contexto aislado
       const wrappedCode = `
         (function() {
+          'use strict';
           const console = customConsole;
           ${code}
         })();
       `;
       
-      // Usar Function para ejecutar el código
+      // Usar Function para ejecutar el código de forma segura
       const func = new Function('customConsole', wrappedCode);
       func(customConsole);
+      
+      // Agregar errores internos si los hay
+      if (errors.length > 0) {
+        errors.forEach(err => {
+          logs.push({ type: 'error', text: `[${timestamp}] ⚠ ${err}` });
+        });
+      }
       
       // Agregar todos los logs
       if (logs.length > 0) {
@@ -114,9 +152,18 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       }
       
     } catch (error) {
+      // Capturar errores de sintaxis o ejecución
+      const errorMessage = error.message || 'Error desconocido';
+      const errorName = error.name || 'Error';
+      
       setHistory(prev => [...prev, 
-        { type: 'error', text: `[${timestamp}] ✗ Error: ${error.message}` }
+        { type: 'error', text: `[${timestamp}] ✗ ${errorName}: ${errorMessage}` }
       ]);
+      
+      // Log adicional en modo desarrollo
+      if (import.meta.env.DEV) {
+        console.error('Error al ejecutar JavaScript en Terminal:', error);
+      }
     }
   };
 

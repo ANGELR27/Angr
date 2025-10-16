@@ -165,19 +165,53 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
             // Debounce para errores repetitivos
             let lastError = '';
             let errorCount = 0;
+            let errorTimer = null;
+            
             window.addEventListener('error', function(e) {
-              const errorMsg = 'Error: ' + e.message;
+              // Prevenir la propagación por defecto
+              e.preventDefault();
+              
+              const errorMsg = 'Error: ' + (e.message || 'Unknown error');
+              const fullErrorMsg = errorMsg + (e.lineno ? ' at line ' + e.lineno : '');
+              
               if (errorMsg === lastError) {
                 errorCount++;
-                if (errorCount > 3) return;
+                if (errorCount > 3) {
+                  if (errorCount === 4) {
+                    window.parent.postMessage({
+                      type: 'console',
+                      method: 'warn',
+                      args: ['⚠ Errores repetitivos suprimidos para evitar spam']
+                    }, '*');
+                  }
+                  return;
+                }
               } else {
                 lastError = errorMsg;
                 errorCount = 1;
               }
+              
+              // Resetear contador después de 2 segundos
+              clearTimeout(errorTimer);
+              errorTimer = setTimeout(() => {
+                errorCount = 0;
+                lastError = '';
+              }, 2000);
+              
               window.parent.postMessage({
                 type: 'console',
                 method: 'error',
-                args: [errorMsg + ' at line ' + e.lineno]
+                args: [fullErrorMsg]
+              }, '*');
+            });
+            
+            // Capturar promesas rechazadas no manejadas
+            window.addEventListener('unhandledrejection', function(e) {
+              e.preventDefault();
+              window.parent.postMessage({
+                type: 'console',
+                method: 'error',
+                args: ['Unhandled Promise Rejection: ' + (e.reason || 'Unknown reason')]
               }, '*');
             });
 

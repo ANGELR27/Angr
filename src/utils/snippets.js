@@ -16,7 +16,7 @@ export const getHTMLSnippets = (monaco, range) => {
     { label: 'section', kind: Kind, insertText: '<section class="${1}">\n\t<h2>${2}</h2>\n\t${3}\n</section>', insertTextRules: Rule, documentation: '📄 Sección', range },
     { label: 'article', kind: Kind, insertText: '<article>\n\t<h2>${1}</h2>\n\t<p>${2}</p>\n</article>', insertTextRules: Rule, documentation: '📰 Artículo', range },
     { label: 'header', kind: Kind, insertText: '<header>\n\t<nav>${1}</nav>\n</header>', insertTextRules: Rule, documentation: '🎯 Cabecera', range },
-    { label: 'footer', kind: Kind, insertText: '<footer>\n\t<p>&copy; ${1:2024}. Todos los derechos reservados.</p>\n</footer>', insertTextRules: Rule, documentation: '👣 Pie', range },
+    { label: 'footer', kind: Kind, insertText: `<footer>\n\t<p>&copy; \${1:${new Date().getFullYear()}}. Todos los derechos reservados.</p>\n</footer>`, insertTextRules: Rule, documentation: '👣 Pie', range },
     { label: 'nav', kind: Kind, insertText: '<nav>\n\t<ul>\n\t\t<li><a href="${1:#}">${2}</a></li>\n\t</ul>\n</nav>', insertTextRules: Rule, documentation: '🧭 Navegación', range },
     { label: 'ul', kind: Kind, insertText: '<ul>\n\t<li>${1}</li>\n</ul>', insertTextRules: Rule, documentation: '📋 Lista', range },
     { label: 'ol', kind: Kind, insertText: '<ol>\n\t<li>${1}</li>\n</ol>', insertTextRules: Rule, documentation: '📋 Lista ordenada', range },
@@ -47,7 +47,11 @@ export const getHTMLSnippets = (monaco, range) => {
     { label: 'em', kind: Kind, insertText: '<em>${1}</em>', insertTextRules: Rule, documentation: '✨ Texto énfasis', range },
     { label: 'code', kind: Kind, insertText: '<code>${1}</code>', insertTextRules: Rule, documentation: '💻 Código inline', range },
     { label: 'pre', kind: Kind, insertText: '<pre><code>${1}</code></pre>', insertTextRules: Rule, documentation: '📝 Bloque de código', range },
-    { label: 'blockquote', kind: Kind, insertText: '<blockquote>\n\t<p>${1}</p>\n\t<cite>${2}</cite>\n</blockquote>', insertTextRules: Rule, documentation: '💬 Cita', range }
+    { label: 'blockquote', kind: Kind, insertText: '<blockquote>\n\t<p>${1}</p>\n\t<cite>${2}</cite>\n</blockquote>', insertTextRules: Rule, documentation: '💬 Cita', range },
+    { label: 'iframe', kind: Kind, insertText: '<iframe src="${1}" width="${2:100%}" height="${3:400}" frameborder="0" allowfullscreen></iframe>', insertTextRules: Rule, documentation: '🖼️ Iframe', range },
+    { label: 'canvas', kind: Kind, insertText: '<canvas id="${1:myCanvas}" width="${2:800}" height="${3:600}"></canvas>', insertTextRules: Rule, documentation: '🎨 Canvas', range },
+    { label: 'details', kind: Kind, insertText: '<details>\n\t<summary>${1:Clic para expandir}</summary>\n\t${2}\n</details>', insertTextRules: Rule, documentation: '📋 Detalles colapsables', range },
+    { label: 'svg', kind: Kind, insertText: '<svg width="${1:100}" height="${2:100}" viewBox="0 0 ${1:100} ${2:100}">\n\t${3}\n</svg>', insertTextRules: Rule, documentation: '🎨 SVG', range }
   ];
 };
 
@@ -75,7 +79,11 @@ export const getCSSSnippets = (monaco, range) => {
     { label: 'after', kind: Kind, insertText: '&::after {\n\tcontent: "${1}";\n\t${2}\n}', insertTextRules: Rule, documentation: '▶️ Pseudo after', range },
     { label: 'transform:center', kind: Kind, insertText: 'transform: translate(-50%, -50%);', insertTextRules: Rule, documentation: '🎯 Transform center', range },
     { label: 'transform:scale', kind: Kind, insertText: 'transform: scale(${1:1.1});', insertTextRules: Rule, documentation: '🔍 Transform scale', range },
-    { label: 'transform:rotate', kind: Kind, insertText: 'transform: rotate(${1:45}deg);', insertTextRules: Rule, documentation: '🔄 Transform rotate', range }
+    { label: 'transform:rotate', kind: Kind, insertText: 'transform: rotate(${1:45}deg);', insertTextRules: Rule, documentation: '🔄 Transform rotate', range },
+    { label: 'truncate', kind: Kind, insertText: 'white-space: nowrap;\noverflow: hidden;\ntext-overflow: ellipsis;', insertTextRules: Rule, documentation: '✂️ Truncar texto', range },
+    { label: 'scrollbar', kind: Kind, insertText: '&::-webkit-scrollbar {\n\twidth: ${1:8px};\n}\n&::-webkit-scrollbar-thumb {\n\tbackground: ${2:#888};\n\tborder-radius: ${3:4px};\n}', insertTextRules: Rule, documentation: '📜 Scrollbar personalizado', range },
+    { label: 'container', kind: Kind, insertText: 'max-width: ${1:1200px};\nmargin: 0 auto;\npadding: ${2:0 1rem};', insertTextRules: Rule, documentation: '📦 Container centrado', range },
+    { label: 'aspectratio', kind: Kind, insertText: 'aspect-ratio: ${1:16} / ${2:9};', insertTextRules: Rule, documentation: '📐 Aspect ratio', range }
   ];
 };
 
@@ -116,6 +124,15 @@ export const getJSSnippets = (monaco, range) => {
     { label: 'destructure', kind: Kind, insertText: 'const { ${1:prop} } = ${2:object};', insertTextRules: Rule, documentation: '📦 Destructuring', range },
     { label: 'spread', kind: Kind, insertText: '...${1:array}', insertTextRules: Rule, documentation: '📤 Spread operator', range },
     { label: 'ternary', kind: Kind, insertText: '${1:condition} ? ${2:true} : ${3:false}', insertTextRules: Rule, documentation: '❓ Ternary operator', range },
-    { label: 'template', kind: Kind, insertText: '`${${1:variable}}`', insertTextRules: Rule, documentation: '📝 Template literal', range }
+    { label: 'template', kind: Kind, insertText: '`${${1:variable}}`', insertTextRules: Rule, documentation: '📝 Template literal', range },
+    { label: 'awaitfetch', kind: Kind, insertText: 'const response = await fetch(${1:url});\nconst data = await response.json();\nconsole.log(data);', insertTextRules: Rule, documentation: '🌐 Async fetch', range },
+    { label: 'find', kind: Kind, insertText: '${1:array}.find((${2:item}) => ${3});', insertTextRules: Rule, documentation: '🔍 Array find', range },
+    { label: 'some', kind: Kind, insertText: '${1:array}.some((${2:item}) => ${3});', insertTextRules: Rule, documentation: '✓ Array some', range },
+    { label: 'every', kind: Kind, insertText: '${1:array}.every((${2:item}) => ${3});', insertTextRules: Rule, documentation: '✓✓ Array every', range },
+    { label: 'sort', kind: Kind, insertText: '${1:array}.sort((a, b) => ${2:a - b});', insertTextRules: Rule, documentation: '🔃 Array sort', range },
+    { label: 'localstorage:set', kind: Kind, insertText: 'localStorage.setItem(\'${1:key}\', JSON.stringify(${2:value}));', insertTextRules: Rule, documentation: '💾 LocalStorage set', range },
+    { label: 'localstorage:get', kind: Kind, insertText: 'const ${1:data} = JSON.parse(localStorage.getItem(\'${2:key}\'));', insertTextRules: Rule, documentation: '📂 LocalStorage get', range },
+    { label: 'debounce', kind: Kind, insertText: 'const debounce = (fn, delay) => {\n\tlet timeoutId;\n\treturn (...args) => {\n\t\tclearTimeout(timeoutId);\n\t\ttimeoutId = setTimeout(() => fn(...args), delay);\n\t};\n};', insertTextRules: Rule, documentation: '⏳ Debounce function', range },
+    { label: 'throttle', kind: Kind, insertText: 'const throttle = (fn, limit) => {\n\tlet inThrottle;\n\treturn (...args) => {\n\t\tif (!inThrottle) {\n\t\t\tfn(...args);\n\t\t\tinThrottle = true;\n\t\t\tsetTimeout(() => inThrottle = false, limit);\n\t\t}\n\t};\n};', insertTextRules: Rule, documentation: '⏱️ Throttle function', range }
   ];
 };
