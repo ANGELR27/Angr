@@ -203,7 +203,7 @@ function TopBar({
             return (
               <div
                 key={tabPath}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-t cursor-pointer group transition-all flex-shrink-0 ${
+                className={`flex items-center gap-1.5 px-2.5 py-3 rounded-t cursor-pointer group transition-all flex-shrink-0 ${
                   isActive
                     ? "bg-theme-bg-secondary"
                     : "hover:bg-theme-bg-secondary/50"

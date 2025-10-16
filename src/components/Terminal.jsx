@@ -276,8 +276,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     <div
       className={`${isMaximized ? 'fixed inset-0 z-50' : 'h-64'} flex flex-col`}
       style={{
-        backgroundColor: isLite ? 'var(--theme-background)' : undefined,
-        borderTop: isLite ? '1px solid var(--theme-border)' : undefined
+        backgroundColor: 'var(--theme-background)',
+        borderTop: '1px solid var(--theme-border)'
       }}
     >
       {/* Header */}
