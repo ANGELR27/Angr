@@ -25,6 +25,11 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
   const [showControls, setShowControls] = useState(false);
   const isLite = currentTheme === 'lite';
 
+  // Función para escapar caracteres especiales en expresiones regulares
+  const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
   // Función para resolver rutas de imágenes
   const resolveImagePaths = (htmlContent) => {
     let processedContent = htmlContent;
@@ -32,7 +37,8 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
     // Reemplazar imágenes del proyecto por sus data URLs en atributos HTML
     if (projectImages && projectImages.length > 0) {
       projectImages.forEach(image => {
-        const attrByName = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
+        const escapedName = escapeRegExp(image.name);
+        const attrByName = new RegExp(`(src|href)=["']${escapedName}["']`, 'gi');
         processedContent = processedContent.replace(attrByName, `$1="${image.data}"`);
       });
     }
@@ -61,17 +67,20 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
 
     // Reemplazos en atributos HTML (src/href) directos y relativos
     imageFiles.forEach(image => {
-      const byName = new RegExp(`(src|href)=["']${image.name}["']`, 'gi');
+      const escapedName = escapeRegExp(image.name);
+      const escapedPath = escapeRegExp(image.path);
+      
+      const byName = new RegExp(`(src|href)=["']${escapedName}["']`, 'gi');
       processedContent = processedContent.replace(byName, `$1="${image.data}"`);
 
-      const byPath = new RegExp(`(src|href)=["']${image.path}["']`, 'gi');
+      const byPath = new RegExp(`(src|href)=["']${escapedPath}["']`, 'gi');
       processedContent = processedContent.replace(byPath, `$1="${image.data}"`);
 
-      const byRelPath = new RegExp(`(src|href)=["']\\./${image.path}["']`, 'gi');
+      const byRelPath = new RegExp(`(src|href)=["']\\./${escapedPath}["']`, 'gi');
       processedContent = processedContent.replace(byRelPath, `$1="${image.data}"`);
 
       // Cualquier ruta que termine en el nombre (con ./, ../ y subcarpetas)
-      const byAnyEndingWithName = new RegExp(`(src|href)=["'](?:\./|(?:\.\./)+)?[^"']*?${image.name}["']`, 'gi');
+      const byAnyEndingWithName = new RegExp(`(src|href)=["'](?:\./|(?:\.\./)+)?[^"']*?${escapedName}["']`, 'gi');
       processedContent = processedContent.replace(byAnyEndingWithName, (m) => m.replace(/(src|href)=["'][^"']+["']/, `$1="${image.data}"`));
     });
 

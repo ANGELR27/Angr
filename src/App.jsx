@@ -355,12 +355,27 @@ function App() {
     };
     
     setFiles(updateNestedFile(files, parts, value));
-
-    // Transmitir cambios si hay colaboración activa
-    if (isCollaborating) {
-      broadcastFileChange(activeTab, value, null);
-    }
   };
+
+  // Handler para cambios en tiempo real (con debounce ya aplicado desde CodeEditor)
+  const handleRealtimeChange = useCallback(({ filePath, content, cursorPosition }) => {
+    console.log('🔄 handleRealtimeChange recibido:', {
+      isCollaborating,
+      filePath,
+      contentLength: content?.length,
+      hasBroadcastFunction: !!broadcastFileChange
+    });
+    
+    if (!isCollaborating) {
+      console.warn('⚠️ NO colaborando - cambio ignorado');
+      return;
+    }
+    
+    console.log('📤 Llamando a broadcastFileChange...');
+    // Transmitir el cambio inmediatamente
+    broadcastFileChange(filePath, content, cursorPosition);
+    console.log('✅ broadcastFileChange ejecutado');
+  }, [isCollaborating, broadcastFileChange]);
 
   const handleConsoleLog = (method, args) => {
     if (terminalRef.current) {
@@ -647,6 +662,16 @@ function App() {
   const handleJoinSession = async (sessionId, userData) => {
     const result = await joinSession(sessionId, userData);
     setShowCollaborationPanel(true);
+    
+    // Limpiar el parámetro de la URL después de unirse exitosamente
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('session')) {
+      urlParams.delete('session');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+      console.log('🧹 Parámetro de URL limpiado después de unirse');
+    }
+    
     return result;
   };
 
@@ -660,9 +685,37 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session');
     
-    if (sessionId && !isCollaborating) {
-      setShowSessionManager(true);
+    if (!sessionId) return; // No hay sessionId en URL, salir
+    
+    // Verificar si ya hay una sesión restaurada
+    const storedSession = localStorage.getItem('collaboration_session');
+    
+    if (storedSession) {
+      try {
+        const sessionData = JSON.parse(storedSession);
+        // Si la sesión guardada coincide con la URL, NO abrir modal (se restaurará automáticamente)
+        if (sessionData.session?.id === sessionId) {
+          console.log('✅ Sesión coincide con URL - restaurando automáticamente');
+          return; // Salir, la restauración automática se encarga
+        }
+        // Si NO coincide, limpiar sesión antigua y mostrar modal para unirse a la nueva
+        console.log('⚠️ Sesión diferente - solicitando nueva unión');
+        localStorage.removeItem('collaboration_session');
+        localStorage.removeItem('collaboration_project_files');
+      } catch (e) {
+        console.error('Error al parsear sesión guardada:', e);
+      }
     }
+    
+    // Delay para dar tiempo a que useCollaboration intente restaurar
+    const timer = setTimeout(() => {
+      // Solo abrir modal si aún no se ha colaborado
+      if (!isCollaborating) {
+        setShowSessionManager(true);
+      }
+    }, 800); // 800ms de delay para dar tiempo suficiente
+    
+    return () => clearTimeout(timer);
   }, [isCollaborating]);
 
   const handleExecuteCode = () => {
@@ -1105,6 +1158,13 @@ function App() {
                   isImage={activeFile?.isImage || false}
                   activePath={activeTab}
                   onAddImageFile={handleAddImageFile}
+                  onRealtimeChange={handleRealtimeChange}
+                  isCollaborating={isCollaborating}
+                  remoteCursors={remoteCursors}
+                  onCursorMove={broadcastCursorMove}
+                  currentUser={currentUser}
+                  activeFile={activeFile}
+                  typingUsers={typingUsers}
                 />
               </div>
               

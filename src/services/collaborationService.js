@@ -173,8 +173,25 @@ class CollaborationService {
 
     // Escuchar cambios en archivos
     this.channel.on('broadcast', { event: 'file-change' }, (payload) => {
-      if (this.callbacks.onFileChange && payload.payload.userId !== this.currentUser?.id) {
+      console.log('🎯 Supabase broadcast recibido:', {
+        event: 'file-change',
+        fromUserId: payload.payload.userId,
+        currentUserId: this.currentUser?.id,
+        isSameUser: payload.payload.userId === this.currentUser?.id,
+        filePath: payload.payload.filePath,
+        hasCallback: !!this.callbacks.onFileChange
+      });
+      
+      if (payload.payload.userId === this.currentUser?.id) {
+        console.log('⏸️ Es mi propio mensaje - ignorar');
+        return;
+      }
+      
+      if (this.callbacks.onFileChange) {
+        console.log('📞 Llamando callback onFileChange...');
         this.callbacks.onFileChange(payload.payload);
+      } else {
+        console.warn('⚠️ No hay callback registrado para onFileChange');
       }
     });
 
@@ -216,8 +233,18 @@ class CollaborationService {
 
     // Escuchar movimientos de cursor
     this.channel.on('broadcast', { event: 'cursor-move' }, (payload) => {
+      console.log('📍 Cursor remoto recibido:', {
+        userName: payload.payload.userName,
+        filePath: payload.payload.filePath,
+        position: payload.payload.position,
+        isMyOwn: payload.payload.userId === this.currentUser?.id
+      });
+      
       if (this.callbacks.onCursorMove && payload.payload.userId !== this.currentUser?.id) {
+        console.log('✅ Procesando cursor remoto de', payload.payload.userName);
         this.callbacks.onCursorMove(payload.payload);
+      } else if (payload.payload.userId === this.currentUser?.id) {
+        console.log('⏸️ Ignorando mi propio cursor');
       }
     });
 
@@ -260,27 +287,60 @@ class CollaborationService {
   }
 
   // Transmitir cambio en archivo
-  async broadcastFileChange(filePath, content, cursorPosition) {
-    if (!this.channel || !this.currentUser) return;
-
-    await this.channel.send({
-      type: 'broadcast',
-      event: 'file-change',
-      payload: {
-        userId: this.currentUser.id,
-        userName: this.currentUser.name,
-        userColor: this.currentUser.color,
-        filePath,
-        content,
-        cursorPosition,
-        timestamp: Date.now(),
-      },
+  async broadcastFileChange(filePath, content, cursorPosition, version) {
+    console.log('📡 broadcastFileChange llamado:', {
+      hasChannel: !!this.channel,
+      hasUser: !!this.currentUser,
+      filePath,
+      contentLength: content?.length
     });
+    
+    if (!this.channel || !this.currentUser) {
+      console.error('❌ NO se puede enviar - falta channel o usuario:', {
+        hasChannel: !!this.channel,
+        hasUser: !!this.currentUser
+      });
+      return;
+    }
+
+    const payload = {
+      userId: this.currentUser.id,
+      userName: this.currentUser.name,
+      userColor: this.currentUser.color,
+      filePath,
+      content,
+      cursorPosition,
+      version: typeof version === 'number' ? version : undefined,
+      timestamp: Date.now(),
+    };
+    
+    console.log('📤 Enviando a Supabase Realtime:', payload);
+    
+    try {
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'file-change',
+        payload
+      });
+      console.log('✅ Mensaje enviado exitosamente a Supabase');
+    } catch (error) {
+      console.error('❌ Error al enviar mensaje:', error);
+    }
   }
 
   // Transmitir movimiento de cursor
-  async broadcastCursorMove(filePath, position, selection) {
-    if (!this.channel || !this.currentUser) return;
+  async broadcastCursorMove(filePath, position, selection, version) {
+    if (!this.channel || !this.currentUser) {
+      console.warn('⚠️ No se puede enviar cursor - falta channel o usuario');
+      return;
+    }
+
+    console.log('📍 Enviando cursor a Supabase:', {
+      userName: this.currentUser.name,
+      filePath,
+      position,
+      hasSelection: !!selection
+    });
 
     await this.channel.send({
       type: 'broadcast',
@@ -292,6 +352,7 @@ class CollaborationService {
         filePath,
         position,
         selection,
+        version: typeof version === 'number' ? version : undefined,
         timestamp: Date.now(),
       },
     });
@@ -340,12 +401,94 @@ class CollaborationService {
     
     this.currentSession.files = files;
     this.currentSession.images = images;
+
+    // Guardar en Supabase Storage (persistente y sin límite)
+    if (this.supabase && this.currentUser?.role === 'owner') {
+      try {
+        // Guardar estado en tabla de sesiones
+        const { error } = await this.supabase
+          .from('collaboration_sessions')
+          .upsert({
+            session_id: this.currentSession.id,
+            project_state: {
+              files: files,
+              images: images,
+              updated_at: new Date().toISOString()
+            },
+            owner_id: this.currentUser.id,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'session_id'
+          });
+
+        if (!error) {
+          console.log('☁️ Proyecto guardado en Supabase');
+        } else {
+          console.warn('⚠️ Error al guardar en Supabase:', error.message);
+          // Fallback a localStorage
+          localStorage.setItem('collaboration_project_files', JSON.stringify(files));
+        }
+      } catch (e) {
+        console.warn('⚠️ Supabase no disponible, usando localStorage');
+        localStorage.setItem('collaboration_project_files', JSON.stringify(files));
+      }
+    } else {
+      // Fallback a localStorage si no hay Supabase
+      if (this.currentUser?.role === 'owner') {
+        localStorage.setItem('collaboration_project_files', JSON.stringify(files));
+        console.log('💾 Archivos guardados en localStorage (fallback)');
+      }
+    }
+  }
+
+  // Cargar estado del proyecto desde Supabase
+  async loadProjectStateFromDatabase(sessionId) {
+    if (!this.supabase) return null;
+
+    try {
+      const { data, error } = await this.supabase
+        .from('collaboration_sessions')
+        .select('project_state')
+        .eq('session_id', sessionId)
+        .single();
+
+      if (error) {
+        console.warn('⚠️ No se pudo cargar de Supabase:', error.message);
+        return null;
+      }
+
+      if (data && data.project_state) {
+        console.log('☁️ Estado del proyecto cargado desde Supabase');
+        return data.project_state;
+      }
+
+      return null;
+    } catch (e) {
+      console.warn('⚠️ Error al cargar desde Supabase:', e);
+      return null;
+    }
   }
 
   // Solicitar el estado del proyecto (cuando te unes)
   async requestProjectState() {
     if (!this.channel || !this.currentUser) return;
 
+    // Primero intentar cargar desde Supabase
+    if (this.supabase && this.currentSession) {
+      const projectState = await this.loadProjectStateFromDatabase(this.currentSession.id);
+      if (projectState && this.callbacks.onProjectState) {
+        console.log('📦 Aplicando estado desde Supabase directamente');
+        this.callbacks.onProjectState({
+          fromUserId: 'database',
+          files: projectState.files,
+          images: projectState.images,
+          timestamp: Date.now()
+        });
+        return; // Ya tenemos el estado, no necesitamos pedirlo
+      }
+    }
+
+    // Si no hay en Supabase, pedir al owner por broadcast
     await this.channel.send({
       type: 'broadcast',
       event: 'request-project-state',
@@ -408,7 +551,10 @@ class CollaborationService {
 
   // Guardar sesión en localStorage
   saveSessionToStorage() {
-    if (!this.currentSession || !this.currentUser) return;
+    if (!this.currentSession || !this.currentUser) {
+      console.warn('⚠️ No se puede guardar: falta sesión o usuario');
+      return;
+    }
 
     const sessionData = {
       session: {
@@ -426,42 +572,94 @@ class CollaborationService {
       timestamp: Date.now()
     };
 
+    console.log('💾 Guardando sesión en localStorage:', {
+      sessionId: sessionData.session.id,
+      userName: sessionData.user.name,
+      userRole: sessionData.user.role
+    });
+
     localStorage.setItem('collaboration_session', JSON.stringify(sessionData));
+    console.log('✅ Sesión guardada en localStorage');
+
+    // Guardar archivos del proyecto también (solo si eres owner)
+    if (this.currentUser.role === 'owner' && this.currentSession.files) {
+      const fileCount = Object.keys(this.currentSession.files).length;
+      console.log(`💾 Guardando ${fileCount} archivos del proyecto (owner)`);
+      localStorage.setItem('collaboration_project_files', JSON.stringify(this.currentSession.files));
+      console.log('✅ Archivos del proyecto guardados');
+    }
   }
 
   // Restaurar sesión desde localStorage
   async restoreSessionFromStorage() {
     try {
+      console.log('🔍 Intentando restaurar sesión desde localStorage...');
+      
+      // Verificar si Supabase está configurado
+      if (!this.supabase) {
+        console.warn('⚠️ Supabase no está configurado - no se puede restaurar sesión');
+        return null;
+      }
+      
       const stored = localStorage.getItem('collaboration_session');
-      if (!stored) return null;
+      if (!stored) {
+        console.log('ℹ️ No hay sesión guardada en localStorage');
+        return null;
+      }
 
       const sessionData = JSON.parse(stored);
+      console.log('📦 Datos de sesión encontrados:', {
+        sessionId: sessionData.session?.id,
+        userName: sessionData.user?.name,
+        userRole: sessionData.user?.role,
+        timestamp: new Date(sessionData.timestamp).toLocaleString()
+      });
       
       // Verificar que no haya expirado (máximo 24 horas)
       const maxAge = 24 * 60 * 60 * 1000;
-      if (Date.now() - sessionData.timestamp > maxAge) {
+      const age = Date.now() - sessionData.timestamp;
+      if (age > maxAge) {
+        console.warn('⏰ Sesión expirada (más de 24 horas)');
         localStorage.removeItem('collaboration_session');
+        localStorage.removeItem('collaboration_project_files');
         return null;
       }
+      console.log(`⏱️ Sesión válida (edad: ${Math.round(age / 1000 / 60)} minutos)`);
 
       // Restaurar estado
       this.currentSession = sessionData.session;
       this.currentUser = sessionData.user;
+      console.log('✅ Estado de sesión y usuario restaurado');
+
+      // Si eres owner, restaurar archivos del proyecto
+      if (this.currentUser.role === 'owner') {
+        const storedFiles = localStorage.getItem('collaboration_project_files');
+        if (storedFiles) {
+          this.currentSession.files = JSON.parse(storedFiles);
+          console.log('📁 Archivos del proyecto restaurados (owner)');
+        }
+      }
 
       // Reconectar al canal
+      console.log('🔌 Reconectando al canal de Supabase...');
       await this.connectToChannel(sessionData.session.id);
+      console.log('✅ Canal reconectado');
       
       // Anunciar que volvimos
+      console.log('📢 Anunciando regreso a la sesión...');
       await this.broadcastUserJoined();
+      console.log('✅ Anuncio enviado');
 
-      console.log('✅ Sesión restaurada correctamente');
+      console.log('🎉 SESIÓN RESTAURADA COMPLETAMENTE');
       return {
         session: this.currentSession,
         user: this.currentUser
       };
     } catch (error) {
-      console.error('Error al restaurar sesión:', error);
+      console.error('❌ ERROR al restaurar sesión:', error);
+      console.error('Stack trace:', error.stack);
       localStorage.removeItem('collaboration_session');
+      localStorage.removeItem('collaboration_project_files');
       return null;
     }
   }
@@ -469,6 +667,7 @@ class CollaborationService {
   // Limpiar sesión del storage
   clearSessionStorage() {
     localStorage.removeItem('collaboration_session');
+    localStorage.removeItem('collaboration_project_files');
   }
 
   // Salir de la sesión

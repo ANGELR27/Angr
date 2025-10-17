@@ -140,6 +140,14 @@ export default function SessionManager({
   };
 
   const resetForm = () => {
+    // Limpiar el parámetro de URL si el usuario cancela sin unirse
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('session')) {
+      urlParams.delete('session');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+    
     setMode('menu');
     setSessionName('');
     setUserName('');

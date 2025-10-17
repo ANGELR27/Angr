@@ -5,8 +5,9 @@ import { defineCustomThemes } from '../utils/themes';
 import { analyzeProject, getHTMLAttributeSuggestions } from '../utils/intellisense';
 import SearchWidget from './SearchWidget';
 import CommandPalette from './CommandPalette';
+import TypingIndicator from './TypingIndicator';
 
-function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile }) {
+function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -18,6 +19,11 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   const projectFilesRef = useRef(projectFiles);
   const projectImagesRef = useRef(projectImages);
   const activePathRef = useRef(activePath);
+  const isApplyingRemoteChangeRef = useRef(false);
+  const realtimeTimeoutRef = useRef(null);
+  const cursorDecorationsRef = useRef([]);
+  const cursorWidgetsRef = useRef([]);
+  const cursorMoveTimeoutRef = useRef(null);
 
   // Memo: listas aplanadas de archivos/carpetas
   const buildAllFilePaths = (files, basePath = '') => {
@@ -48,6 +54,230 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   useEffect(() => { projectImagesRef.current = projectImages; }, [projectImages]);
   useEffect(() => { activePathRef.current = activePath; }, [activePath]);
 
+  // Renderizar cursores remotos en el editor usando widgets flotantes
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current || !isCollaborating) return;
+    
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+
+    // Filtrar cursores que están en el archivo actual
+    const cursorsInCurrentFile = Object.entries(remoteCursors || {}).filter(
+      ([userId, cursor]) => cursor.filePath === activePath
+    );
+
+    // Limpiar decoraciones y widgets anteriores
+    if (cursorDecorationsRef.current.length > 0) {
+      cursorDecorationsRef.current = editor.deltaDecorations(cursorDecorationsRef.current, []);
+    }
+    cursorWidgetsRef.current.forEach(widget => {
+      try {
+        editor.removeContentWidget(widget);
+      } catch (e) {}
+    });
+    cursorWidgetsRef.current = [];
+
+    if (cursorsInCurrentFile.length === 0) return;
+
+    // Crear nuevas decoraciones para cada cursor remoto
+    const decorations = [];
+    cursorsInCurrentFile.forEach(([userId, cursor]) => {
+      const position = cursor.position;
+      if (!position || !position.lineNumber || !position.column) return;
+
+      // Decoración de línea vertical del cursor
+      decorations.push({
+        range: new monaco.Range(
+          position.lineNumber,
+          position.column,
+          position.lineNumber,
+          position.column
+        ),
+        options: {
+          className: `remote-cursor-line-${userId}`,
+          stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+          zIndex: 1000,
+        }
+      });
+
+      // Si hay selección, resaltarla
+      if (cursor.selection) {
+        const sel = cursor.selection;
+        decorations.push({
+          range: new monaco.Range(
+            sel.startLineNumber,
+            sel.startColumn,
+            sel.endLineNumber,
+            sel.endColumn
+          ),
+          options: {
+            className: `remote-selection-${userId}`,
+            stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+          }
+        });
+      }
+
+      // Crear widget flotante para la etiqueta del usuario (Content Widget)
+      const userLabel = {
+        getId: () => `remote-cursor-label-${userId}`,
+        getDomNode: () => {
+          const domNode = document.createElement('div');
+          domNode.className = 'remote-cursor-label-widget';
+          domNode.style.cssText = `
+            position: absolute;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1001;
+            background-color: ${cursor.userColor || '#888'};
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transform: translateY(-22px);
+            line-height: 1.2;
+          `;
+          domNode.textContent = cursor.userName || 'Usuario';
+          return domNode;
+        },
+        getPosition: () => ({
+          position: position,
+          preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE]
+        }),
+      };
+
+      editor.addContentWidget(userLabel);
+      cursorWidgetsRef.current.push(userLabel);
+    });
+
+    // Aplicar decoraciones
+    cursorDecorationsRef.current = editor.deltaDecorations([], decorations);
+
+    // Inyectar estilos CSS dinámicos para cursores y selecciones
+    const styleId = 'remote-cursor-styles';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    let css = `
+      @keyframes remote-cursor-blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0.4; }
+      }
+    `;
+
+    // Agregar estilos específicos por usuario
+    cursorsInCurrentFile.forEach(([userId, cursor]) => {
+      const color = cursor.userColor || '#888';
+      css += `
+        .remote-cursor-line-${userId} {
+          border-left: 2px solid ${color} !important;
+          animation: remote-cursor-blink 1.2s ease-in-out infinite;
+        }
+        .remote-selection-${userId} {
+          background-color: ${color}40 !important;
+          border: 1px solid ${color}80;
+        }
+      `;
+    });
+
+    styleEl.textContent = css;
+
+    // Cleanup al desmontar
+    return () => {
+      cursorWidgetsRef.current.forEach(widget => {
+        try {
+          editor.removeContentWidget(widget);
+        } catch (e) {}
+      });
+      cursorWidgetsRef.current = [];
+    };
+  }, [remoteCursors, activePath, isCollaborating]);
+
+  // 🎯 Registrar listener de movimiento de cursor dinámicamente
+  useEffect(() => {
+    if (!editorRef.current || !isCollaborating || !onCursorMove) {
+      console.log('⏸️ Listener de cursor NO registrado:', {
+        hasEditor: !!editorRef.current,
+        isCollaborating,
+        hasOnCursorMove: !!onCursorMove
+      });
+      return;
+    }
+
+    const editor = editorRef.current;
+    console.log('✅ Registrando listener de cursor para colaboración');
+
+    // Registrar evento de cambio de posición del cursor
+    const disposable = editor.onDidChangeCursorPosition((e) => {
+      // Limpiar timeout anterior
+      if (cursorMoveTimeoutRef.current) {
+        clearTimeout(cursorMoveTimeoutRef.current);
+      }
+
+      // Enviar posición después de 100ms de inactividad (debounce ligero)
+      cursorMoveTimeoutRef.current = setTimeout(() => {
+        const position = e.position;
+        const selection = editor.getSelection();
+
+        console.log('📍 Enviando posición de cursor:', {
+          filePath: activePath,
+          lineNumber: position.lineNumber,
+          column: position.column,
+          hasSelection: selection && !selection.isEmpty()
+        });
+
+        onCursorMove(activePath, {
+          lineNumber: position.lineNumber,
+          column: position.column
+        }, selection && !selection.isEmpty() ? {
+          startLineNumber: selection.startLineNumber,
+          startColumn: selection.startColumn,
+          endLineNumber: selection.endLineNumber,
+          endColumn: selection.endColumn
+        } : null);
+      }, 100);
+    });
+
+    // Cleanup: remover listener cuando cambie la dependencia
+    return () => {
+      console.log('🧹 Limpiando listener de cursor');
+      if (cursorMoveTimeoutRef.current) {
+        clearTimeout(cursorMoveTimeoutRef.current);
+      }
+      if (disposable) {
+        disposable.dispose();
+      }
+    };
+  }, [isCollaborating, onCursorMove, activePath]);
+
+  // 🔥 SOLUCIÓN 2: Detectar cambios remotos por timestamp
+  useEffect(() => {
+    if (activeFile?._remoteUpdate && editorRef.current && isCollaborating) {
+      console.log('🔥 CAMBIO REMOTO DETECTADO por _remoteUpdate flag');
+      console.log('🎨 Aplicando forzosamente al editor...');
+      
+      isApplyingRemoteChangeRef.current = true;
+      
+      const currentPosition = editorRef.current.getPosition();
+      editorRef.current.setValue(value || '');
+      
+      if (currentPosition) {
+        editorRef.current.setPosition(currentPosition);
+      }
+      
+      console.log('✅ Cambio remoto aplicado forzosamente');
+      
+      setTimeout(() => {
+        isApplyingRemoteChangeRef.current = false;
+      }, 50);
+    }
+  }, [activeFile?._lastModified, isCollaborating]);
+
   // Analizar proyecto para IntelliSense (con memoization)
   const projectData = useMemo(() => {
     return analyzeProject(projectFiles);
@@ -76,8 +306,131 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   }, []);
 
   const handleEditorChange = (value) => {
+    // Si estamos aplicando un cambio remoto, no propagar
+    if (isApplyingRemoteChangeRef.current) {
+      console.log('⏸️ Cambio remoto - no propagar');
+      return;
+    }
+
+    // Guardar cambio local inmediatamente
     onChange(value);
+
+    // DEBUG: Verificar estado de colaboración
+    console.log('📝 handleEditorChange:', {
+      isCollaborating,
+      hasOnRealtimeChange: !!onRealtimeChange,
+      activePath,
+      contentLength: value?.length
+    });
+
+    // Si estamos colaborando, enviar cambio en tiempo real con debounce corto
+    if (isCollaborating && onRealtimeChange) {
+      // Limpiar timeout anterior
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current);
+      }
+
+      // Enviar después de 150ms de inactividad (más rápido que Google Docs para mejor UX)
+      realtimeTimeoutRef.current = setTimeout(() => {
+        const editor = editorRef.current;
+        const position = editor?.getPosition();
+        
+        console.log('📡 ENVIANDO cambio en tiempo real:', {
+          filePath: activePath,
+          contentLength: value.length,
+          position
+        });
+        
+        onRealtimeChange({
+          filePath: activePath,
+          content: value,
+          cursorPosition: position ? {
+            lineNumber: position.lineNumber,
+            column: position.column
+          } : null
+        });
+      }, 150);
+    } else {
+      console.warn('⚠️ NO se enviará cambio:', {
+        isCollaborating,
+        hasCallback: !!onRealtimeChange
+      });
+    }
   };
+
+  // Aplicar cambios remotos cuando el value cambia desde colaboración
+  useEffect(() => {
+    console.log('🔄 useEffect [value] ejecutado:', {
+      isCollaborating,
+      hasEditor: !!editorRef.current,
+      valueLength: value?.length,
+      valueIsDefined: value !== undefined,
+      hasRemoteUpdate: !!activeFile?._remoteUpdate
+    });
+    
+    // 🔥 SOLUCIÓN 3: Si hay flag remoto, aplicar sin comparar
+    if (isCollaborating && editorRef.current && value !== undefined && activeFile?._remoteUpdate) {
+      console.log('🔥 APLICANDO CAMBIO REMOTO SIN COMPARAR (flag detectado)');
+      isApplyingRemoteChangeRef.current = true;
+      
+      const currentPosition = editorRef.current.getPosition();
+      editorRef.current.setValue(value);
+      
+      if (currentPosition) {
+        editorRef.current.setPosition(currentPosition);
+      }
+      
+      console.log('✅ setValue() ejecutado - cambio remoto aplicado');
+      
+      setTimeout(() => {
+        isApplyingRemoteChangeRef.current = false;
+      }, 50);
+      
+      return; // ← Salir temprano
+    }
+    
+    // Lógica normal para cambios locales
+    if (isCollaborating && editorRef.current && value !== undefined) {
+      const currentValue = editorRef.current.getValue();
+      
+      console.log('📊 Comparando valores:', {
+        currentValueLength: currentValue.length,
+        newValueLength: value.length,
+        areDifferent: currentValue !== value
+      });
+      
+      // Solo aplicar si el valor es diferente (viene de otro usuario)
+      if (currentValue !== value) {
+        console.log('🎨 APLICANDO CAMBIO VISUAL AL EDITOR MONACO');
+        isApplyingRemoteChangeRef.current = true;
+        
+        // Guardar posición actual del cursor
+        const currentPosition = editorRef.current.getPosition();
+        
+        // Aplicar el nuevo valor
+        editorRef.current.setValue(value);
+        console.log('✅ setValue() ejecutado - debería verse ahora');
+        
+        // Restaurar posición del cursor si es posible
+        if (currentPosition) {
+          editorRef.current.setPosition(currentPosition);
+        }
+        
+        // Resetear flag después de aplicar
+        setTimeout(() => {
+          isApplyingRemoteChangeRef.current = false;
+        }, 50);
+      } else {
+        console.log('⏸️ Valores idénticos - no aplicar');
+      }
+    } else {
+      console.warn('⚠️ NO se aplicará cambio visual:', {
+        isCollaborating,
+        hasEditor: !!editorRef.current,
+        valueUndefined: value === undefined
+      });
+    }
+  }, [value, isCollaborating, activeFile?._lastModified]);
 
   // Aplicar tema del editor cuando cambia currentTheme (evita quedarse en blanco o tema incorrecto)
   useEffect(() => {
@@ -326,6 +679,8 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       document.body.appendChild(notification);
       setTimeout(() => notification.remove(), 2000);
     });
+
+    // NOTA: El listener de cursor ahora está en un useEffect para que se active dinámicamente
 
     // Función auxiliar para obtener todas las rutas de archivos
     const getAllFilePaths = (files, basePath = '') => {
@@ -1033,6 +1388,15 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             dragAndDrop: true,
           }}
         />
+
+        {/* Indicador de usuarios escribiendo (estilo Google Docs) */}
+        {isCollaborating && (
+          <TypingIndicator 
+            typingUsers={typingUsers}
+            activePath={activePath}
+            remoteCursors={remoteCursors}
+          />
+        )}
       </div>
     )
   );

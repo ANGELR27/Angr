@@ -19,36 +19,84 @@ export function useCollaboration(files, onFilesChange) {
   const lastChangeTimestamp = useRef(0);
   const isApplyingRemoteChange = useRef(false);
   const typingTimers = useRef({}); // Timers para "escribiendo"
+  const fileVersionsRef = useRef({}); // Versiones por archivo
 
   useEffect(() => {
-    setIsConfigured(collaborationService.isConfigured());
+    console.log('🚀 useCollaboration: Inicializando...');
+    const isSupabaseConfigured = collaborationService.isConfigured();
+    setIsConfigured(isSupabaseConfigured);
+    console.log(`⚙️ Supabase configurado: ${isSupabaseConfigured}`);
     
     // Intentar restaurar sesión al cargar
     const restoreSession = async () => {
       try {
+        console.log('🔄 Iniciando proceso de restauración de sesión...');
         const restored = await collaborationService.restoreSessionFromStorage();
+        
         if (restored) {
+          console.log('✅ Sesión restaurada con éxito:', {
+            sessionId: restored.session.id,
+            userName: restored.user.name,
+            userRole: restored.user.role
+          });
+          
+          // Actualizar estados de React
+          console.log('📝 Actualizando estados de React...');
           setIsCollaborating(true);
           setCurrentSession(restored.session);
           setCurrentUser(restored.user);
           setActiveUsers([restored.user]);
+          console.log('✅ Estados de React actualizados');
           
-          console.log('🔄 Sesión restaurada automáticamente');
+          // Limpiar parámetro de URL si coincide con la sesión restaurada
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlSessionId = urlParams.get('session');
+          if (urlSessionId && urlSessionId === restored.session.id) {
+            urlParams.delete('session');
+            const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+            window.history.replaceState({}, '', newUrl);
+            console.log('🧹 URL limpiada después de restaurar sesión');
+          }
           
-          // Solicitar estado del proyecto si no eres el owner
+          // Restaurar archivos del proyecto desde localStorage
+          const storedFiles = localStorage.getItem('collaboration_project_files');
+          if (storedFiles) {
+            try {
+              const parsedFiles = JSON.parse(storedFiles);
+              const fileCount = Object.keys(parsedFiles).length;
+              console.log(`📁 Aplicando ${fileCount} archivos restaurados desde localStorage`);
+              onFilesChange(parsedFiles);
+              console.log('✅ Archivos aplicados al estado');
+            } catch (e) {
+              console.error('❌ Error al parsear archivos:', e);
+            }
+          } else {
+            console.log('ℹ️ No hay archivos guardados en localStorage');
+          }
+
+          // Si no eres owner, también solicitar estado actual por si hay cambios
           if (restored.user.role !== 'owner') {
+            console.log('👤 Usuario no es owner - solicitando archivos al owner...');
             setTimeout(async () => {
               await collaborationService.requestProjectState();
-            }, 1000);
+              console.log('📡 Solicitud de archivos enviada');
+            }, 1500);
+          } else {
+            console.log('👑 Usuario es owner - no necesita solicitar archivos');
           }
+          
+          console.log('🎉 PROCESO DE RESTAURACIÓN COMPLETADO');
+        } else {
+          console.log('ℹ️ No se encontró sesión para restaurar');
         }
       } catch (error) {
-        console.error('Error al restaurar sesión:', error);
+        console.error('❌ Error al restaurar sesión:', error);
+        console.error('Stack trace:', error.stack);
       }
     };
 
     restoreSession();
-  }, []);
+  }, [onFilesChange]);
 
   // Inicializar listeners
   useEffect(() => {
@@ -56,10 +104,36 @@ export function useCollaboration(files, onFilesChange) {
 
     // Listener para cambios de archivos
     collaborationService.on('fileChange', (payload) => {
+      console.log('📥 MENSAJE RECIBIDO de Supabase:', {
+        filePath: payload.filePath,
+        contentLength: payload.content?.length,
+        fromUser: payload.userName,
+        timestamp: payload.timestamp
+      });
+      
       // Evitar bucles de sincronización
-      if (isApplyingRemoteChange.current) return;
-      if (payload.timestamp <= lastChangeTimestamp.current) return;
+      if (isApplyingRemoteChange.current) {
+        console.log('⏸️ Aplicando cambio remoto - ignorar');
+        return;
+      }
+      // Control de versiones por archivo: ignorar si la versión es antigua
+      const currentVersion = fileVersionsRef.current[payload.filePath] || 0;
+      if (typeof payload.version === 'number') {
+        if (payload.version <= currentVersion) {
+          console.log('⏸️ Versión antigua - ignorar', { incoming: payload.version, currentVersion });
+          return;
+        }
+        // Aceptamos la nueva versión
+        fileVersionsRef.current[payload.filePath] = payload.version;
+      } else {
+        // Fallback a timestamp si no viene versión
+        if (payload.timestamp <= lastChangeTimestamp.current) {
+          console.log('⏸️ Timestamp antiguo - ignorar');
+          return;
+        }
+      }
 
+      console.log('✅ Aplicando cambio remoto al estado...');
       isApplyingRemoteChange.current = true;
       lastChangeTimestamp.current = payload.timestamp;
 
@@ -72,7 +146,9 @@ export function useCollaboration(files, onFilesChange) {
             ...obj,
             [path[0]]: {
               ...obj[path[0]],
-              content: newContent
+              content: newContent,
+              _lastModified: Date.now(), // ✨ FORZAR RE-RENDER
+              _remoteUpdate: true // ✨ MARCAR COMO CAMBIO REMOTO
             }
           };
         }
@@ -88,7 +164,9 @@ export function useCollaboration(files, onFilesChange) {
       };
 
       const updatedFiles = updateNestedFile(files, parts, payload.content);
+      console.log('🔄 Actualizando estado con timestamp:', Date.now());
       onFilesChange(updatedFiles);
+      console.log('🎉 Cambio aplicado exitosamente');
 
       setTimeout(() => {
         isApplyingRemoteChange.current = false;
@@ -141,16 +219,36 @@ export function useCollaboration(files, onFilesChange) {
 
     // Listener para movimiento de cursor
     collaborationService.on('cursorMove', (payload) => {
-      setRemoteCursors(prev => ({
-        ...prev,
-        [payload.userId]: {
-          userName: payload.userName,
-          userColor: payload.userColor,
-          filePath: payload.filePath,
-          position: payload.position,
-          selection: payload.selection,
-        }
-      }));
+      console.log('📍 Hook recibió cursor remoto:', {
+        userId: payload.userId,
+        userName: payload.userName,
+        filePath: payload.filePath,
+        position: payload.position
+      });
+      
+      const currentVersion = fileVersionsRef.current[payload.filePath] || 0;
+      if (typeof payload.version === 'number' && payload.version < currentVersion) {
+        // Cursor desfasado respecto al contenido local, ignorar
+        console.log('⏸️ Cursor con versión antigua - ignorar');
+        return;
+      }
+      
+      console.log('✅ Actualizando estado de remoteCursors');
+      setRemoteCursors(prev => {
+        const updated = {
+          ...prev,
+          [payload.userId]: {
+            userName: payload.userName,
+            userColor: payload.userColor,
+            filePath: payload.filePath,
+            position: payload.position,
+            selection: payload.selection,
+            version: payload.version,
+          }
+        };
+        console.log('📦 Nuevo estado de remoteCursors:', Object.keys(updated));
+        return updated;
+      });
     });
 
     // Listener para cambios de archivos - actualizar estado "escribiendo"
@@ -190,17 +288,32 @@ export function useCollaboration(files, onFilesChange) {
 
     // Listener para recibir estado del proyecto
     collaborationService.on('projectState', (payload) => {
-      console.log('📦 Recibiendo estado del proyecto:', payload);
+      console.log('📦 RECIBIENDO ESTADO DEL PROYECTO');
+      console.log('   - Archivos recibidos:', Object.keys(payload.files || {}));
+      console.log('   - Total archivos:', Object.keys(payload.files || {}).length);
+      console.log('   - De usuario:', payload.fromUserId);
       
       // Aplicar el estado recibido
-      if (payload.files) {
+      if (payload.files && Object.keys(payload.files).length > 0) {
+        console.log('✅ APLICANDO ARCHIVOS AL PROYECTO...');
         onFilesChange(payload.files);
+        // Reiniciar versiones conocidas (nuevo snapshot)
+        fileVersionsRef.current = {};
         
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('collaboration_project_files', JSON.stringify(payload.files));
+        console.log('💾 Archivos guardados localmente');
+        
+        // Mostrar notificación
         addNotification({
           type: 'project-synced',
-          message: 'Proyecto sincronizado correctamente',
+          message: `Proyecto sincronizado: ${Object.keys(payload.files).length} archivos`,
           userName: 'Sistema'
         });
+        
+        console.log('🎉 SINCRONIZACIÓN COMPLETA');
+      } else {
+        console.warn('⚠️ No se recibieron archivos o está vacío');
       }
     });
 
@@ -230,6 +343,7 @@ export function useCollaboration(files, onFilesChange) {
       
       // Guardar estado inicial del proyecto
       await collaborationService.setProjectState(files);
+      console.log('💾 Proyecto inicial guardado con archivos:', Object.keys(files));
       
       return result;
     } catch (error) {
@@ -254,11 +368,25 @@ export function useCollaboration(files, onFilesChange) {
       // Los demás usuarios se agregarán vía el listener 'userJoined'
       setActiveUsers([collaborationService.getCurrentUser()]);
       
-      // Solicitar el estado del proyecto al owner
-      setTimeout(async () => {
+      // Solicitar el estado del proyecto al owner inmediatamente
+      console.log('🔍 Buscando archivos del proyecto...');
+      
+      // Intentar varias veces para asegurar que recibimos los archivos
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      const requestFiles = async () => {
         await collaborationService.requestProjectState();
-        console.log('📡 Solicitando estado del proyecto...');
-      }, 1000); // Esperar 1 segundo para que el owner esté listo
+        console.log(`📡 Solicitud de archivos #${attempts + 1}`);
+        
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(requestFiles, 2000); // Reintentar cada 2 segundos
+        }
+      };
+      
+      // Primera solicitud después de 1 segundo
+      setTimeout(requestFiles, 1000);
       
       return result;
     } catch (error) {
@@ -273,15 +401,18 @@ export function useCollaboration(files, onFilesChange) {
 
     const timestamp = Date.now();
     lastChangeTimestamp.current = timestamp;
-    
-    await collaborationService.broadcastFileChange(filePath, content, cursorPosition);
+    // Incrementar versión por archivo y enviar
+    const nextVersion = (fileVersionsRef.current[filePath] || 0) + 1;
+    fileVersionsRef.current[filePath] = nextVersion;
+    await collaborationService.broadcastFileChange(filePath, content, cursorPosition, nextVersion);
   }, [isCollaborating]);
 
   // Transmitir movimiento de cursor
   const broadcastCursorMove = useCallback(async (filePath, position, selection) => {
     if (!isCollaborating) return;
     
-    await collaborationService.broadcastCursorMove(filePath, position, selection);
+    const version = fileVersionsRef.current[filePath] || 0;
+    await collaborationService.broadcastCursorMove(filePath, position, selection, version);
   }, [isCollaborating]);
 
   // Cambiar permisos de usuario
