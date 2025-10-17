@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { UserPlus, UserMinus, Eye, Edit, Crown } from 'lucide-react';
+import { UserPlus, UserMinus, Eye, Edit, Crown, RefreshCw } from 'lucide-react';
 
 /**
  * Componente de notificaciones de colaboración
@@ -30,6 +30,8 @@ export default function CollaborationNotification({ notification, onClose }) {
         return notification.newRole === 'owner' ? <Crown className="w-5 h-5" /> :
                notification.newRole === 'editor' ? <Edit className="w-5 h-5" /> :
                <Eye className="w-5 h-5" />;
+      case 'project-synced':
+        return <RefreshCw className="w-5 h-5" />;
       default:
         return <UserPlus className="w-5 h-5" />;
     }
@@ -43,6 +45,8 @@ export default function CollaborationNotification({ notification, onClose }) {
         return 'from-red-600 to-rose-600';
       case 'permission-changed':
         return 'from-blue-600 to-indigo-600';
+      case 'project-synced':
+        return 'from-cyan-600 to-blue-600';
       default:
         return 'from-purple-600 to-pink-600';
     }

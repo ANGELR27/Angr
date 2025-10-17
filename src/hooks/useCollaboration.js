@@ -162,6 +162,22 @@ export function useCollaboration(files, onFilesChange) {
       }
     });
 
+    // Listener para recibir estado del proyecto
+    collaborationService.on('projectState', (payload) => {
+      console.log('📦 Recibiendo estado del proyecto:', payload);
+      
+      // Aplicar el estado recibido
+      if (payload.files) {
+        onFilesChange(payload.files);
+        
+        addNotification({
+          type: 'project-synced',
+          message: 'Proyecto sincronizado correctamente',
+          userName: 'Sistema'
+        });
+      }
+    });
+
     return () => {
       // Cleanup listeners
     };
@@ -174,18 +190,27 @@ export function useCollaboration(files, onFilesChange) {
     }
 
     try {
-      const result = await collaborationService.createSession(sessionData);
+      // Pasar los archivos actuales a la sesión
+      const sessionWithFiles = {
+        ...sessionData,
+        files: files
+      };
+      
+      const result = await collaborationService.createSession(sessionWithFiles);
       setIsCollaborating(true);
       setCurrentSession(collaborationService.getCurrentSession());
       setCurrentUser(collaborationService.getCurrentUser());
       setActiveUsers([collaborationService.getCurrentUser()]);
+      
+      // Guardar estado inicial del proyecto
+      await collaborationService.setProjectState(files);
       
       return result;
     } catch (error) {
       console.error('Error al crear sesión:', error);
       throw error;
     }
-  }, [isConfigured]);
+  }, [isConfigured, files]);
 
   // Unirse a sesión existente
   const joinSession = useCallback(async (sessionId, userData) => {
@@ -202,6 +227,12 @@ export function useCollaboration(files, onFilesChange) {
       // IMPORTANTE: Inicializar con el usuario actual
       // Los demás usuarios se agregarán vía el listener 'userJoined'
       setActiveUsers([collaborationService.getCurrentUser()]);
+      
+      // Solicitar el estado del proyecto al owner
+      setTimeout(async () => {
+        await collaborationService.requestProjectState();
+        console.log('📡 Solicitando estado del proyecto...');
+      }, 1000); // Esperar 1 segundo para que el owner esté listo
       
       return result;
     } catch (error) {

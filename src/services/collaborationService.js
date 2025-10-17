@@ -18,6 +18,7 @@ class CollaborationService {
       onUserLeft: null,
       onCursorMove: null,
       onAccessChanged: null,
+      onProjectState: null,
     };
     
     // Inicializar solo si hay credenciales válidas
@@ -76,7 +77,8 @@ class CollaborationService {
       accessControl: sessionData.accessControl || 'public', // public, private, invite-only
       password: sessionData.password || null,
       createdAt: new Date().toISOString(),
-      files: {},
+      files: sessionData.files || {}, // Guardar estructura de archivos inicial
+      images: sessionData.images || [], // Guardar imágenes
     };
 
     // Conectar al canal de Supabase Realtime
@@ -220,6 +222,21 @@ class CollaborationService {
       }
     });
 
+    // Solicitud de sincronización de proyecto
+    this.channel.on('broadcast', { event: 'request-project-state' }, async (payload) => {
+      // Si soy el owner y alguien solicita el estado, lo envío
+      if (this.currentUser?.role === 'owner' && payload.payload.requesterId !== this.currentUser.id) {
+        await this.broadcastProjectState();
+      }
+    });
+
+    // Recibir el estado del proyecto
+    this.channel.on('broadcast', { event: 'project-state' }, (payload) => {
+      if (this.callbacks.onProjectState && payload.payload.fromUserId !== this.currentUser?.id) {
+        this.callbacks.onProjectState(payload.payload);
+      }
+    });
+
     // Suscribirse al canal
     await this.channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
@@ -308,6 +325,44 @@ class CollaborationService {
         userId: this.currentUser.id,
         userName: this.currentUser.name,
       },
+    });
+  }
+
+  // Guardar y transmitir el estado del proyecto
+  async setProjectState(files, images = []) {
+    if (!this.currentSession) return;
+    
+    this.currentSession.files = files;
+    this.currentSession.images = images;
+  }
+
+  // Solicitar el estado del proyecto (cuando te unes)
+  async requestProjectState() {
+    if (!this.channel || !this.currentUser) return;
+
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'request-project-state',
+      payload: {
+        requesterId: this.currentUser.id,
+        timestamp: Date.now()
+      }
+    });
+  }
+
+  // Transmitir el estado completo del proyecto (cuando eres owner)
+  async broadcastProjectState() {
+    if (!this.channel || !this.currentUser || !this.currentSession) return;
+
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'project-state',
+      payload: {
+        fromUserId: this.currentUser.id,
+        files: this.currentSession.files,
+        images: this.currentSession.images,
+        timestamp: Date.now()
+      }
     });
   }
 
