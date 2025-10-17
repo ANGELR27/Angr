@@ -1024,6 +1024,7 @@ function App() {
         onChangePermissions={changeUserPermissions}
         onLeaveSession={handleLeaveSession}
         remoteCursors={remoteCursors}
+        typingUsers={typingUsers}
         activeFile={activeTab}
       />
 

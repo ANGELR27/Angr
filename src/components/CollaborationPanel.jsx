@@ -8,15 +8,16 @@ import {
  * Panel de colaboración que muestra usuarios activos y control de acceso
  */
 export default function CollaborationPanel({ 
-  isOpen,
-  onClose,
-  currentUser,
-  activeUsers,
+  isOpen, 
+  onClose, 
+  activeUsers = [], 
+  currentUser, 
   currentSession,
+  remoteCursors = {},
+  typingUsers = {},
+  activeFile,
   onChangePermissions,
-  onLeaveSession,
-  remoteCursors,
-  activeFile
+  onLeaveSession 
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -177,6 +178,8 @@ export default function CollaborationPanel({
               const isCurrentUser = user.id === currentUser?.id;
               const userCursor = remoteCursors[user.id];
               const isInSameFile = userCursor?.filePath === activeFile;
+              const isTyping = typingUsers[user.id];
+              const typingFile = isTyping?.filePath;
 
               return (
                 <div
@@ -188,8 +191,14 @@ export default function CollaborationPanel({
                     style={{ backgroundColor: user.color }}
                   >
                     {user.name?.charAt(0).toUpperCase()}
-                    {isInSameFile && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1e1e1e]" />
+                    {isTyping && (
+                      <div 
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1e1e1e]"
+                        style={{ animation: 'pulse 1s infinite' }}
+                      />
+                    )}
+                    {!isTyping && isInSameFile && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-[#1e1e1e]" />
                     )}
                   </div>
                   
@@ -205,8 +214,18 @@ export default function CollaborationPanel({
                     <div className="flex items-center gap-1 text-xs text-gray-400">
                       {getRoleIcon(user.role)}
                       <span>{getRoleLabel(user.role)}</span>
-                      {isInSameFile && (
-                        <span className="text-green-400 ml-1">• Mismo archivo</span>
+                      {isTyping && (
+                        <span className="text-green-400 ml-1 animate-pulse">
+                          ✍️ Escribiendo{typingFile ? ` en ${typingFile.split('/').pop()}` : '...'}
+                        </span>
+                      )}
+                      {!isTyping && isInSameFile && (
+                        <span className="text-blue-400 ml-1">• Mismo archivo</span>
+                      )}
+                      {!isTyping && !isInSameFile && userCursor?.filePath && (
+                        <span className="text-gray-500 ml-1">
+                          👁️ {userCursor.filePath.split('/').pop()}
+                        </span>
                       )}
                     </div>
                   </div>
