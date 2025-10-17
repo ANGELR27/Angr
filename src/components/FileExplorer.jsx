@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FileCode2, Folder, FolderOpen, FileJson, Braces, Palette, Trash2, FileImage, Upload, Edit3, Plus, FolderPlus, File } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronRight, ChevronDown, FileCode2, Folder, FolderOpen, FileJson, Braces, Palette, Trash2, FileImage, Upload, Edit3, Plus, FolderPlus, File, FolderInput } from 'lucide-react';
 
 function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set(['components', 'examples']));
@@ -12,6 +12,10 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const [dragFileTypes, setDragFileTypes] = useState([]);
   const [isDraggingInternalToRoot, setIsDraggingInternalToRoot] = useState(false);
   const isLite = currentTheme === 'lite';
+  
+  // Referencias para inputs de archivo
+  const folderInputRef = useRef(null);
+  const filesInputRef = useRef(null);
 
   // Helpers de árbol
   const getChildrenOfPath = (tree, path) => {
@@ -169,8 +173,44 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     const rootChildren = getChildrenOfPath(files, null);
 
     const importedFiles = [];
+    const createdFolders = new Set();
+    
+    // Función para crear carpetas recursivamente
+    const ensureFolderPath = (folderPath) => {
+      if (!folderPath || createdFolders.has(folderPath)) return;
+      
+      const parts = folderPath.split('/');
+      let currentPath = '';
+      
+      for (const part of parts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        if (!createdFolders.has(currentPath)) {
+          const parentPath = currentPath.split('/').slice(0, -1).join('/') || null;
+          const folderName = part;
+          
+          // Verificar si la carpeta ya existe en files
+          const existingChildren = getChildrenOfPath(files, parentPath);
+          const exists = existingChildren.some(child => 
+            child.type === 'folder' && child.name === folderName
+          );
+          
+          if (!exists && onCreateFolder) {
+            onCreateFolder(folderName, parentPath);
+            createdFolders.add(currentPath);
+            // Expandir automáticamente las carpetas importadas
+            setExpandedFolders(prev => new Set([...prev, currentPath]));
+          }
+        }
+      }
+    };
+    
     const processFile = (file, targetPath = null) => {
       if (!file || !file.name) return;
+      
+      // Crear estructura de carpetas si es necesario
+      if (targetPath) {
+        ensureFolderPath(targetPath);
+      }
       
       // Detectar si es imagen por tipo MIME o extensión
       const isImage = (file.type && file.type.startsWith('image/')) || 
@@ -190,7 +230,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           }, targetPath);
         };
         reader.readAsDataURL(file);
-        importedFiles.push({ name: unique, type: 'imagen' });
+        importedFiles.push({ name: unique, type: 'imagen', path: targetPath });
       }
       // Soporte para archivos de texto (HTML, CSS, JS, etc.)
       else if (file.type.match(/text\/|application\/(javascript|json)/) || 
@@ -202,7 +242,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           onCreateFile && onCreateFile(unique, targetPath, event.target.result);
         };
         reader.readAsText(file);
-        importedFiles.push({ name: unique, type: 'código' });
+        importedFiles.push({ name: unique, type: 'código', path: targetPath });
       }
     };
 
@@ -222,7 +262,9 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               if (pending === 0 && importedFiles.length > 0) {
                 const images = importedFiles.filter(f => f.type === 'imagen').length;
                 const code = importedFiles.filter(f => f.type === 'código').length;
+                const folders = createdFolders.size;
                 let msg = '✅ Importados: ';
+                if (folders) msg += `${folders} carpeta${folders > 1 ? 's' : ''}, `;
                 if (images) msg += `${images} imagen${images > 1 ? 'es' : ''}`;
                 if (code) msg += `${images ? ', ' : ''}${code} archivo${code > 1 ? 's' : ''} de código`;
                 showToast(msg);
@@ -237,7 +279,9 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               if (pending === 0 && importedFiles.length > 0) {
                 const images = importedFiles.filter(f => f.type === 'imagen').length;
                 const code = importedFiles.filter(f => f.type === 'código').length;
+                const folders = createdFolders.size;
                 let msg = '✅ Importados: ';
+                if (folders) msg += `${folders} carpeta${folders > 1 ? 's' : ''}, `;
                 if (images) msg += `${images} imagen${images > 1 ? 'es' : ''}`;
                 if (code) msg += `${images ? ', ' : ''}${code} archivo${code > 1 ? 's' : ''} de código`;
                 showToast(msg);
@@ -270,6 +314,128 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     } else {
       showToast('⚠️ Nada para importar');
     }
+  };
+
+  // Importación manual de archivos/carpetas
+  const handleManualImport = (fileList) => {
+    if (!fileList || fileList.length === 0) {
+      showToast('⚠️ No se seleccionaron archivos');
+      return;
+    }
+
+    const importedFiles = [];
+    const createdFolders = new Set();
+    let processedCount = 0;
+    const totalFiles = fileList.length;
+    
+    // Función para crear carpetas recursivamente (con setTimeout para asegurar actualización)
+    const ensureFolderPath = (folderPath) => {
+      if (!folderPath || createdFolders.has(folderPath)) return;
+      
+      const parts = folderPath.split('/');
+      let currentPath = '';
+      
+      for (const part of parts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        if (!createdFolders.has(currentPath)) {
+          const parentPath = currentPath.split('/').slice(0, -1).join('/') || null;
+          const folderName = part;
+          
+          const existingChildren = getChildrenOfPath(files, parentPath);
+          const exists = existingChildren?.some(child => 
+            child.type === 'folder' && child.name === folderName
+          );
+          
+          if (!exists && onCreateFolder) {
+            setTimeout(() => {
+              onCreateFolder(folderName, parentPath);
+            }, 0);
+            createdFolders.add(currentPath);
+            setExpandedFolders(prev => new Set([...prev, currentPath]));
+          }
+        }
+      }
+    };
+
+    // Procesar cada archivo
+    Array.from(fileList).forEach((file, index) => {
+      // Extraer el path relativo del archivo si está disponible (webkitRelativePath)
+      const relativePath = file.webkitRelativePath || file.name;
+      const pathParts = relativePath.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+      const folderPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null;
+      
+      // Crear estructura de carpetas primero
+      if (folderPath) {
+        ensureFolderPath(folderPath);
+      }
+      
+      // Detectar si es imagen
+      const isImage = (file.type && file.type.startsWith('image/')) || 
+                      fileName.match(/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i);
+      
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setTimeout(() => {
+            const children = getChildrenOfPath(files, folderPath);
+            const unique = getUniqueName(fileName, children || {});
+            onAddImageFile && onAddImageFile({
+              name: unique,
+              data: event.target.result,
+              size: file.size,
+              type: file.type || 'image/png'
+            }, folderPath);
+          }, 50 * index); // Delay escalonado para evitar condiciones de carrera
+          importedFiles.push({ name: fileName, type: 'imagen' });
+          processedCount++;
+          if (processedCount === totalFiles) {
+            showImportSummary(importedFiles, createdFolders.size);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      // Archivos de código
+      else if (file.type.match(/text\/|application\/(javascript|json)/) || 
+               fileName.match(/\.(html|css|js|json|txt|md)$/i)) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setTimeout(() => {
+            const children = getChildrenOfPath(files, folderPath);
+            const unique = getUniqueName(fileName, children || {});
+            onCreateFile && onCreateFile(unique, folderPath, event.target.result);
+          }, 50 * index); // Delay escalonado
+          importedFiles.push({ name: fileName, type: 'código' });
+          processedCount++;
+          if (processedCount === totalFiles) {
+            showImportSummary(importedFiles, createdFolders.size);
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        processedCount++;
+        if (processedCount === totalFiles) {
+          showImportSummary(importedFiles, createdFolders.size);
+        }
+      }
+    });
+  };
+
+  // Función auxiliar para mostrar resumen de importación
+  const showImportSummary = (importedFiles, foldersCount) => {
+    setTimeout(() => {
+      if (importedFiles.length > 0) {
+        const images = importedFiles.filter(f => f.type === 'imagen').length;
+        const code = importedFiles.filter(f => f.type === 'código').length;
+        let msg = '✅ Importados: ';
+        if (foldersCount) msg += `${foldersCount} carpeta${foldersCount > 1 ? 's' : ''}, `;
+        if (images) msg += `${images} imagen${images > 1 ? 'es' : ''}`;
+        if (code) msg += `${images ? ', ' : ''}${code} archivo${code > 1 ? 's' : ''} de código`;
+        showToast(msg);
+      } else {
+        showToast('⚠️ No se pudo importar (formato no soportado)');
+      }
+    }, 200);
   };
 
   // Drag & drop interno
@@ -595,12 +761,16 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
                     )}
                   </>
                 ) : (
-                  'Archivos e imágenes'
+                  'Archivos, carpetas e imágenes'
                 )}
               </p>
             </div>
             
-            <div className="flex gap-2 text-xs" style={{color: 'var(--theme-text-muted)'}}>
+            <div className="flex gap-3 text-xs" style={{color: 'var(--theme-text-muted)'}}>
+              <div className="flex items-center gap-1">
+                <Folder className="w-3 h-3" />
+                <span>Carpetas</span>
+              </div>
               <div className="flex items-center gap-1">
                 <FileImage className="w-3 h-3" />
                 <span>Imágenes</span>
@@ -615,9 +785,75 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
       )}
       
       <div className="px-3 py-2 border-b border-border-color relative z-10">
-        <h2 className="text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--theme-secondary)'}}>
-          Explorador
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--theme-secondary)'}}>
+            Explorador
+          </h2>
+        </div>
+        
+        {/* Botones de importación manual - sutiles */}
+        <div className="flex gap-1 mt-2 justify-end">
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            className="p-1.5 rounded transition-all hover:scale-110"
+            style={{
+              backgroundColor: 'transparent',
+              color: isLite ? 'var(--theme-text-secondary)' : 'var(--theme-text-secondary)',
+              opacity: 0.6
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '1';
+              e.currentTarget.style.color = isLite ? 'var(--theme-secondary)' : '#a78bfa';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '0.6';
+              e.currentTarget.style.color = 'var(--theme-text-secondary)';
+            }}
+            title="Importar carpeta completa"
+          >
+            <FolderInput className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => filesInputRef.current?.click()}
+            className="p-1.5 rounded transition-all hover:scale-110"
+            style={{
+              backgroundColor: 'transparent',
+              color: isLite ? 'var(--theme-text-secondary)' : 'var(--theme-text-secondary)',
+              opacity: 0.6
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '1';
+              e.currentTarget.style.color = isLite ? 'var(--theme-secondary)' : '#a78bfa';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '0.6';
+              e.currentTarget.style.color = 'var(--theme-text-secondary)';
+            }}
+            title="Importar archivos"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+        </div>
+        
+        {/* Inputs ocultos para selección de archivos */}
+        <input
+          ref={folderInputRef}
+          type="file"
+          webkitdirectory=""
+          directory=""
+          multiple
+          onChange={(e) => handleManualImport(e.target.files)}
+          style={{ display: 'none' }}
+        />
+        <input
+          ref={filesInputRef}
+          type="file"
+          multiple
+          accept=".html,.css,.js,.json,.txt,.md,.png,.jpg,.jpeg,.gif,.svg,.webp,.bmp,.ico"
+          onChange={(e) => handleManualImport(e.target.files)}
+          style={{ display: 'none' }}
+        />
       </div>
       {importToast && (
         <div className="absolute bottom-3 left-3 right-3 z-50 flex justify-center animate-fade-in">
