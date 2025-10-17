@@ -11,6 +11,7 @@ import AutoSaveIndicator from './components/AutoSaveIndicator'
 import SessionManager from './components/SessionManager'
 import CollaborationPanel from './components/CollaborationPanel'
 import CollaborationBanner from './components/CollaborationBanner'
+import CollaborationNotification from './components/CollaborationNotification'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
 import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
@@ -238,6 +239,9 @@ function App() {
     broadcastCursorMove,
     changeUserPermissions,
     leaveSession,
+    notifications,
+    typingUsers,
+    removeNotification,
   } = useCollaboration(files, setFiles);
 
   // Aplicar tema cuando cambia
@@ -973,6 +977,15 @@ function App() {
         currentUser={currentUser}
         onOpenPanel={() => setShowCollaborationPanel(true)}
       />
+
+      {/* Notificaciones de colaboración */}
+      {notifications.map((notification) => (
+        <CollaborationNotification
+          key={notification.id}
+          notification={notification}
+          onClose={() => removeNotification(notification.id)}
+        />
+      ))}
       
       <ImageManager
         isOpen={showImageManager}

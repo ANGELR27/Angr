@@ -13,9 +13,12 @@ export function useCollaboration(files, onFilesChange) {
   const [currentUser, setCurrentUser] = useState(null);
   const [remoteCursors, setRemoteCursors] = useState({});
   const [isConfigured, setIsConfigured] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [typingUsers, setTypingUsers] = useState({}); // Usuarios escribiendo
   
   const lastChangeTimestamp = useRef(0);
   const isApplyingRemoteChange = useRef(false);
+  const typingTimers = useRef({}); // Timers para "escribiendo"
 
   useEffect(() => {
     setIsConfigured(collaborationService.isConfigured());
@@ -73,16 +76,41 @@ export function useCollaboration(files, onFilesChange) {
         if (prev.some(u => u.id === user.id)) return prev;
         return [...prev, user];
       });
+
+      // Agregar notificación
+      addNotification({
+        type: 'user-joined',
+        userName: user.name,
+        userColor: user.color,
+        message: 'se ha unido a la sesión'
+      });
     });
 
     // Listener para usuarios que se van
     collaborationService.on('userLeft', (data) => {
+      const user = activeUsers.find(u => u.id === data.userId);
+      
       setActiveUsers(prev => prev.filter(u => u.id !== data.userId));
       setRemoteCursors(prev => {
         const newCursors = { ...prev };
         delete newCursors[data.userId];
         return newCursors;
       });
+      setTypingUsers(prev => {
+        const newTyping = { ...prev };
+        delete newTyping[data.userId];
+        return newTyping;
+      });
+
+      // Agregar notificación
+      if (user) {
+        addNotification({
+          type: 'user-left',
+          userName: user.name,
+          userColor: user.color,
+          message: 'ha salido de la sesión'
+        });
+      }
     });
 
     // Listener para movimiento de cursor
@@ -97,6 +125,31 @@ export function useCollaboration(files, onFilesChange) {
           selection: payload.selection,
         }
       }));
+    });
+
+    // Listener para cambios de archivos - actualizar estado "escribiendo"
+    collaborationService.on('fileChange', (payload) => {
+      // Marcar que el usuario está escribiendo
+      setTypingUsers(prev => ({
+        ...prev,
+        [payload.userId]: {
+          filePath: payload.filePath,
+          timestamp: Date.now()
+        }
+      }));
+
+      // Limpiar después de 2 segundos
+      if (typingTimers.current[payload.userId]) {
+        clearTimeout(typingTimers.current[payload.userId]);
+      }
+      
+      typingTimers.current[payload.userId] = setTimeout(() => {
+        setTypingUsers(prev => {
+          const newTyping = { ...prev };
+          delete newTyping[payload.userId];
+          return newTyping;
+        });
+      }, 2000);
     });
 
     // Listener para cambios de acceso
@@ -181,6 +234,22 @@ export function useCollaboration(files, onFilesChange) {
     await collaborationService.changeUserPermissions(userId, newRole);
   }, [isCollaborating]);
 
+  // Agregar notificación
+  const addNotification = useCallback((notification) => {
+    const id = Date.now() + Math.random();
+    setNotifications(prev => [...prev, { ...notification, id }]);
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  }, []);
+
+  // Eliminar notificación
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   // Salir de la sesión
   const leaveSession = useCallback(async () => {
     await collaborationService.leaveSession();
@@ -189,6 +258,8 @@ export function useCollaboration(files, onFilesChange) {
     setCurrentSession(null);
     setCurrentUser(null);
     setRemoteCursors({});
+    setNotifications([]);
+    setTypingUsers({});
   }, []);
 
   return {
@@ -198,12 +269,15 @@ export function useCollaboration(files, onFilesChange) {
     currentUser,
     remoteCursors,
     isConfigured,
+    notifications,
+    typingUsers,
     createSession,
     joinSession,
     broadcastFileChange,
     broadcastCursorMove,
     changeUserPermissions,
     leaveSession,
+    removeNotification,
   };
 }
 
