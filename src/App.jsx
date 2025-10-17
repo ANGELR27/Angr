@@ -191,7 +191,7 @@ function App() {
     return loadFromStorage(STORAGE_KEYS.IMAGES, []);
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    return loadFromStorage(STORAGE_KEYS.SIDEBAR_WIDTH, 280);
+    return loadFromStorage(STORAGE_KEYS.SIDEBAR_WIDTH, 220);
   });
   const [previewWidth, setPreviewWidth] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.PREVIEW_WIDTH, 50);
@@ -941,8 +941,8 @@ function App() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Usar la posición absoluta del mouse, limitando entre 150px y 500px
-    const newWidth = Math.max(150, Math.min(500, e.clientX));
+    // Usar la posición absoluta del mouse, limitando entre 180px y 400px
+    const newWidth = Math.max(180, Math.min(400, e.clientX));
     setSidebarWidth(newWidth);
   };
 
@@ -1145,7 +1145,7 @@ function App() {
         {showSidebar && (
           <>
             <div 
-              style={{ width: `${sidebarWidth}px`, minWidth: '150px', maxWidth: '500px' }}
+              style={{ width: `${sidebarWidth}px`, minWidth: '180px', maxWidth: '400px' }}
               className="flex-shrink-0 shadow-blue-glow relative"
             >
               <FileExplorer 

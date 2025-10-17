@@ -586,21 +586,21 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'];
     
     if (imageExtensions.some(ext => fileName.endsWith(ext))) {
-      return <FileImage className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#f472b6'}} />;
+      return <FileImage className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#f472b6'}} />;
     }
     if (fileName.endsWith('.html')) {
-      return <FileCode2 className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#fb923c'}} />;
+      return <FileCode2 className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#fb923c'}} />;
     }
     if (fileName.endsWith('.css')) {
-      return <Palette className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#60a5fa'}} />;
+      return <Palette className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#60a5fa'}} />;
     }
     if (fileName.endsWith('.js')) {
-      return <Braces className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#facc15'}} />;
+      return <Braces className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#facc15'}} />;
     }
     if (fileName.endsWith('.json')) {
-      return <FileJson className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#4ade80'}} />;
+      return <FileJson className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#4ade80'}} />;
     }
-    return <FileCode2 className="w-4 h-4" style={{color: isLite ? 'var(--theme-secondary)' : '#9ca3af'}} />;
+    return <FileCode2 className="w-3.5 h-3.5" style={{color: isLite ? 'var(--theme-secondary)' : '#9ca3af'}} />;
   };
 
   const renderFileTree = (items, path = '') => {
@@ -784,56 +784,44 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         </div>
       )}
       
-      <div className="px-3 py-2 border-b border-border-color relative z-10">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--theme-secondary)'}}>
+      <div className="px-2 py-1.5 border-b border-border-color relative z-10">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide" style={{color: 'var(--theme-secondary)'}}>
             Explorador
           </h2>
-        </div>
-        
-        {/* Botones de importación manual - sutiles */}
-        <div className="flex gap-1 mt-2 justify-end">
-          <button
-            onClick={() => folderInputRef.current?.click()}
-            className="p-1.5 rounded transition-all hover:scale-110"
-            style={{
-              backgroundColor: 'transparent',
-              color: isLite ? 'var(--theme-text-secondary)' : 'var(--theme-text-secondary)',
-              opacity: 0.6
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1';
-              e.currentTarget.style.color = isLite ? 'var(--theme-secondary)' : '#a78bfa';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.6';
-              e.currentTarget.style.color = 'var(--theme-text-secondary)';
-            }}
-            title="Importar carpeta completa"
-          >
-            <FolderInput className="w-4 h-4" />
-          </button>
           
-          <button
-            onClick={() => filesInputRef.current?.click()}
-            className="p-1.5 rounded transition-all hover:scale-110"
-            style={{
-              backgroundColor: 'transparent',
-              color: isLite ? 'var(--theme-text-secondary)' : 'var(--theme-text-secondary)',
-              opacity: 0.6
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1';
-              e.currentTarget.style.color = isLite ? 'var(--theme-secondary)' : '#a78bfa';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.6';
-              e.currentTarget.style.color = 'var(--theme-text-secondary)';
-            }}
-            title="Importar archivos"
-          >
-            <Upload className="w-4 h-4" />
-          </button>
+          {/* Botones de importación - compactos y sutiles */}
+          <div className="flex gap-0.5">
+            <button
+              onClick={() => folderInputRef.current?.click()}
+              className="p-1 rounded transition-opacity"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--theme-text-muted)',
+                opacity: 0.5
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+              title="Importar carpeta"
+            >
+              <FolderInput className="w-3.5 h-3.5" />
+            </button>
+            
+            <button
+              onClick={() => filesInputRef.current?.click()}
+              className="p-1 rounded transition-opacity"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--theme-text-muted)',
+                opacity: 0.5
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+              title="Importar archivos"
+            >
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         
         {/* Inputs ocultos para selección de archivos */}
@@ -870,7 +858,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           </div>
         </div>
       )}
-      <div className="py-2 relative z-10">
+      <div className="py-1 relative z-10">
         {renderFileTree(files)}
       </div>
 
