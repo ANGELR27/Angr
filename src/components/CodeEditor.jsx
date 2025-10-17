@@ -125,18 +125,21 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           domNode.className = 'remote-cursor-label-widget';
           domNode.style.cssText = `
             position: absolute;
-            padding: 3px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
             font-size: 11px;
             font-weight: 600;
             color: white;
             white-space: nowrap;
             pointer-events: none;
             z-index: 1001;
-            background-color: ${cursor.userColor || '#888'};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transform: translateY(-22px);
-            line-height: 1.2;
+            background: ${cursor.userColor || '#888'};
+            box-shadow: 0 3px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.2);
+            transform: translateY(-24px);
+            line-height: 1.3;
+            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+            animation: cursorLabelFadeIn 0.2s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.2);
           `;
           domNode.textContent = cursor.userName || 'Usuario';
           return domNode;
@@ -165,8 +168,34 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
 
     let css = `
       @keyframes remote-cursor-blink {
-        0%, 49% { opacity: 1; }
-        50%, 100% { opacity: 0.4; }
+        0%, 49% { 
+          opacity: 1; 
+          transform: scaleY(1);
+        }
+        50%, 100% { 
+          opacity: 0.5; 
+          transform: scaleY(0.98);
+        }
+      }
+      
+      @keyframes cursorLabelFadeIn {
+        0% {
+          opacity: 0;
+          transform: translateY(-20px) scale(0.95);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(-24px) scale(1);
+        }
+      }
+      
+      @keyframes cursorPulse {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
       }
     `;
 
@@ -175,12 +204,31 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       const color = cursor.userColor || '#888';
       css += `
         .remote-cursor-line-${userId} {
-          border-left: 2px solid ${color} !important;
-          animation: remote-cursor-blink 1.2s ease-in-out infinite;
+          border-left: 3px solid ${color} !important;
+          animation: remote-cursor-blink 1s ease-in-out infinite;
+          transition: all 0.12s cubic-bezier(0.4, 0.0, 0.2, 1);
+          position: relative;
         }
+        
+        .remote-cursor-line-${userId}::before {
+          content: '';
+          position: absolute;
+          left: -5px;
+          top: -2px;
+          width: 8px;
+          height: 8px;
+          background: ${color};
+          border-radius: 50%;
+          animation: cursorPulse 2s ease-in-out infinite;
+          box-shadow: 0 0 6px ${color};
+        }
+        
         .remote-selection-${userId} {
-          background-color: ${color}40 !important;
-          border: 1px solid ${color}80;
+          background: linear-gradient(90deg, ${color}35 0%, ${color}25 100%) !important;
+          border: 1px solid ${color}90;
+          border-radius: 2px;
+          transition: all 0.15s ease;
+          box-shadow: inset 0 0 8px ${color}20;
         }
       `;
     });
@@ -219,7 +267,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         clearTimeout(cursorMoveTimeoutRef.current);
       }
 
-      // Enviar posición después de 100ms de inactividad (debounce ligero)
+      // Enviar posición después de 50ms (tiempo real ultra-rápido)
       cursorMoveTimeoutRef.current = setTimeout(() => {
         const position = e.position;
         const selection = editor.getSelection();
@@ -240,7 +288,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           endLineNumber: selection.endLineNumber,
           endColumn: selection.endColumn
         } : null);
-      }, 100);
+      }, 50);
     });
 
     // Cleanup: remover listener cuando cambie la dependencia
@@ -330,7 +378,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         clearTimeout(realtimeTimeoutRef.current);
       }
 
-      // Enviar después de 150ms de inactividad (más rápido que Google Docs para mejor UX)
+      // Enviar después de 100ms de inactividad (ultra-rápido para mejor UX)
       realtimeTimeoutRef.current = setTimeout(() => {
         const editor = editorRef.current;
         const position = editor?.getPosition();
@@ -349,7 +397,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             column: position.column
           } : null
         });
-      }, 150);
+      }, 100);
     } else {
       console.warn('⚠️ NO se enviará cambio:', {
         isCollaborating,

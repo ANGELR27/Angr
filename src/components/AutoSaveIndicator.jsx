@@ -23,7 +23,8 @@ function AutoSaveIndicator({ status = 'idle', currentTheme }) {
     }
   }, [status]);
 
-  if (!visible) return null;
+  // Solo mostrar en modo lite
+  if (!visible || !isLite) return null;
 
   const getIcon = () => {
     switch (status) {

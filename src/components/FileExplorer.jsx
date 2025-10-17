@@ -455,17 +455,18 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               onDragOver={(e) => onDragOverFolder(e, currentPath)}
               onDragLeave={(e) => onDragLeaveFolder(e, currentPath)}
               onDrop={(e) => onDropToFolder(e, currentPath)}
-              className={`flex items-center gap-2 cursor-pointer transition-all group rounded-sm mx-1 border relative ${
+              className={`flex items-center gap-2 cursor-pointer transition-all group relative ${
                 dragOverFolder === currentPath ? 'scale-105' : ''
               }`}
               style={{
                 padding: isLite ? '4px 6px' : '6px 12px',
+                paddingLeft: '12px',
                 backgroundColor: dragOverFolder === currentPath 
                   ? (isLite ? 'rgba(208, 252, 1, 0.15)' : 'rgba(139, 92, 246, 0.15)') 
                   : 'transparent',
-                borderColor: dragOverFolder === currentPath 
-                  ? (isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.6)') 
-                  : 'transparent',
+                borderLeft: dragOverFolder === currentPath 
+                  ? (isLite ? '3px solid var(--theme-secondary)' : '3px solid rgba(139, 92, 246, 0.6)') 
+                  : '3px solid transparent',
                 boxShadow: dragOverFolder === currentPath 
                   ? (isLite ? '0 0 15px rgba(208, 252, 1, 0.3)' : '0 0 15px rgba(139, 92, 246, 0.3)') 
                   : 'none'
@@ -500,14 +501,15 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           draggable
           onDragStart={(e) => onDragStartItem(e, currentPath)}
           onDragEnd={onDragEndItem}
-          className={`flex items-center gap-2 cursor-pointer transition-all group rounded-sm mx-1 border`}
+          className={`flex items-center gap-2 cursor-pointer transition-all group`}
           style={{
             padding: isLite ? '4px 6px' : '6px 12px',
+            paddingLeft: '12px',
             backgroundColor: isActive ? (isLite ? 'var(--theme-background-secondary)' : 'rgba(59,130,246,0.2)') : 'transparent',
-            borderColor: isActive ? (isLite ? 'var(--theme-border)' : 'rgba(59,130,246,0.4)') : 'transparent'
+            borderLeft: isActive ? (isLite ? '3px solid var(--theme-primary)' : '3px solid rgba(59,130,246,0.8)') : '3px solid transparent'
           }}
         >
-          <span className="ml-6">{getFileIcon(item.name)}</span>
+          <span className="ml-3">{getFileIcon(item.name)}</span>
           <span className="text-sm" style={{color: 'var(--theme-text)'}}>{item.name}</span>
         </div>
       );
@@ -516,7 +518,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
 
   return (
     <div 
-      className="w-64 h-full border-r overflow-y-auto relative" 
+      className="w-full h-full border-r overflow-y-auto relative" 
       style={{ backgroundColor: 'var(--theme-background-tertiary)', borderColor: 'var(--theme-border)' }}
       onClick={closeContextMenu}
       onDragEnter={handleDragEnter}

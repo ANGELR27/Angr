@@ -176,6 +176,7 @@ function App() {
   const [showTerminal, setShowTerminal] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.SHOW_TERMINAL, false);
   });
+  const [showSidebar, setShowSidebar] = useState(true);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [showImageManager, setShowImageManager] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -267,6 +268,12 @@ function App() {
   // Listener para atajos de teclado globales
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ctrl + B: Toggle Sidebar
+      if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setShowSidebar(prev => !prev);
+      }
+      
       // Ctrl + Shift + T: Toggle Theme Selector
       if ((e.metaKey && e.key.toLowerCase() === 't') || 
           (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't')) {
@@ -931,46 +938,77 @@ function App() {
   // Handlers para redimensionar paneles
   const handleSidebarResize = (e) => {
     if (!isResizingSidebar.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Usar la posición absoluta del mouse, limitando entre 150px y 500px
     const newWidth = Math.max(150, Math.min(500, e.clientX));
     setSidebarWidth(newWidth);
   };
 
   const handlePreviewResize = (e) => {
     if (!isResizingPreview.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
     const container = document.querySelector('.editor-preview-container');
     if (!container) return;
     const containerRect = container.getBoundingClientRect();
-    const mouseX = e.clientX - containerRect.left;
+    
+    // Calcular posición del mouse relativa al contenedor
+    const mouseX = Math.max(0, Math.min(containerRect.width, e.clientX - containerRect.left));
+    
+    // Calcular porcentaje del preview (desde el mouse hasta el final)
     const newPreviewWidth = ((containerRect.width - mouseX) / containerRect.width) * 100;
-    setPreviewWidth(Math.max(20, Math.min(80, newPreviewWidth)));
+    
+    // Aplicar límites más suaves
+    setPreviewWidth(Math.max(15, Math.min(85, newPreviewWidth)));
   };
 
   const handleTerminalResize = (e) => {
     if (!isResizingTerminal.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
     const container = document.querySelector('.main-content-area');
     if (!container) return;
     const containerRect = container.getBoundingClientRect();
-    const newHeight = containerRect.bottom - e.clientY;
+    
+    // Calcular altura desde la posición del mouse hasta el borde inferior
+    const mouseY = Math.max(containerRect.top, Math.min(containerRect.bottom, e.clientY));
+    const newHeight = containerRect.bottom - mouseY;
+    
+    // Aplicar límites
     setTerminalHeight(Math.max(100, Math.min(600, newHeight)));
   };
 
   const handleMouseUp = () => {
-    isResizingSidebar.current = false;
-    isResizingPreview.current = false;
-    isResizingTerminal.current = false;
-    document.body.style.cursor = 'default';
-    document.body.style.userSelect = 'auto';
+    if (isResizingSidebar.current || isResizingPreview.current || isResizingTerminal.current) {
+      isResizingSidebar.current = false;
+      isResizingPreview.current = false;
+      isResizingTerminal.current = false;
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    }
+  };
+
+  // Toggle sidebar al hacer clic en el editor
+  const handleToggleSidebar = () => {
+    setShowSidebar(prev => !prev);
+  };
+
+  // Handler combinado de mousemove para mejor performance
+  const handleMouseMove = (e) => {
+    handleSidebarResize(e);
+    handlePreviewResize(e);
+    handleTerminalResize(e);
   };
 
   useEffect(() => {
-    document.addEventListener('mousemove', handleSidebarResize);
-    document.addEventListener('mousemove', handlePreviewResize);
-    document.addEventListener('mousemove', handleTerminalResize);
+    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleSidebarResize);
-      document.removeEventListener('mousemove', handlePreviewResize);
-      document.removeEventListener('mousemove', handleTerminalResize);
+      document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
@@ -1104,37 +1142,41 @@ function App() {
       
       <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Sidebar con FileExplorer */}
-        <div 
-          style={{ width: `${sidebarWidth}px`, minWidth: '150px', maxWidth: '500px' }}
-          className="flex-shrink-0 shadow-blue-glow relative"
-        >
-          <FileExplorer 
-            files={files} 
-            onFileSelect={handleFileSelect}
-            activeFile={activeTab}
-            onDeleteFile={handleDeleteFile}
-            onAddImageFile={handleAddImageFile}
-            onRenameFile={handleRenameFile}
-            onMoveItem={handleMoveItem}
-            onCreateFile={handleNewFile}
-            onCreateFolder={handleNewFolder}
-            currentTheme={currentTheme}
-          />
-        </div>
-        
-        {/* Resize handle para sidebar */}
-        <div
-          className="w-1 bg-border-color cursor-col-resize resize-handle transition-colors shadow-blue-glow"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3))'
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            isResizingSidebar.current = true;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-          }}
-        />
+        {showSidebar && (
+          <>
+            <div 
+              style={{ width: `${sidebarWidth}px`, minWidth: '150px', maxWidth: '500px' }}
+              className="flex-shrink-0 shadow-blue-glow relative"
+            >
+              <FileExplorer 
+                files={files} 
+                onFileSelect={handleFileSelect}
+                activeFile={activeTab}
+                onDeleteFile={handleDeleteFile}
+                onAddImageFile={handleAddImageFile}
+                onRenameFile={handleRenameFile}
+                onMoveItem={handleMoveItem}
+                onCreateFile={handleNewFile}
+                onCreateFolder={handleNewFolder}
+                currentTheme={currentTheme}
+              />
+            </div>
+            
+            {/* Resize handle para sidebar */}
+            <div
+              className="w-1 bg-border-color cursor-col-resize resize-handle transition-colors shadow-blue-glow"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3))'
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                isResizingSidebar.current = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+              }}
+            />
+          </>
+        )}
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <div className="flex-1 flex flex-col overflow-hidden main-content-area">
@@ -1146,8 +1188,28 @@ function App() {
             >
               <div 
                 style={{ width: showPreview ? `${100 - previewWidth}%` : '100%' }}
-                className="flex-shrink-0 shadow-mixed-glow overflow-hidden"
+                className="flex-shrink-0 shadow-mixed-glow overflow-hidden relative"
               >
+                {/* Botón toggle sidebar */}
+                {!showSidebar && (
+                  <button
+                    onClick={handleToggleSidebar}
+                    className="absolute top-2 left-2 z-50 p-2 rounded-md transition-all hover:scale-110"
+                    style={{
+                      backgroundColor: 'var(--theme-background-secondary)',
+                      border: '1px solid var(--theme-border)',
+                      color: 'var(--theme-primary)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                    }}
+                    title="Mostrar sidebar (Ctrl+B)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                  </button>
+                )}
+                
                 <CodeEditor
                   value={activeFile?.content || ''}
                   language={activeFile?.language || 'plaintext'}
