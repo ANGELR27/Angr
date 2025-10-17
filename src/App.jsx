@@ -1164,9 +1164,9 @@ function App() {
             
             {/* Resize handle para sidebar */}
             <div
-              className="w-1 bg-border-color cursor-col-resize resize-handle transition-colors shadow-blue-glow"
+              className="w-px bg-border-color cursor-col-resize resize-handle transition-colors"
               style={{
-                background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3))'
+                background: 'rgba(59, 130, 246, 0.15)'
               }}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -1234,9 +1234,9 @@ function App() {
                 <>
                   {/* Resize handle para preview */}
                   <div
-                    className="w-1 cursor-col-resize resize-handle transition-colors shadow-yellow-glow flex-shrink-0"
+                    className="w-px cursor-col-resize resize-handle transition-colors flex-shrink-0"
                     style={{
-                      background: 'linear-gradient(to bottom, rgba(234, 179, 8, 0.3), rgba(59, 130, 246, 0.3))'
+                      background: 'rgba(234, 179, 8, 0.15)'
                     }}
                     onMouseDown={(e) => {
                       e.preventDefault();
@@ -1265,9 +1265,9 @@ function App() {
               <>
                 {/* Resize handle para terminal */}
                 <div
-                  className="h-1 cursor-row-resize resize-handle transition-colors shadow-mixed-glow flex-shrink-0"
+                  className="h-px cursor-row-resize resize-handle transition-colors flex-shrink-0"
                   style={{
-                    background: 'linear-gradient(to right, rgba(59, 130, 246, 0.3), rgba(234, 179, 8, 0.3), rgba(147, 51, 234, 0.3))'
+                    background: 'rgba(59, 130, 246, 0.15)'
                   }}
                   onMouseDown={(e) => {
                     e.preventDefault();

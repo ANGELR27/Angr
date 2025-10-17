@@ -6,7 +6,6 @@ import {
   Code2,
   Terminal,
   Image,
-  Save,
   RotateCcw,
   Keyboard,
   ChevronDown,
@@ -19,7 +18,7 @@ import {
   FileJson,
   Users,
 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { validateFileName, sanitizeFileName } from "../utils/validation";
 
 function TopBar({
@@ -45,16 +44,8 @@ function TopBar({
   collaborationUsers,
 }) {
   const imageInputRef = useRef(null);
-  const [showSaved, setShowSaved] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const isLite = currentTheme === "lite";
-
-  // Mostrar indicador de guardado
-  useEffect(() => {
-    setShowSaved(true);
-    const timer = setTimeout(() => setShowSaved(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleNewFile = () => {
     const fileName = prompt(
@@ -197,21 +188,6 @@ function TopBar({
         >
           Code Editor
         </span>
-
-        {!isLite && (
-          <div className="flex items-center gap-1" style={{ opacity: 0.85 }}>
-            <Save
-              className="w-3 h-3"
-              style={{ color: "var(--theme-secondary)" }}
-            />
-            <span
-              className="text-xs"
-              style={{ color: "var(--theme-text-secondary)" }}
-            >
-              Auto-guardado
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Sección central - Pestañas */}
