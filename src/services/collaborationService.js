@@ -87,6 +87,9 @@ class CollaborationService {
     // Anunciar que el creador está en línea (útil para cuando otros se unan después)
     await this.broadcastUserJoined();
 
+    // Guardar sesión en localStorage para persistencia
+    this.saveSessionToStorage();
+
     // Intentar obtener la URL pública de ngrok
     let publicUrl = window.location.origin;
     
@@ -150,6 +153,9 @@ class CollaborationService {
 
     // Notificar que el usuario se unió
     await this.broadcastUserJoined();
+
+    // Guardar sesión en localStorage para persistencia
+    this.saveSessionToStorage();
 
     return { userId, sessionId };
   }
@@ -400,27 +406,89 @@ class CollaborationService {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  // Obtener usuarios activos en la sesión
-  getActiveUsers() {
-    if (!this.channel) return [];
-    const state = this.channel.presenceState();
-    return Object.values(state).flat();
+  // Guardar sesión en localStorage
+  saveSessionToStorage() {
+    if (!this.currentSession || !this.currentUser) return;
+
+    const sessionData = {
+      session: {
+        id: this.currentSession.id,
+        name: this.currentSession.name,
+        owner: this.currentSession.owner,
+        accessControl: this.currentSession.accessControl,
+      },
+      user: {
+        id: this.currentUser.id,
+        name: this.currentUser.name,
+        color: this.currentUser.color,
+        role: this.currentUser.role,
+      },
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem('collaboration_session', JSON.stringify(sessionData));
+  }
+
+  // Restaurar sesión desde localStorage
+  async restoreSessionFromStorage() {
+    try {
+      const stored = localStorage.getItem('collaboration_session');
+      if (!stored) return null;
+
+      const sessionData = JSON.parse(stored);
+      
+      // Verificar que no haya expirado (máximo 24 horas)
+      const maxAge = 24 * 60 * 60 * 1000;
+      if (Date.now() - sessionData.timestamp > maxAge) {
+        localStorage.removeItem('collaboration_session');
+        return null;
+      }
+
+      // Restaurar estado
+      this.currentSession = sessionData.session;
+      this.currentUser = sessionData.user;
+
+      // Reconectar al canal
+      await this.connectToChannel(sessionData.session.id);
+      
+      // Anunciar que volvimos
+      await this.broadcastUserJoined();
+
+      console.log('✅ Sesión restaurada correctamente');
+      return {
+        session: this.currentSession,
+        user: this.currentUser
+      };
+    } catch (error) {
+      console.error('Error al restaurar sesión:', error);
+      localStorage.removeItem('collaboration_session');
+      return null;
+    }
+  }
+
+  // Limpiar sesión del storage
+  clearSessionStorage() {
+    localStorage.removeItem('collaboration_session');
   }
 
   // Salir de la sesión
   async leaveSession() {
     if (this.channel) {
-      await this.broadcastUserLeft();
-      await this.supabase.removeChannel(this.channel);
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'user-left',
+        payload: {
+          userId: this.currentUser.id,
+          userName: this.currentUser.name,
+        },
+      });
+      await this.channel.unsubscribe();
       this.channel = null;
     }
+
     this.currentSession = null;
     this.currentUser = null;
-  }
-
-  // Verificar si Supabase está configurado
-  isConfigured() {
-    return this.supabase !== null;
+    this.clearSessionStorage();
   }
 
   // Obtener información de la sesión actual
@@ -431,6 +499,11 @@ class CollaborationService {
   // Obtener información del usuario actual
   getCurrentUser() {
     return this.currentUser;
+  }
+
+  // Verificar si Supabase está configurado
+  isConfigured() {
+    return this.supabase !== null;
   }
 }
 

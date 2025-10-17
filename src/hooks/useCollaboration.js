@@ -22,6 +22,32 @@ export function useCollaboration(files, onFilesChange) {
 
   useEffect(() => {
     setIsConfigured(collaborationService.isConfigured());
+    
+    // Intentar restaurar sesión al cargar
+    const restoreSession = async () => {
+      try {
+        const restored = await collaborationService.restoreSessionFromStorage();
+        if (restored) {
+          setIsCollaborating(true);
+          setCurrentSession(restored.session);
+          setCurrentUser(restored.user);
+          setActiveUsers([restored.user]);
+          
+          console.log('🔄 Sesión restaurada automáticamente');
+          
+          // Solicitar estado del proyecto si no eres el owner
+          if (restored.user.role !== 'owner') {
+            setTimeout(async () => {
+              await collaborationService.requestProjectState();
+            }, 1000);
+          }
+        }
+      } catch (error) {
+        console.error('Error al restaurar sesión:', error);
+      }
+    };
+
+    restoreSession();
   }, []);
 
   // Inicializar listeners
