@@ -19,7 +19,28 @@ class CollaborationService {
       onCursorMove: null,
       onAccessChanged: null,
       onProjectState: null,
+      onConnectionStatusChange: null,
     };
+    
+    // 🚀 Sistema robusto de reconexión
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000;
+    this.isReconnecting = false;
+    this.connectionStatus = 'disconnected'; // disconnected, connecting, connected
+    
+    // 🔄 Buffer para cambios offline
+    this.offlineBuffer = [];
+    this.maxBufferSize = 100;
+    
+    // 💓 Heartbeat para detectar desconexiones
+    this.heartbeatInterval = null;
+    this.heartbeatFrequency = 30000; // 30 segundos
+    this.lastHeartbeat = Date.now();
+    
+    // 🎯 Control de cambios duplicados mejorado
+    this.processedMessages = new Set();
+    this.messageExpirationTime = 60000; // 1 minuto
     
     // Inicializar solo si hay credenciales válidas
     if (SUPABASE_URL !== 'https://tu-proyecto.supabase.co' && SUPABASE_ANON_KEY !== 'tu-anon-key-aqui') {
@@ -29,9 +50,19 @@ class CollaborationService {
 
   initializeSupabase() {
     try {
-      this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        realtime: {
+          params: {
+            eventsPerSecond: 100, // Mayor throughput
+          },
+        },
+        auth: {
+          persistSession: false,
+        },
+      });
+      console.log('✅ Supabase inicializado con configuración optimizada');
     } catch (error) {
-      console.error('Error al inicializar Supabase:', error);
+      console.error('❌ Error al inicializar Supabase:', error);
     }
   }
 
@@ -160,9 +191,19 @@ class CollaborationService {
     return { userId, sessionId };
   }
 
-  // Conectar al canal de Supabase Realtime
+  // 🚀 Conectar al canal con reconexión automática
   async connectToChannel(sessionId) {
     if (!this.supabase) return;
+
+    // Actualizar estado de conexión
+    this.connectionStatus = 'connecting';
+    if (this.callbacks.onConnectionStatusChange) {
+      this.callbacks.onConnectionStatusChange({
+        status: 'connecting',
+        previousStatus: this.connectionStatus,
+        reconnectAttempts: this.reconnectAttempts,
+      });
+    }
 
     this.channel = this.supabase.channel(`session:${sessionId}`, {
       config: {
@@ -171,25 +212,35 @@ class CollaborationService {
       },
     });
 
-    // Escuchar cambios en archivos
+    // Escuchar cambios en archivos (con detección de duplicados)
     this.channel.on('broadcast', { event: 'file-change' }, (payload) => {
+      const data = payload.payload;
+      
       console.log('🎯 Supabase broadcast recibido:', {
         event: 'file-change',
-        fromUserId: payload.payload.userId,
+        messageId: data.messageId,
+        fromUserId: data.userId,
         currentUserId: this.currentUser?.id,
-        isSameUser: payload.payload.userId === this.currentUser?.id,
-        filePath: payload.payload.filePath,
+        isSameUser: data.userId === this.currentUser?.id,
+        filePath: data.filePath,
         hasCallback: !!this.callbacks.onFileChange
       });
       
-      if (payload.payload.userId === this.currentUser?.id) {
+      // Ignorar mensajes propios
+      if (data.userId === this.currentUser?.id) {
         console.log('⏸️ Es mi propio mensaje - ignorar');
+        return;
+      }
+      
+      // Detectar y evitar duplicados
+      if (data.messageId && this.isMessageProcessed(data.messageId)) {
+        console.log('⏸️ Mensaje duplicado detectado - ignorar');
         return;
       }
       
       if (this.callbacks.onFileChange) {
         console.log('📞 Llamando callback onFileChange...');
-        this.callbacks.onFileChange(payload.payload);
+        this.callbacks.onFileChange(data);
       } else {
         console.warn('⚠️ No hay callback registrado para onFileChange');
       }
@@ -270,10 +321,48 @@ class CollaborationService {
       }
     });
 
-    // Suscribirse al canal
+    // Suscribirse al canal con manejo de estados
     await this.channel.subscribe((status) => {
+      console.log('📡 Estado de conexión:', status);
+      
       if (status === 'SUBSCRIBED') {
         console.log('✅ Conectado a la sesión colaborativa');
+        this.connectionStatus = 'connected';
+        this.reconnectAttempts = 0;
+        
+        if (this.callbacks.onConnectionStatusChange) {
+          this.callbacks.onConnectionStatusChange({
+            status: 'connected',
+            previousStatus: this.connectionStatus,
+            reconnectAttempts: 0,
+          });
+        }
+        
+        if (this.startHeartbeat) this.startHeartbeat();
+        if (this.flushOfflineBuffer) this.flushOfflineBuffer();
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('❌ Error en el canal');
+        this.connectionStatus = 'disconnected';
+        
+        if (this.callbacks.onConnectionStatusChange) {
+          this.callbacks.onConnectionStatusChange({
+            status: 'disconnected',
+            previousStatus: 'connected',
+            reconnectAttempts: this.reconnectAttempts,
+          });
+        }
+        
+        if (this.attemptReconnection) this.attemptReconnection(sessionId);
+      } else if (status === 'TIMED_OUT') {
+        console.warn('⏰ Timeout de conexión');
+        this.connectionStatus = 'disconnected';
+        
+        if (this.attemptReconnection) this.attemptReconnection(sessionId);
+      } else if (status === 'CLOSED') {
+        console.warn('🔌 Canal cerrado');
+        this.connectionStatus = 'disconnected';
+        
+        if (this.stopHeartbeat) this.stopHeartbeat();
       }
     });
 
@@ -286,45 +375,227 @@ class CollaborationService {
     return this.channel;
   }
 
-  // Transmitir cambio en archivo
+  // 🚀 Actualizar estado de conexión
+  updateConnectionStatus(status) {
+    const previousStatus = this.connectionStatus;
+    this.connectionStatus = status;
+    
+    console.log(`📡 Conexión: ${previousStatus} → ${status}`);
+    
+    if (this.callbacks.onConnectionStatusChange) {
+      this.callbacks.onConnectionStatusChange({
+        status,
+        previousStatus,
+        reconnectAttempts: this.reconnectAttempts,
+      });
+    }
+  }
+
+  // 🔄 Intentar reconexión automática
+  async attemptReconnection(sessionId) {
+    if (this.isReconnecting || this.reconnectAttempts >= this.maxReconnectAttempts) {
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('❌ Máximo de intentos de reconexión alcanzado');
+        this.connectionStatus = 'failed';
+        
+        if (this.callbacks.onConnectionStatusChange) {
+          this.callbacks.onConnectionStatusChange({
+            status: 'failed',
+            previousStatus: 'disconnected',
+            reconnectAttempts: this.reconnectAttempts,
+          });
+        }
+      }
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+    
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
+    console.log(`🔄 Intento de reconexión ${this.reconnectAttempts}/${this.maxReconnectAttempts} en ${delay}ms...`);
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    try {
+      // Desconectar canal anterior
+      if (this.channel) {
+        await this.channel.unsubscribe();
+        this.channel = null;
+      }
+      
+      // Reconectar
+      await this.connectToChannel(sessionId);
+      
+      // Reenviar información de usuario
+      if (this.currentUser) {
+        await this.broadcastUserJoined();
+      }
+      
+      console.log('✅ Reconexión exitosa');
+    } catch (error) {
+      console.error('❌ Error en reconexión:', error);
+      this.isReconnecting = false;
+      this.attemptReconnection(sessionId);
+    }
+    
+    this.isReconnecting = false;
+  }
+
+  // 💓 Iniciar heartbeat para detectar desconexiones
+  startHeartbeat() {
+    if (this.stopHeartbeat) this.stopHeartbeat(); // Limpiar cualquier heartbeat previo
+    
+    this.heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastHeartbeat = now - this.lastHeartbeat;
+      
+      if (timeSinceLastHeartbeat > this.heartbeatFrequency * 2) {
+        console.warn('⚠️ Heartbeat perdido - posible desconexión');
+        this.connectionStatus = 'unstable';
+        
+        if (this.callbacks.onConnectionStatusChange) {
+          this.callbacks.onConnectionStatusChange({
+            status: 'unstable',
+            previousStatus: 'connected',
+            reconnectAttempts: this.reconnectAttempts,
+          });
+        }
+      }
+      
+      // Enviar heartbeat
+      if (this.channel && this.currentUser) {
+        this.channel.send({
+          type: 'broadcast',
+          event: 'heartbeat',
+          payload: {
+            userId: this.currentUser.id,
+            timestamp: now,
+          },
+        }).then(() => {
+          this.lastHeartbeat = now;
+        }).catch((error) => {
+          console.error('❌ Error al enviar heartbeat:', error);
+        });
+      }
+    }, this.heartbeatFrequency);
+    
+    console.log('💓 Heartbeat iniciado');
+  }
+
+  // 🛑 Detener heartbeat
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+      console.log('🛑 Heartbeat detenido');
+    }
+  }
+
+  // 📦 Vaciar buffer de cambios offline
+  async flushOfflineBuffer() {
+    if (this.offlineBuffer.length === 0) return;
+    
+    console.log(`📤 Enviando ${this.offlineBuffer.length} cambios del buffer offline...`);
+    
+    const buffer = [...this.offlineBuffer];
+    this.offlineBuffer = [];
+    
+    for (const message of buffer) {
+      try {
+        await this.channel.send(message);
+        await new Promise(resolve => setTimeout(resolve, 50)); // Pequeño delay entre mensajes
+      } catch (error) {
+        console.error('❌ Error al enviar mensaje del buffer:', error);
+        // Volver a agregar al buffer si falla
+        if (this.offlineBuffer.length < this.maxBufferSize) {
+          this.offlineBuffer.push(message);
+        }
+      }
+    }
+    
+    console.log('✅ Buffer offline vaciado');
+  }
+
+  // 🎯 Verificar si un mensaje ya fue procesado (evitar duplicados)
+  isMessageProcessed(messageId) {
+    if (this.processedMessages.has(messageId)) {
+      return true;
+    }
+    
+    this.processedMessages.add(messageId);
+    
+    // Limpiar mensajes antiguos
+    if (this.processedMessages.size > 1000) {
+      const messagesToDelete = Array.from(this.processedMessages).slice(0, 500);
+      messagesToDelete.forEach(id => this.processedMessages.delete(id));
+    }
+    
+    return false;
+  }
+
+  // 🚀 Transmitir cambio en archivo (mejorado con buffer offline)
   async broadcastFileChange(filePath, content, cursorPosition, version) {
     console.log('📡 broadcastFileChange llamado:', {
       hasChannel: !!this.channel,
       hasUser: !!this.currentUser,
       filePath,
-      contentLength: content?.length
+      contentLength: content?.length,
+      connectionStatus: this.connectionStatus
     });
     
-    if (!this.channel || !this.currentUser) {
-      console.error('❌ NO se puede enviar - falta channel o usuario:', {
-        hasChannel: !!this.channel,
-        hasUser: !!this.currentUser
-      });
+    if (!this.currentUser) {
+      console.error('❌ NO se puede enviar - falta usuario');
       return;
     }
 
-    const payload = {
-      userId: this.currentUser.id,
-      userName: this.currentUser.name,
-      userColor: this.currentUser.color,
-      filePath,
-      content,
-      cursorPosition,
-      version: typeof version === 'number' ? version : undefined,
-      timestamp: Date.now(),
+    // Generar ID único para el mensaje
+    const messageId = `${this.currentUser.id}-${filePath}-${Date.now()}`;
+
+    const message = {
+      type: 'broadcast',
+      event: 'file-change',
+      payload: {
+        messageId,
+        userId: this.currentUser.id,
+        userName: this.currentUser.name,
+        userColor: this.currentUser.color,
+        filePath,
+        content,
+        cursorPosition,
+        version: typeof version === 'number' ? version : undefined,
+        timestamp: Date.now(),
+      }
     };
     
-    console.log('📤 Enviando a Supabase Realtime:', payload);
+    // Si no hay canal o está desconectado, agregar al buffer
+    if (!this.channel || this.connectionStatus !== 'connected') {
+      console.warn('⚠️ Sin conexión - agregando al buffer offline');
+      
+      if (this.offlineBuffer.length < this.maxBufferSize) {
+        this.offlineBuffer.push(message);
+        console.log(`📦 Buffer offline: ${this.offlineBuffer.length}/${this.maxBufferSize}`);
+      } else {
+        console.error('❌ Buffer lleno - descartando mensaje antiguo');
+        this.offlineBuffer.shift(); // Eliminar el más antiguo
+        this.offlineBuffer.push(message);
+      }
+      return;
+    }
+    
+    console.log('📤 Enviando a Supabase Realtime:', message.payload);
     
     try {
-      await this.channel.send({
-        type: 'broadcast',
-        event: 'file-change',
-        payload
-      });
+      await this.channel.send(message);
       console.log('✅ Mensaje enviado exitosamente a Supabase');
     } catch (error) {
       console.error('❌ Error al enviar mensaje:', error);
+      
+      // Agregar al buffer si falla el envío
+      if (this.offlineBuffer.length < this.maxBufferSize) {
+        this.offlineBuffer.push(message);
+        console.log('📦 Mensaje agregado al buffer para reintento');
+      }
     }
   }
 
@@ -670,24 +941,53 @@ class CollaborationService {
     localStorage.removeItem('collaboration_project_files');
   }
 
-  // Salir de la sesión
+  // 🚀 Salir de la sesión (limpieza completa)
   async leaveSession() {
-    if (this.channel) {
-      await this.channel.send({
-        type: 'broadcast',
-        event: 'user-left',
-        payload: {
-          userId: this.currentUser.id,
-          userName: this.currentUser.name,
-        },
-      });
+    console.log('👋 Saliendo de la sesión...');
+    
+    // Detener heartbeat
+    if (this.stopHeartbeat) this.stopHeartbeat();
+    
+    // Notificar salida
+    if (this.channel && this.currentUser) {
+      try {
+        await this.channel.send({
+          type: 'broadcast',
+          event: 'user-left',
+          payload: {
+            userId: this.currentUser.id,
+            userName: this.currentUser.name,
+          },
+        });
+      } catch (error) {
+        console.error('❌ Error al notificar salida:', error);
+      }
+      
       await this.channel.unsubscribe();
       this.channel = null;
     }
 
+    // Limpiar estados
     this.currentSession = null;
     this.currentUser = null;
+    this.reconnectAttempts = 0;
+    this.isReconnecting = false;
+    this.offlineBuffer = [];
+    this.processedMessages.clear();
+    this.connectionStatus = 'disconnected';
+    
+    if (this.callbacks.onConnectionStatusChange) {
+      this.callbacks.onConnectionStatusChange({
+        status: 'disconnected',
+        previousStatus: this.connectionStatus,
+        reconnectAttempts: 0,
+      });
+    }
+    
+    // Limpiar storage
     this.clearSessionStorage();
+    
+    console.log('✅ Sesión cerrada completamente');
   }
 
   // Obtener información de la sesión actual
@@ -703,6 +1003,17 @@ class CollaborationService {
   // Verificar si Supabase está configurado
   isConfigured() {
     return this.supabase !== null;
+  }
+
+  // 📡 Obtener estado de conexión
+  getConnectionStatus() {
+    return {
+      status: this.connectionStatus,
+      reconnectAttempts: this.reconnectAttempts,
+      isReconnecting: this.isReconnecting,
+      offlineBufferSize: this.offlineBuffer.length,
+      isConnected: this.connectionStatus === 'connected',
+    };
   }
 }
 

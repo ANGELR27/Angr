@@ -15,6 +15,7 @@ export function useCollaboration(files, onFilesChange) {
   const [isConfigured, setIsConfigured] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [typingUsers, setTypingUsers] = useState({}); // Usuarios escribiendo
+  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 🚀 Estado de conexión
   
   const lastChangeTimestamp = useRef(0);
   const isApplyingRemoteChange = useRef(false);
@@ -325,6 +326,33 @@ export function useCollaboration(files, onFilesChange) {
       }
     };
 
+    // 🚀 Manejar cambios de estado de conexión
+    const handleConnectionStatusChange = (data) => {
+      console.log('📡 Estado de conexión cambió:', data);
+      setConnectionStatus(data.status);
+      
+      // Notificaciones según el estado
+      if (data.status === 'connected' && data.previousStatus !== 'connected') {
+        addNotification({
+          type: 'connection-restored',
+          message: 'Conexión restaurada',
+          userName: 'Sistema'
+        });
+      } else if (data.status === 'disconnected') {
+        addNotification({
+          type: 'connection-lost',
+          message: 'Conexión perdida - intentando reconectar...',
+          userName: 'Sistema'
+        });
+      } else if (data.status === 'failed') {
+        addNotification({
+          type: 'connection-failed',
+          message: 'No se pudo reconectar - recarga la página',
+          userName: 'Sistema'
+        });
+      }
+    };
+
     // 🔥 REGISTRAR LISTENERS
     collaborationService.on('fileChange', handleFileChange);
     collaborationService.on('userJoined', handleUserJoined);
@@ -332,6 +360,7 @@ export function useCollaboration(files, onFilesChange) {
     collaborationService.on('cursorMove', handleCursorMove);
     collaborationService.on('accessChanged', handleAccessChanged);
     collaborationService.on('projectState', handleProjectState);
+    collaborationService.on('connectionStatusChange', handleConnectionStatusChange);
 
     // 🔥 CLEANUP CRÍTICO - LIMPIAR LISTENERS Y TIMERS
     return () => {
@@ -348,6 +377,7 @@ export function useCollaboration(files, onFilesChange) {
       collaborationService.callbacks.onCursorMove = null;
       collaborationService.callbacks.onAccessChanged = null;
       collaborationService.callbacks.onProjectState = null;
+      collaborationService.callbacks.onConnectionStatusChange = null;
       
       console.log('✅ Listeners limpiados correctamente');
     };
@@ -474,6 +504,7 @@ export function useCollaboration(files, onFilesChange) {
     isConfigured,
     notifications,
     typingUsers,
+    connectionStatus, // 🚀 Estado de conexión
     createSession,
     joinSession,
     broadcastFileChange,

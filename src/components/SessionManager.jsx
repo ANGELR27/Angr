@@ -23,6 +23,7 @@ export default function SessionManager({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
 
   // Detectar ID de sesión en la URL cuando se abre el modal
   useEffect(() => {
@@ -38,16 +39,14 @@ export default function SessionManager({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  // 🔥 Mostrar advertencia si Supabase no está configurado
-  const [showWarning, setShowWarning] = useState(false);
-
+  // Mostrar advertencia si Supabase no está configurado
   useEffect(() => {
     if (isOpen && !isConfigured) {
       setShowWarning(true);
     }
   }, [isOpen, isConfigured]);
+
+  if (!isOpen) return null;
 
   const handleCreateSession = async () => {
     // Validación de entrada
