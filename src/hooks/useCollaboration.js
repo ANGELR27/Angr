@@ -21,6 +21,23 @@ export function useCollaboration(files, onFilesChange) {
   const typingTimers = useRef({}); // Timers para "escribiendo"
   const fileVersionsRef = useRef({}); // Versiones por archivo
 
+  // 🔥 MOVER addNotification AQUÍ para que esté disponible en los useEffect
+  // Agregar notificación
+  const addNotification = useCallback((notification) => {
+    const id = Date.now() + Math.random();
+    setNotifications(prev => [...prev, { ...notification, id }]);
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  }, []);
+
+  // Eliminar notificación
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   useEffect(() => {
     console.log('🚀 useCollaboration: Inicializando...');
     const isSupabaseConfigured = collaborationService.isConfigured();
@@ -102,8 +119,8 @@ export function useCollaboration(files, onFilesChange) {
   useEffect(() => {
     if (!isCollaborating) return;
 
-    // Listener para cambios de archivos
-    collaborationService.on('fileChange', (payload) => {
+    // 🔥 FUNCIONES DE CALLBACK PARA LIMPIAR CORRECTAMENTE
+    const handleFileChange = (payload) => {
       console.log('📥 MENSAJE RECIBIDO de Supabase:', {
         filePath: payload.filePath,
         contentLength: payload.content?.length,
@@ -147,8 +164,8 @@ export function useCollaboration(files, onFilesChange) {
             [path[0]]: {
               ...obj[path[0]],
               content: newContent,
-              _lastModified: Date.now(), // ✨ FORZAR RE-RENDER
-              _remoteUpdate: true // ✨ MARCAR COMO CAMBIO REMOTO
+              _lastModified: Date.now(),
+              _remoteUpdate: true
             }
           };
         }
@@ -171,10 +188,31 @@ export function useCollaboration(files, onFilesChange) {
       setTimeout(() => {
         isApplyingRemoteChange.current = false;
       }, 100);
-    });
 
-    // Listener para usuarios que se unen
-    collaborationService.on('userJoined', (user) => {
+      // 🔥 ACTUALIZAR TYPING INDICATOR AQUÍ (evitar listener duplicado)
+      setTypingUsers(prev => ({
+        ...prev,
+        [payload.userId]: {
+          filePath: payload.filePath,
+          timestamp: Date.now()
+        }
+      }));
+
+      // Limpiar después de 2 segundos
+      if (typingTimers.current[payload.userId]) {
+        clearTimeout(typingTimers.current[payload.userId]);
+      }
+      
+      typingTimers.current[payload.userId] = setTimeout(() => {
+        setTypingUsers(prev => {
+          const newTyping = { ...prev };
+          delete newTyping[payload.userId];
+          return newTyping;
+        });
+      }, 2000);
+    };
+
+    const handleUserJoined = (user) => {
       setActiveUsers(prev => {
         // Evitar duplicados
         if (prev.some(u => u.id === user.id)) return prev;
@@ -188,10 +226,9 @@ export function useCollaboration(files, onFilesChange) {
         userColor: user.color,
         message: 'se ha unido a la sesión'
       });
-    });
+    };
 
-    // Listener para usuarios que se van
-    collaborationService.on('userLeft', (data) => {
+    const handleUserLeft = (data) => {
       const user = activeUsers.find(u => u.id === data.userId);
       
       setActiveUsers(prev => prev.filter(u => u.id !== data.userId));
@@ -215,10 +252,9 @@ export function useCollaboration(files, onFilesChange) {
           message: 'ha salido de la sesión'
         });
       }
-    });
+    };
 
-    // Listener para movimiento de cursor
-    collaborationService.on('cursorMove', (payload) => {
+    const handleCursorMove = (payload) => {
       console.log('📍 Hook recibió cursor remoto:', {
         userId: payload.userId,
         userName: payload.userName,
@@ -228,7 +264,6 @@ export function useCollaboration(files, onFilesChange) {
       
       const currentVersion = fileVersionsRef.current[payload.filePath] || 0;
       if (typeof payload.version === 'number' && payload.version < currentVersion) {
-        // Cursor desfasado respecto al contenido local, ignorar
         console.log('⏸️ Cursor con versión antigua - ignorar');
         return;
       }
@@ -249,45 +284,18 @@ export function useCollaboration(files, onFilesChange) {
         console.log('📦 Nuevo estado de remoteCursors:', Object.keys(updated));
         return updated;
       });
-    });
+    };
 
-    // Listener para cambios de archivos - actualizar estado "escribiendo"
-    collaborationService.on('fileChange', (payload) => {
-      // Marcar que el usuario está escribiendo
-      setTypingUsers(prev => ({
-        ...prev,
-        [payload.userId]: {
-          filePath: payload.filePath,
-          timestamp: Date.now()
-        }
-      }));
-
-      // Limpiar después de 2 segundos
-      if (typingTimers.current[payload.userId]) {
-        clearTimeout(typingTimers.current[payload.userId]);
-      }
-      
-      typingTimers.current[payload.userId] = setTimeout(() => {
-        setTypingUsers(prev => {
-          const newTyping = { ...prev };
-          delete newTyping[payload.userId];
-          return newTyping;
-        });
-      }, 2000);
-    });
-
-    // Listener para cambios de acceso
-    collaborationService.on('accessChanged', (payload) => {
+    const handleAccessChanged = (payload) => {
       if (currentUser && payload.userId === currentUser.id) {
         setCurrentUser(prev => ({
           ...prev,
           role: payload.newRole
         }));
       }
-    });
+    };
 
-    // Listener para recibir estado del proyecto
-    collaborationService.on('projectState', (payload) => {
+    const handleProjectState = (payload) => {
       console.log('📦 RECIBIENDO ESTADO DEL PROYECTO');
       console.log('   - Archivos recibidos:', Object.keys(payload.files || {}));
       console.log('   - Total archivos:', Object.keys(payload.files || {}).length);
@@ -315,12 +323,35 @@ export function useCollaboration(files, onFilesChange) {
       } else {
         console.warn('⚠️ No se recibieron archivos o está vacío');
       }
-    });
-
-    return () => {
-      // Cleanup listeners
     };
-  }, [isCollaborating, files, onFilesChange, currentUser]);
+
+    // 🔥 REGISTRAR LISTENERS
+    collaborationService.on('fileChange', handleFileChange);
+    collaborationService.on('userJoined', handleUserJoined);
+    collaborationService.on('userLeft', handleUserLeft);
+    collaborationService.on('cursorMove', handleCursorMove);
+    collaborationService.on('accessChanged', handleAccessChanged);
+    collaborationService.on('projectState', handleProjectState);
+
+    // 🔥 CLEANUP CRÍTICO - LIMPIAR LISTENERS Y TIMERS
+    return () => {
+      console.log('🧹 Limpiando listeners de colaboración...');
+      
+      // Limpiar todos los timers de typing
+      Object.values(typingTimers.current).forEach(timer => clearTimeout(timer));
+      typingTimers.current = {};
+      
+      // Remover listeners (establecer a null)
+      collaborationService.callbacks.onFileChange = null;
+      collaborationService.callbacks.onUserJoined = null;
+      collaborationService.callbacks.onUserLeft = null;
+      collaborationService.callbacks.onCursorMove = null;
+      collaborationService.callbacks.onAccessChanged = null;
+      collaborationService.callbacks.onProjectState = null;
+      
+      console.log('✅ Listeners limpiados correctamente');
+    };
+  }, [isCollaborating, files, onFilesChange, currentUser]); // ✅ Removido addNotification para evitar error de inicialización
 
   // Crear nueva sesión
   const createSession = useCallback(async (sessionData) => {
@@ -421,22 +452,6 @@ export function useCollaboration(files, onFilesChange) {
     
     await collaborationService.changeUserPermissions(userId, newRole);
   }, [isCollaborating]);
-
-  // Agregar notificación
-  const addNotification = useCallback((notification) => {
-    const id = Date.now() + Math.random();
-    setNotifications(prev => [...prev, { ...notification, id }]);
-    
-    // Auto-eliminar después de 5 segundos
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
-  }, []);
-
-  // Eliminar notificación
-  const removeNotification = useCallback((id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
 
   // Salir de la sesión
   const leaveSession = useCallback(async () => {

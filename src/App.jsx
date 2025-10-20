@@ -16,6 +16,7 @@ import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
 import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
 import { useCollaboration } from './hooks/useCollaboration'
+import { buildPreview } from './utils/previewBuilder'
 
 // Archivos de ejemplo iniciales
 const initialFiles = {
@@ -154,6 +155,60 @@ window.addEventListener('load', () => {
         type: 'file',
         language: 'javascript',
         content: `// Ejemplo de código JavaScript\nconst ejemplo = () => {\n    console.log("Este es un ejemplo");\n};\n\nejemplo();`
+      },
+      'App.jsx': {
+        name: 'App.jsx',
+        type: 'file',
+        language: 'javascriptreact',
+        content: `import React, { useState } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div className="app">
+      <h1>Contador React</h1>
+      <p>Has hecho clic {count} veces</p>
+      <button onClick={() => setCount(count + 1)}>
+        Incrementar
+      </button>
+      <button onClick={() => setCount(0)}>
+        Resetear
+      </button>
+    </div>
+  );
+}
+
+export default App;`
+      },
+      'script.py': {
+        name: 'script.py',
+        type: 'file',
+        language: 'python',
+        content: `# Ejemplo de código Python
+def saludar(nombre):
+    """
+    Función que saluda a una persona
+    """
+    return f"¡Hola, {nombre}!"
+
+def calcular_factorial(n):
+    """
+    Calcula el factorial de un número
+    """
+    if n <= 1:
+        return 1
+    return n * calcular_factorial(n - 1)
+
+# Código principal
+if __name__ == "__main__":
+    print(saludar("Mundo"))
+    print(f"Factorial de 5: {calcular_factorial(5)}")
+    
+    # Lista de números
+    numeros = [1, 2, 3, 4, 5]
+    cuadrados = [n**2 for n in numeros]
+    print(f"Cuadrados: {cuadrados}")`
       }
     }
   }
@@ -735,31 +790,30 @@ function App() {
       return;
     }
 
-    if (activeFile.language !== 'javascript') {
+    // Determinar tipo de archivo
+    const fileName = activeFile.name.toLowerCase();
+    
+    if (fileName.endsWith('.js')) {
+      // Ejecutar JavaScript
+      if (!showTerminal) setShowTerminal(true);
+      setTimeout(() => {
+        if (terminalRef.current) {
+          terminalRef.current.executeJS(activeFile.content);
+        }
+      }, showTerminal ? 0 : 100);
+    } else if (fileName.endsWith('.py')) {
+      // Ejecutar Python (mostrar info)
+      if (!showTerminal) setShowTerminal(true);
+      setTimeout(() => {
+        if (terminalRef.current) {
+          terminalRef.current.executePython(activeFile.content);
+        }
+      }, showTerminal ? 0 : 100);
+    } else {
       if (terminalRef.current) {
-        terminalRef.current.addLog('error', ['Solo se puede ejecutar código JavaScript']);
+        terminalRef.current.addLog('error', [`No se puede ejecutar archivos .${fileName.split('.').pop()}`, 'Solo JavaScript (.js) se puede ejecutar en el navegador']);
       }
-      return;
     }
-
-    if (!activeFile.content || activeFile.content.trim() === '') {
-      if (terminalRef.current) {
-        terminalRef.current.addLog('error', ['El archivo está vacío']);
-      }
-      return;
-    }
-
-    // Abrir terminal si está cerrada
-    if (!showTerminal) {
-      setShowTerminal(true);
-    }
-
-    // Ejecutar el código después de un pequeño delay para asegurar que la terminal está abierta
-    setTimeout(() => {
-      if (terminalRef.current) {
-        terminalRef.current.executeJS(activeFile.content);
-      }
-    }, showTerminal ? 0 : 100);
   };
 
   const handleDeleteFile = (filePath) => {
@@ -836,7 +890,28 @@ function App() {
     const language = fileName.endsWith('.html') ? 'html' :
                     fileName.endsWith('.css') ? 'css' :
                     fileName.endsWith('.js') ? 'javascript' :
-                    fileName.endsWith('.json') ? 'json' : 'plaintext';
+                    fileName.endsWith('.jsx') ? 'javascriptreact' :
+                    fileName.endsWith('.ts') ? 'typescript' :
+                    fileName.endsWith('.tsx') ? 'typescriptreact' :
+                    fileName.endsWith('.json') ? 'json' :
+                    fileName.endsWith('.md') ? 'markdown' :
+                    fileName.endsWith('.py') ? 'python' :
+                    fileName.endsWith('.java') ? 'java' :
+                    fileName.endsWith('.cpp') || fileName.endsWith('.cc') || fileName.endsWith('.cxx') ? 'cpp' :
+                    fileName.endsWith('.c') ? 'c' :
+                    fileName.endsWith('.cs') ? 'csharp' :
+                    fileName.endsWith('.php') ? 'php' :
+                    fileName.endsWith('.rb') ? 'ruby' :
+                    fileName.endsWith('.go') ? 'go' :
+                    fileName.endsWith('.rs') ? 'rust' :
+                    fileName.endsWith('.swift') ? 'swift' :
+                    fileName.endsWith('.kt') ? 'kotlin' :
+                    fileName.endsWith('.xml') ? 'xml' :
+                    fileName.endsWith('.yaml') || fileName.endsWith('.yml') ? 'yaml' :
+                    fileName.endsWith('.sql') ? 'sql' :
+                    fileName.endsWith('.sh') ? 'shell' :
+                    fileName.endsWith('.bat') ? 'bat' :
+                    fileName.endsWith('.ps1') ? 'powershell' : 'plaintext';
     
     const newFile = {
       name: fileName,
@@ -913,27 +988,11 @@ function App() {
     }
   };
 
-  const getPreviewContent = () => {
-    const htmlFile = getFileByPath('index.html');
-    const cssFile = getFileByPath('styles.css');
-    const jsFile = getFileByPath('script.js');
-
-    if (!htmlFile) return '';
-
-    let html = htmlFile.content || '';
-
-    // Inyectar CSS inline
-    if (cssFile && cssFile.content) {
-      html = html.replace('</head>', `<style>${cssFile.content}</style></head>`);
-    }
-
-    // Inyectar JS inline
-    if (jsFile && jsFile.content) {
-      html = html.replace('</body>', `<script>${jsFile.content}</script></body>`);
-    }
-
-    return html;
-  };
+  // 🔥 PREVIEW DINÁMICO MEJORADO - Detecta archivos automáticamente
+  const getPreviewContent = useCallback(() => {
+    // Construir preview basado en archivo activo o cualquier HTML disponible
+    return buildPreview(files, activeTab);
+  }, [files, activeTab]);
 
   // Handlers para redimensionar paneles
   const handleSidebarResize = (e) => {
@@ -1004,6 +1063,7 @@ function App() {
     handleTerminalResize(e);
   };
 
+  // 🔥 FIX: Agregar dependencias que las funciones de resize usan
   useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -1011,7 +1071,7 @@ function App() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [sidebarWidth, previewWidth, terminalHeight]); // Dependencias necesarias para el resize
 
   const activeFile = getFileByPath(activeTab);
 

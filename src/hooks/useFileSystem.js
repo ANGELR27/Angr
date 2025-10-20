@@ -76,9 +76,28 @@ export function useFileSystem(initialFiles) {
     const language = fileName.endsWith('.html') ? 'html' :
                     fileName.endsWith('.css') ? 'css' :
                     fileName.endsWith('.js') ? 'javascript' :
+                    fileName.endsWith('.jsx') ? 'javascriptreact' :
+                    fileName.endsWith('.ts') ? 'typescript' :
+                    fileName.endsWith('.tsx') ? 'typescriptreact' :
                     fileName.endsWith('.json') ? 'json' : 
                     fileName.endsWith('.md') ? 'markdown' :
-                    fileName.endsWith('.py') ? 'python' : 'plaintext';
+                    fileName.endsWith('.py') ? 'python' :
+                    fileName.endsWith('.java') ? 'java' :
+                    fileName.endsWith('.cpp') || fileName.endsWith('.cc') || fileName.endsWith('.cxx') ? 'cpp' :
+                    fileName.endsWith('.c') ? 'c' :
+                    fileName.endsWith('.cs') ? 'csharp' :
+                    fileName.endsWith('.php') ? 'php' :
+                    fileName.endsWith('.rb') ? 'ruby' :
+                    fileName.endsWith('.go') ? 'go' :
+                    fileName.endsWith('.rs') ? 'rust' :
+                    fileName.endsWith('.swift') ? 'swift' :
+                    fileName.endsWith('.kt') ? 'kotlin' :
+                    fileName.endsWith('.xml') ? 'xml' :
+                    fileName.endsWith('.yaml') || fileName.endsWith('.yml') ? 'yaml' :
+                    fileName.endsWith('.sql') ? 'sql' :
+                    fileName.endsWith('.sh') ? 'shell' :
+                    fileName.endsWith('.bat') ? 'bat' :
+                    fileName.endsWith('.ps1') ? 'powershell' : 'plaintext';
     
     const newFile = {
       name: fileName,

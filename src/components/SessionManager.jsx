@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Copy, Check, Lock, Globe, UserPlus, X, Share2, LogIn, Settings } from 'lucide-react';
+import CollaborationWarning from './CollaborationWarning';
 
 /**
  * Componente para gestionar sesiones de colaboración
@@ -38,6 +39,15 @@ export default function SessionManager({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // 🔥 Mostrar advertencia si Supabase no está configurado
+  const [showWarning, setShowWarning] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && !isConfigured) {
+      setShowWarning(true);
+    }
+  }, [isOpen, isConfigured]);
 
   const handleCreateSession = async () => {
     // Validación de entrada
@@ -160,9 +170,23 @@ export default function SessionManager({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#1e1e1e] border border-[#3e3e42] rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        {/* Header */}
+    <>
+      {/* 🔥 Advertencia de configuración */}
+      {showWarning && !isConfigured && (
+        <CollaborationWarning 
+          isConfigured={isConfigured} 
+          onClose={() => {
+            setShowWarning(false);
+            onClose();
+          }} 
+        />
+      )}
+
+      {/* Modal principal - solo mostrar si está configurado */}
+      {(!showWarning || isConfigured) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#1e1e1e] border border-[#3e3e42] rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#3e3e42] bg-gradient-to-r from-blue-600/20 to-purple-600/20">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-400" />
@@ -510,5 +534,7 @@ VITE_SUPABASE_ANON_KEY=tu_key_aqui
         </div>
       </div>
     </div>
-  );
+  )}
+  </>
+);
 }

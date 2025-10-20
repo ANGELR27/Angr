@@ -12,14 +12,11 @@ import {
   ChevronUp,
   Download,
   X,
-  FileCode2,
-  Braces,
-  Palette,
-  FileJson,
   Users,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { validateFileName, sanitizeFileName } from "../utils/validation";
+import { getFileIcon as getProFileIcon } from "../utils/fileIcons";
 
 function TopBar({
   showPreview,
@@ -120,20 +117,10 @@ function TopBar({
     onNewFolder(sanitized);
   };
 
+  // 🎨 Usar iconos profesionales de cada tecnología
   const getFileIcon = (fileName) => {
-    if (fileName.endsWith(".html")) {
-      return <FileCode2 className="w-3.5 h-3.5 text-orange-400" />;
-    }
-    if (fileName.endsWith(".css")) {
-      return <Palette className="w-3.5 h-3.5 text-blue-400" />;
-    }
-    if (fileName.endsWith(".js")) {
-      return <Braces className="w-3.5 h-3.5 text-yellow-400" />;
-    }
-    if (fileName.endsWith(".json")) {
-      return <FileJson className="w-3.5 h-3.5 text-green-400" />;
-    }
-    return <FileCode2 className="w-3.5 h-3.5 text-gray-400" />;
+    const baseColor = isLite ? 'var(--theme-secondary)' : '';
+    return getProFileIcon(fileName, 14, baseColor);
   };
 
   const getFileName = (path) => {
@@ -277,30 +264,13 @@ function TopBar({
       </div>
 
       {/* Sección derecha - Acciones */}
-      <div className="flex items-center gap-1.5 relative z-10 px-2 flex-shrink-0">
+      <div className="flex items-center gap-2 relative z-10 px-3 flex-shrink-0">
         <button
           onClick={handleNewFile}
-          className="flex items-center justify-center rounded transition-all border"
+          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
           style={{
-            padding: "6px",
-            backgroundColor: "var(--theme-background-secondary)",
-            borderColor:
-              "color-mix(in srgb, var(--theme-primary) 30%, transparent)",
             color: "var(--theme-text)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              "color-mix(in srgb, var(--theme-primary) 20%, transparent)";
-            e.currentTarget.style.borderColor =
-              "color-mix(in srgb, var(--theme-primary) 50%, transparent)";
-            e.currentTarget.style.boxShadow = "0 0 20px var(--theme-glow)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor =
-              "var(--theme-background-secondary)";
-            e.currentTarget.style.borderColor =
-              "color-mix(in srgb, var(--theme-primary) 30%, transparent)";
-            e.currentTarget.style.boxShadow = "none";
+            backgroundColor: "transparent",
           }}
           title="Nuevo archivo"
         >
@@ -310,28 +280,10 @@ function TopBar({
         {!isLite && (
           <button
             onClick={handleNewFolder}
-            className="flex items-center justify-center rounded transition-all border"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
             style={{
-              padding: "6px",
-              backgroundColor: "var(--theme-background-secondary)",
-              borderColor:
-                "color-mix(in srgb, var(--theme-accent) 30%, transparent)",
               color: "var(--theme-text)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor =
-                "color-mix(in srgb, var(--theme-accent) 20%, transparent)";
-              e.currentTarget.style.borderColor =
-                "color-mix(in srgb, var(--theme-accent) 50%, transparent)";
-              e.currentTarget.style.boxShadow =
-                "0 0 20px color-mix(in srgb, var(--theme-accent) 60%, transparent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor =
-                "var(--theme-background-secondary)";
-              e.currentTarget.style.borderColor =
-                "color-mix(in srgb, var(--theme-accent) 30%, transparent)";
-              e.currentTarget.style.boxShadow = "none";
+              backgroundColor: "transparent",
             }}
             title="Nueva carpeta"
           >
@@ -354,13 +306,10 @@ function TopBar({
 
         <button
           onClick={() => setShowPreview(!showPreview)}
-          className="flex items-center justify-center rounded transition-all border"
+          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
           style={{
-            padding: "6px",
-            backgroundColor: "var(--theme-background-secondary)",
-            borderColor:
-              "color-mix(in srgb, var(--theme-secondary) 30%, transparent)",
             color: "var(--theme-text)",
+            backgroundColor: "transparent",
           }}
           title={showPreview ? "Ocultar preview" : "Mostrar preview"}
         >
@@ -379,19 +328,11 @@ function TopBar({
 
         <button
           onClick={() => setShowTerminal(!showTerminal)}
-          className="flex items-center justify-center rounded transition-all border"
+          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
           style={{
-            padding: "6px",
-            backgroundColor: showTerminal
-              ? "color-mix(in srgb, var(--theme-accent) 25%, transparent)"
-              : "var(--theme-background-secondary)",
-            borderColor: showTerminal
-              ? "color-mix(in srgb, var(--theme-accent) 50%, transparent)"
-              : "color-mix(in srgb, var(--theme-accent) 30%, transparent)",
-            boxShadow: showTerminal
-              ? "0 0 15px color-mix(in srgb, var(--theme-accent) 40%, transparent)"
-              : "none",
             color: "var(--theme-text)",
+            backgroundColor: "transparent",
+            opacity: showTerminal ? 1 : 0.7,
           }}
           title={showTerminal ? "Ocultar terminal" : "Mostrar terminal"}
         >
@@ -404,13 +345,10 @@ function TopBar({
         {!isLite && (
           <button
             onClick={onOpenImageManager}
-            className="flex items-center justify-center rounded transition-all border"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
             style={{
-              padding: "6px",
-              backgroundColor: "var(--theme-background-secondary)",
-              borderColor:
-                "color-mix(in srgb, var(--theme-secondary) 30%, transparent)",
               color: "var(--theme-text)",
+              backgroundColor: "transparent",
             }}
             title="Gestor de imágenes"
           >
@@ -424,19 +362,11 @@ function TopBar({
         {!isLite && onOpenCollaboration && (
           <button
             onClick={onOpenCollaboration}
-            className="flex items-center justify-center rounded transition-all border relative"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110 relative"
             style={{
-              padding: "6px",
-              backgroundColor: isCollaborating
-                ? "color-mix(in srgb, var(--theme-primary) 25%, transparent)"
-                : "var(--theme-background-secondary)",
-              borderColor: isCollaborating
-                ? "color-mix(in srgb, var(--theme-primary) 50%, transparent)"
-                : "color-mix(in srgb, var(--theme-primary) 30%, transparent)",
-              boxShadow: isCollaborating
-                ? "0 0 15px color-mix(in srgb, var(--theme-primary) 40%, transparent)"
-                : "none",
               color: "var(--theme-text)",
+              backgroundColor: "transparent",
+              opacity: isCollaborating ? 1 : 0.7,
             }}
             title={isCollaborating ? "Panel de colaboración" : "Iniciar colaboración en tiempo real"}
           >
@@ -462,13 +392,10 @@ function TopBar({
         {!isLite && (
           <button
             onClick={onExport}
-            className="flex items-center justify-center rounded transition-all border"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
             style={{
-              padding: "6px",
-              backgroundColor: "var(--theme-background-secondary)",
-              borderColor:
-                "color-mix(in srgb, var(--theme-primary) 30%, transparent)",
               color: "var(--theme-text)",
+              backgroundColor: "transparent",
             }}
             title="Exportar proyecto (ZIP)"
           >
@@ -482,13 +409,10 @@ function TopBar({
         {!isLite && (
           <button
             onClick={onOpenShortcuts}
-            className="flex items-center justify-center rounded transition-all border"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
             style={{
-              padding: "6px",
-              backgroundColor: "var(--theme-background-secondary)",
-              borderColor:
-                "color-mix(in srgb, var(--theme-accent) 30%, transparent)",
               color: "var(--theme-text)",
+              backgroundColor: "transparent",
             }}
             title="Atajos de teclado (F1 o ?)"
           >
@@ -501,19 +425,9 @@ function TopBar({
 
         <button
           onClick={onToggleLite}
-          className="flex items-center justify-center rounded transition-all border"
+          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
           style={{
-            padding: "6px",
-            backgroundColor:
-              currentTheme === "lite"
-                ? "color-mix(in srgb, var(--theme-secondary) 25%, transparent)"
-                : "var(--theme-background-secondary)",
-            borderColor:
-              currentTheme === "lite"
-                ? "color-mix(in srgb, var(--theme-secondary) 50%, transparent)"
-                : "color-mix(in srgb, var(--theme-secondary) 30%, transparent)",
-            boxShadow:
-              currentTheme === "lite" ? "0 0 15px rgba(208,252,1,0.3)" : "none",
+            backgroundColor: "transparent",
             color:
               currentTheme === "lite" ? "#D0FC01" : "var(--theme-secondary)",
           }}
@@ -527,12 +441,10 @@ function TopBar({
         {!isLite && (
           <button
             onClick={onResetAll}
-            className="flex items-center justify-center rounded transition-all border"
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
             style={{
-              padding: "6px",
-              backgroundColor: "var(--theme-background-secondary)",
-              borderColor: "#ef444433",
               color: "var(--theme-text)",
+              backgroundColor: "transparent",
             }}
             title="Resetear todo (eliminar datos guardados)"
           >

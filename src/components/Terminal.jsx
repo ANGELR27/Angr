@@ -45,8 +45,64 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     },
     executeJS: (code) => {
       executeJavaScript(code);
+    },
+    executePython: (code) => {
+      executePythonCode(code);
     }
   }));
+
+  // 🐍 Ejecutar código Python (simulado en JavaScript)
+  const executePythonCode = (code) => {
+    const timestamp = new Date().toLocaleTimeString("es-ES");
+
+    setHistory((prev) => [
+      ...prev,
+      { type: "info", text: `▸ Ejecutando código Python...` },
+    ]);
+
+    if (!code || code.trim() === '') {
+      setHistory((prev) => [
+        ...prev,
+        {
+          type: "warning",
+          text: `[${timestamp}] ⚠ No hay código para ejecutar`,
+        },
+      ]);
+      return;
+    }
+
+    setHistory((prev) => [
+      ...prev,
+      {
+        type: "warning",
+        text: `[${timestamp}] ⚠ Python no está disponible en el navegador`,
+      },
+      {
+        type: "info",
+        text: `💡 Tip: Este es un editor web. Para ejecutar Python:`,
+      },
+      {
+        type: "info",
+        text: `   1. Copia el código`,
+      },
+      {
+        type: "info",
+        text: `   2. Usa https://replit.com o https://python.org`,
+      },
+      {
+        type: "info",
+        text: `   3. O instala Python localmente`,
+      },
+      {
+        type: "console",
+        text: `📝 Código Python:`,
+      },
+      {
+        type: "console",
+        text: code,
+      },
+    ]);
+  };
 
   const executeJavaScript = (code) => {
     const timestamp = new Date().toLocaleTimeString("es-ES");

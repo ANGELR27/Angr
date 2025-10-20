@@ -16,13 +16,14 @@ Un editor de código moderno tipo VS Code construido con React y Monaco Editor, 
 
 ### 🎨 **Editor Avanzado**
 - **Monaco Editor** (mismo motor que Visual Studio Code)
-- Syntax highlighting para HTML, CSS y JavaScript
+- **Soporte multilenguaje** 🌐 - Python, React (JSX/TSX), TypeScript, HTML, CSS, JavaScript, Java, C++, C#, PHP, Ruby, Go, Rust, Swift, Kotlin, SQL, YAML, y más
 - **Autocompletado inteligente** con snippets personalizados
 - **🚀 Autocompletado de rutas** - Detecta archivos del proyecto e imágenes
 - **Emmet incorporado** - Escribe `!` para estructura HTML5
 - **Autocerrado automático** de etiquetas, comillas y paréntesis
 - Formateo automático al pegar y escribir
 - Números de línea y resaltado de sintaxis
+- 📖 [Ver todos los lenguajes soportados](./LENGUAJES_SOPORTADOS.md)
 
 ### 📁 **Explorador de Archivos**
 - Navegación por árbol de carpetas
