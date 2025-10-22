@@ -935,11 +935,11 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
                 <span>Carpetas</span>
               </div>
               <div className="flex items-center gap-1">
-                <FileImage className="w-3 h-3" />
+                <FaFileImage className="w-3 h-3" />
                 <span>Imágenes</span>
               </div>
               <div className="flex items-center gap-1">
-                <File className="w-3 h-3" />
+                <VscFile className="w-3 h-3" />
                 <span>HTML/CSS/JS</span>
               </div>
             </div>
