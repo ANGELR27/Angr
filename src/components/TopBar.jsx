@@ -13,8 +13,11 @@ import {
   Download,
   X,
   Users,
+  MessageCircle,
+  MoreVertical,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { validateFileName, sanitizeFileName } from "../utils/validation";
 import { getFileIcon as getProFileIcon } from "../utils/fileIcons";
 
@@ -39,10 +42,46 @@ function TopBar({
   onOpenCollaboration,
   isCollaborating,
   collaborationUsers,
+  // 🔥 Props de chat
+  showChat,
+  onToggleChat,
+  chatMessagesCount,
+  // 🔐 Props de autenticación
+  isAuthenticated,
+  user,
+  onLogout,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const menuPortalRef = useRef(null);
   const isLite = currentTheme === "lite";
+
+  // Cerrar menú al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Verificar si el click fue dentro del botón del menú o dentro del menú portal
+      const isMenuButton = menuRef.current && menuRef.current.contains(event.target);
+      const isMenuPortal = menuPortalRef.current && menuPortalRef.current.contains(event.target);
+      
+      if (!isMenuButton && !isMenuPortal && menuOpen) {
+        console.log('Click fuera del menú, cerrando...');
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      // Pequeño delay para evitar que el click del botón cierre inmediatamente el menú
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const handleNewFile = () => {
     const fileName = prompt(
@@ -304,28 +343,7 @@ function TopBar({
           />
         )}
 
-        <button
-          onClick={() => setShowPreview(!showPreview)}
-          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
-          style={{
-            color: "var(--theme-text)",
-            backgroundColor: "transparent",
-          }}
-          title={showPreview ? "Ocultar preview" : "Mostrar preview"}
-        >
-          {showPreview ? (
-            <EyeOff
-              className="w-4 h-4"
-              style={{ color: "var(--theme-secondary)" }}
-            />
-          ) : (
-            <Eye
-              className="w-4 h-4"
-              style={{ color: "var(--theme-secondary)" }}
-            />
-          )}
-        </button>
-
+        {/* Terminal - siempre visible */}
         <button
           onClick={() => setShowTerminal(!showTerminal)}
           className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
@@ -342,87 +360,38 @@ function TopBar({
           />
         </button>
 
-        {!isLite && (
-          <button
-            onClick={onOpenImageManager}
-            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
-            style={{
-              color: "var(--theme-text)",
-              backgroundColor: "transparent",
-            }}
-            title="Gestor de imágenes"
-          >
-            <Image
-              className="w-4 h-4"
-              style={{ color: "var(--theme-secondary)" }}
-            />
-          </button>
-        )}
-
-        {!isLite && onOpenCollaboration && (
-          <button
-            onClick={onOpenCollaboration}
-            className="flex items-center justify-center transition-all p-1.5 hover:scale-110 relative"
-            style={{
-              color: "var(--theme-text)",
-              backgroundColor: "transparent",
-              opacity: isCollaborating ? 1 : 0.7,
-            }}
-            title={isCollaborating ? "Panel de colaboración" : "Iniciar colaboración en tiempo real"}
-          >
-            <Users
-              className="w-4 h-4"
-              style={{ color: isCollaborating ? "var(--theme-primary)" : "var(--theme-secondary)" }}
-            />
-            {isCollaborating && collaborationUsers > 1 && (
-              <span 
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+        {/* 🔐 Indicador de Usuario Autenticado */}
+        {!isLite && isAuthenticated && user && (
+          <div className="flex items-center gap-2 px-2 py-1 rounded-md" style={{
+            backgroundColor: "var(--theme-background-secondary)",
+            border: "1px solid var(--theme-border)",
+          }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{
+              backgroundColor: "var(--theme-primary)",
+              color: "white",
+            }}>
+              {(user.user_metadata?.display_name || user.email?.charAt(0) || "U").toUpperCase().charAt(0)}
+            </div>
+            <span className="text-xs font-medium" style={{ color: "var(--theme-text)" }}>
+              {user.user_metadata?.display_name || user.email?.split('@')[0] || "Usuario"}
+            </span>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="ml-1 px-2 py-0.5 text-[10px] rounded hover:opacity-80 transition-opacity"
                 style={{
-                  backgroundColor: "var(--theme-primary)",
+                  backgroundColor: "var(--theme-danger)",
                   color: "white",
-                  border: "2px solid var(--theme-background-tertiary)",
                 }}
+                title="Cerrar sesión"
               >
-                {collaborationUsers}
-              </span>
+                Salir
+              </button>
             )}
-          </button>
+          </div>
         )}
 
-        {!isLite && (
-          <button
-            onClick={onExport}
-            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
-            style={{
-              color: "var(--theme-text)",
-              backgroundColor: "transparent",
-            }}
-            title="Exportar proyecto (ZIP)"
-          >
-            <Download
-              className="w-4 h-4"
-              style={{ color: "var(--theme-primary)" }}
-            />
-          </button>
-        )}
-
-        {!isLite && (
-          <button
-            onClick={onOpenShortcuts}
-            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
-            style={{
-              color: "var(--theme-text)",
-              backgroundColor: "transparent",
-            }}
-            title="Atajos de teclado (F1 o ?)"
-          >
-            <Keyboard
-              className="w-4 h-4"
-              style={{ color: "var(--theme-accent)" }}
-            />
-          </button>
-        )}
-
+        {/* Botón de modo Lite */}
         <button
           onClick={onToggleLite}
           className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
@@ -438,19 +407,227 @@ function TopBar({
           <span style={{ fontSize: "14px" }}>●</span>
         </button>
 
-        {!isLite && (
+        {/* Menú de tres puntos */}
+        <div className="relative" ref={menuRef}>
           <button
-            onClick={onResetAll}
-            className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Menu button clicked, current state:', menuOpen);
+              const newMenuState = !menuOpen;
+              setMenuOpen(newMenuState);
+              // Guardar posición del botón para el menú fixed
+              if (!menuOpen) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                menuRef.current.dataset.buttonRight = rect.right;
+                menuRef.current.dataset.buttonBottom = rect.bottom;
+                console.log('Menu position:', { right: rect.right, bottom: rect.bottom });
+              }
+            }}
+            className="flex items-center justify-center transition-all p-1.5 hover:scale-110 cursor-pointer"
             style={{
               color: "var(--theme-text)",
               backgroundColor: "transparent",
+              border: "none",
+              outline: "none",
             }}
-            title="Resetear todo (eliminar datos guardados)"
+            title="Más opciones"
           >
-            <RotateCcw className="w-4 h-4 text-red-400" />
+            <MoreVertical className="w-4 h-4" style={{ color: "var(--theme-secondary)" }} />
           </button>
-        )}
+
+          {/* Menú dropdown con position fixed usando Portal */}
+          {menuOpen && typeof document !== 'undefined' && (() => {
+            console.log('Rendering menu portal, position:', {
+              top: menuRef.current?.dataset.buttonBottom,
+              right: window.innerWidth - (menuRef.current?.dataset.buttonRight || window.innerWidth)
+            });
+            return createPortal(
+              <div
+                ref={menuPortalRef}
+                onClick={(e) => e.stopPropagation()}
+                className="fixed rounded-md shadow-lg overflow-hidden"
+                style={{
+                  backgroundColor: "#000000",
+                  width: "180px",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  zIndex: 999999,
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.8)",
+                  top: `${menuRef.current?.dataset.buttonBottom || 0}px`,
+                  right: `${window.innerWidth - (menuRef.current?.dataset.buttonRight || window.innerWidth)}px`,
+                  pointerEvents: 'auto',
+                }}
+              >
+              {/* Preview */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Preview clicked');
+                  setShowPreview(!showPreview);
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                style={{
+                  color: "#fff",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  outline: "none",
+                }}
+              >
+                Preview
+              </button>
+
+              {/* Colaboración - solo en modo no-lite */}
+              {!isLite && onOpenCollaboration && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Colaboración clicked');
+                    onOpenCollaboration();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Colaboración
+                  {isCollaborating && collaborationUsers > 1 && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: "var(--theme-primary)", color: "white" }}>
+                      {collaborationUsers}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Chat - solo si está colaborando */}
+              {!isLite && isCollaborating && onToggleChat && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Chat clicked');
+                    onToggleChat();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Chat
+                  {chatMessagesCount > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: "var(--theme-accent)", color: "white" }}>
+                      {chatMessagesCount > 9 ? '9+' : chatMessagesCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Gestor de imágenes - solo en modo no-lite */}
+              {!isLite && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Imágenes clicked');
+                    onOpenImageManager();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Imágenes
+                </button>
+              )}
+
+              {/* Exportar - solo en modo no-lite */}
+              {!isLite && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Exportar clicked');
+                    onExport();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Exportar
+                </button>
+              )}
+
+              {/* Atajos de teclado - solo en modo no-lite */}
+              {!isLite && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Atajos clicked');
+                    onOpenShortcuts();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Atajos
+                </button>
+              )}
+
+              {/* Resetear - solo en modo no-lite */}
+              {!isLite && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Resetear clicked');
+                    if (confirm("¿Estás seguro de que quieres resetear todo? Se eliminarán todos los datos guardados.")) {
+                      onResetAll();
+                      setMenuOpen(false);
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors border-t hover:bg-red-500/20 cursor-pointer"
+                  style={{
+                    color: "#fca5a5",
+                    backgroundColor: "transparent",
+                    borderTopColor: "rgba(255, 255, 255, 0.1)",
+                    border: "none",
+                    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                    outline: "none",
+                  }}
+                >
+                  Resetear
+                </button>
+              )}
+            </div>,
+            document.body
+          );
+          })()}
+        </div>
       </div>
     </div>
   );

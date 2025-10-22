@@ -12,10 +12,14 @@ import SessionManager from './components/SessionManager'
 import CollaborationPanel from './components/CollaborationPanel'
 import CollaborationBanner from './components/CollaborationBanner'
 import CollaborationNotification from './components/CollaborationNotification'
+import ChatPanel from './components/ChatPanel'
+import AuthModal from './components/AuthModal'
+import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
 import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
 import { useCollaboration } from './hooks/useCollaboration'
+import { useAuth } from './hooks/useAuth'
 import { buildPreview } from './utils/previewBuilder'
 
 // Archivos de ejemplo iniciales
@@ -239,6 +243,10 @@ function App() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
+  // 🔥 NUEVO: Estados para chat
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'vs-dark');
   });
@@ -299,6 +307,23 @@ function App() {
     typingUsers,
     removeNotification,
   } = useCollaboration(files, setFiles);
+
+  // 🔐 Hook de autenticación
+  const {
+    user,
+    loading: authLoading,
+    isAuthenticated,
+    isConfigured: isAuthConfigured,
+    login,
+    signup,
+    loginWithProvider,
+    logout,
+    getDisplayName
+  } = useAuth();
+
+  // Estado para AuthModal
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authPendingAction, setAuthPendingAction] = useState(null); // 'create' o 'join'
 
   // Aplicar tema cuando cambia
   useEffect(() => {
@@ -740,14 +765,93 @@ function App() {
   const handleLeaveSession = async () => {
     await leaveSession();
     setShowCollaborationPanel(false);
+    setShowChat(false);
+    setChatMessages([]);
   };
 
-  // Detectar si hay un ID de sesión en la URL al cargar
+  // 🔥 NUEVO: Handler para enviar mensajes de chat
+  const handleSendChatMessage = useCallback(async (messageData) => {
+    if (!isCollaborating || !currentUser) return;
+
+    const newMessage = {
+      id: Date.now(),
+      user_id: currentUser?.id,
+      user_name: currentUser?.name,
+      user_color: currentUser?.color,
+      message: messageData.message,
+      message_type: messageData.messageType || 'text',
+      created_at: new Date().toISOString(),
+    };
+
+    setChatMessages(prev => [...prev, newMessage]);
+
+    // Guardar en BD si está disponible
+    if (databaseService.isConfigured && currentSession?.dbId) {
+      try {
+        await databaseService.sendChatMessage({
+          sessionId: currentSession.dbId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userColor: currentUser.color,
+          message: messageData.message,
+          messageType: messageData.messageType,
+        });
+      } catch (error) {
+        console.error('Error guardando mensaje:', error);
+      }
+    }
+  }, [isCollaborating, currentSession, currentUser]);
+
+  // 🔐 Handler para abrir modal de colaboración (con verificación de autenticación)
+  const handleOpenCollaboration = () => {
+    if (isCollaborating) {
+      setShowCollaborationPanel(true);
+    } else {
+      // Si no está configurado Supabase o no está autenticado, mostrar AuthModal
+      if (isAuthConfigured && !isAuthenticated) {
+        console.log('🔐 Se requiere autenticación - Mostrando AuthModal');
+        setAuthPendingAction('menu');
+        setShowAuthModal(true);
+      } else {
+        // Si ya está autenticado o no está configurado Auth, abrir SessionManager directamente
+        setShowSessionManager(true);
+      }
+    }
+  };
+
+  // 🔐 Handler para resultado de autenticación
+  const handleAuthSuccess = async (authData) => {
+    try {
+      if (authData.mode === 'login') {
+        await login(authData.email, authData.password);
+      } else if (authData.mode === 'signup') {
+        await signup(authData.email, authData.password, authData.displayName);
+      } else if (authData.mode === 'social') {
+        await loginWithProvider(authData.provider);
+      }
+
+      // Cerrar AuthModal
+      setShowAuthModal(false);
+
+      // Abrir SessionManager después de autenticarse
+      if (authPendingAction) {
+        setShowSessionManager(true);
+        setAuthPendingAction(null);
+      }
+    } catch (error) {
+      console.error('Error en autenticación:', error);
+      throw error; // El error se manejará en AuthModal
+    }
+  };
+
+  // 🔐 Detectar link compartido y FORZAR autenticación
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session');
     
     if (!sessionId) return; // No hay sessionId en URL, salir
+    
+    console.log('🔗 Link compartido detectado, sessionId:', sessionId);
     
     // Verificar si ya hay una sesión restaurada
     const storedSession = localStorage.getItem('collaboration_session');
@@ -771,14 +875,21 @@ function App() {
     
     // Delay para dar tiempo a que useCollaboration intente restaurar
     const timer = setTimeout(() => {
-      // Solo abrir modal si aún no se ha colaborado
+      // 🔥 FORZAR AUTENTICACIÓN PRIMERO si Supabase está configurado
       if (!isCollaborating) {
-        setShowSessionManager(true);
+        if (isAuthConfigured && !isAuthenticated && !authLoading) {
+          console.log('🔐 Link compartido - EXIGIENDO autenticación');
+          setAuthPendingAction('join');
+          setShowAuthModal(true);
+        } else {
+          // Ya está autenticado o no requiere auth
+          setShowSessionManager(true);
+        }
       }
-    }, 800); // 800ms de delay para dar tiempo suficiente
+    }, 1000); // 1 segundo para dar tiempo a cargar auth
     
     return () => clearTimeout(timer);
-  }, [isCollaborating]);
+  }, [isCollaborating, isAuthConfigured, isAuthenticated, authLoading]);
 
   const handleExecuteCode = () => {
     const activeFile = getFileByPath(activeTab);
@@ -1111,9 +1222,15 @@ function App() {
         activeTab={activeTab}
         onTabClick={setActiveTab}
         onTabClose={handleTabClose}
-        onOpenCollaboration={() => isCollaborating ? setShowCollaborationPanel(true) : setShowSessionManager(true)}
+        onOpenCollaboration={handleOpenCollaboration}
         isCollaborating={isCollaborating}
         collaborationUsers={activeUsers.length}
+        showChat={showChat}
+        onToggleChat={() => setShowChat(!showChat)}
+        chatMessagesCount={chatMessages.length}
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onLogout={logout}
       />
 
       {/* Indicador de guardado automático */}
@@ -1164,6 +1281,8 @@ function App() {
         onCreateSession={handleCreateSession}
         onJoinSession={handleJoinSession}
         isConfigured={isCollaborationConfigured}
+        isAuthenticated={isAuthenticated}
+        user={user}
       />
 
       <CollaborationPanel
@@ -1177,6 +1296,27 @@ function App() {
         remoteCursors={remoteCursors}
         typingUsers={typingUsers}
         activeFile={activeTab}
+      />
+
+      {/* 🔥 NUEVO: Chat Panel */}
+      {isCollaborating && (
+        <ChatPanel
+          isOpen={showChat}
+          onClose={() => setShowChat(false)}
+          messages={chatMessages}
+          currentUser={currentUser}
+          onSendMessage={handleSendChatMessage}
+          isMinimized={isChatMinimized}
+          onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
+        />
+      )}
+
+      {/* 🔐 Modal de Autenticación */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+        authMode="login"
       />
 
       {/* Modal Reset */}

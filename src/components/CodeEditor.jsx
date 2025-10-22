@@ -54,10 +54,25 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   useEffect(() => { projectImagesRef.current = projectImages; }, [projectImages]);
   useEffect(() => { activePathRef.current = activePath; }, [activePath]);
 
-  // Renderizar cursores remotos en el editor usando widgets flotantes
+  // 🎨 Renderizar cursores remotos y etiquetas
   useEffect(() => {
-    if (!editorRef.current || !monacoRef.current || !isCollaborating) return;
-    
+    console.log('🎨🎨🎨 useEffect de cursores remotos ejecutado:', {
+      hasEditor: !!editorRef.current,
+      hasMonaco: !!monacoRef.current,
+      isCollaborating,
+      totalRemoteCursors: Object.keys(remoteCursors || {}).length,
+      activePath
+    });
+
+    if (!editorRef.current || !monacoRef.current || !isCollaborating) {
+      console.warn('⚠️ Saltando renderizado de cursores:', {
+        hasEditor: !!editorRef.current,
+        hasMonaco: !!monacoRef.current,
+        isCollaborating
+      });
+      return;
+    }
+
     const editor = editorRef.current;
     const monaco = monacoRef.current;
 
@@ -65,6 +80,11 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
     const cursorsInCurrentFile = Object.entries(remoteCursors || {}).filter(
       ([userId, cursor]) => cursor.filePath === activePath
     );
+    
+    console.log('📍 Cursores en archivo actual:', {
+      totalCursors: cursorsInCurrentFile.length,
+      cursors: cursorsInCurrentFile.map(([id, c]) => ({ id, user: c.userName, path: c.filePath }))
+    });
 
     // Limpiar decoraciones y widgets anteriores
     if (cursorDecorationsRef.current.length > 0) {
@@ -249,7 +269,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
   // 🎯 Registrar listener de movimiento de cursor dinámicamente
   useEffect(() => {
     if (!editorRef.current || !isCollaborating || !onCursorMove) {
-      console.log('⏸️ Listener de cursor NO registrado:', {
+      console.warn('⚠️⚠️⚠️ Listener de cursor NO registrado:', {
         hasEditor: !!editorRef.current,
         isCollaborating,
         hasOnCursorMove: !!onCursorMove
@@ -258,7 +278,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
     }
 
     const editor = editorRef.current;
-    console.log('✅ Registrando listener de cursor para colaboración');
+    console.log('✅✅✅ REGISTRANDO LISTENER DE CURSOR para colaboración');
 
     // Registrar evento de cambio de posición del cursor
     const disposable = editor.onDidChangeCursorPosition((e) => {
@@ -378,7 +398,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         clearTimeout(realtimeTimeoutRef.current);
       }
 
-      // Enviar después de 100ms de inactividad (ultra-rápido para mejor UX)
+      // Enviar después de 300ms de inactividad (mejor para sincronización completa)
       realtimeTimeoutRef.current = setTimeout(() => {
         const editor = editorRef.current;
         const position = editor?.getPosition();
@@ -397,7 +417,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             column: position.column
           } : null
         });
-      }, 100);
+      }, 300); // Aumentado de 100ms a 300ms para sincronización completa
     } else {
       console.warn('⚠️ NO se enviará cambio:', {
         isCollaborating,

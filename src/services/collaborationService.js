@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import databaseService from './databaseService';
+import diffService from './diffService';
 
 // IMPORTANTE: El usuario debe configurar sus propias credenciales de Supabase
 // Crear un proyecto en https://supabase.com y obtener URL y anon key
@@ -29,14 +31,18 @@ class CollaborationService {
     this.isReconnecting = false;
     this.connectionStatus = 'disconnected'; // disconnected, connecting, connected
     
+    // 🔥 NUEVO: Cache de contenidos para diffs
+    this.fileCache = {};
+    
     // 🔄 Buffer para cambios offline
     this.offlineBuffer = [];
     this.maxBufferSize = 100;
     
-    // 💓 Heartbeat para detectar desconexiones
+    // 💓 Heartbeat REFORZADO para detectar desconexiones
     this.heartbeatInterval = null;
-    this.heartbeatFrequency = 30000; // 30 segundos
+    this.heartbeatFrequency = 10000; // 10 segundos (más frecuente)
     this.lastHeartbeat = Date.now();
+    this.keepAliveInterval = null; // Ping adicional cada 5s
     
     // 🎯 Control de cambios duplicados mejorado
     this.processedMessages = new Set();
@@ -111,6 +117,25 @@ class CollaborationService {
       files: sessionData.files || {}, // Guardar estructura de archivos inicial
       images: sessionData.images || [], // Guardar imágenes
     };
+
+    // 🔥 NUEVO: Guardar sesión en base de datos
+    try {
+      console.log('💾 Guardando sesión en BD...');
+      const dbSession = await databaseService.createSession({
+        sessionCode: sessionId,
+        sessionName: sessionData.sessionName || 'Sesión de Código',
+        ownerUserId: userId,
+        ownerName: this.currentUser.name,
+        accessControl: sessionData.accessControl || 'public',
+        passwordHash: sessionData.password || null,
+      });
+      
+      this.currentSession.dbId = dbSession.id;
+      console.log('✅ Sesión guardada en BD:', dbSession.id);
+    } catch (error) {
+      console.error('❌ Error guardando sesión en BD:', error);
+      // Continuar sin BD (fallback a modo local)
+    }
 
     // Conectar al canal de Supabase Realtime
     await this.connectToChannel(sessionId);
@@ -216,13 +241,15 @@ class CollaborationService {
     this.channel.on('broadcast', { event: 'file-change' }, (payload) => {
       const data = payload.payload;
       
-      console.log('🎯 Supabase broadcast recibido:', {
+      console.log('🎯 Diff recibido:', {
         event: 'file-change',
         messageId: data.messageId,
         fromUserId: data.userId,
         currentUserId: this.currentUser?.id,
         isSameUser: data.userId === this.currentUser?.id,
         filePath: data.filePath,
+        diffType: data.diffData?.type,
+        diffSize: data.diffData?.size,
         hasCallback: !!this.callbacks.onFileChange
       });
       
@@ -239,8 +266,28 @@ class CollaborationService {
       }
       
       if (this.callbacks.onFileChange) {
-        console.log('📞 Llamando callback onFileChange...');
-        this.callbacks.onFileChange(data);
+        // 🔥 APLICAR DIFF recibido
+        const oldContent = this.fileCache[data.filePath] || '';
+        const newContent = diffService.applyDiff(oldContent, data.diffData);
+        
+        // Verificar integridad si hay hash
+        if (data.contentHash) {
+          const isValid = diffService.verifyIntegrity(oldContent, newContent, data.contentHash);
+          if (!isValid) {
+            console.error('❌ Error de integridad - hash no coincide');
+            // TODO: Solicitar contenido completo
+            return;
+          }
+        }
+        
+        // Actualizar cache
+        this.fileCache[data.filePath] = newContent;
+        
+        console.log('📞 Llamando callback onFileChange con contenido aplicado...');
+        this.callbacks.onFileChange({
+          ...data,
+          content: newContent, // 🔥 Contenido reconstruido
+        });
       } else {
         console.warn('⚠️ No hay callback registrado para onFileChange');
       }
@@ -253,25 +300,52 @@ class CollaborationService {
       }
     });
 
-    // Responder a solicitudes de lista de usuarios
+    // Responder a solicitudes de lista de usuarios MEJORADO
     this.channel.on('broadcast', { event: 'request-user-list' }, async (payload) => {
+      console.log('📢 Solicitud de lista recibida de:', payload.payload.requesterId);
+      console.log('👤 Mi ID:', this.currentUser?.id);
+      
       // Si alguien pide la lista, respondo con mi información
       if (this.currentUser && payload.payload.requesterId !== this.currentUser.id) {
-        await this.channel.send({
-          type: 'broadcast',
-          event: 'user-response',
-          payload: {
-            ...this.currentUser,
-            timestamp: Date.now()
+        console.log('✅ Respondiendo con mi información a:', payload.payload.requesterId);
+        
+        // Responder con delay aleatorio para evitar colisiones
+        const delay = Math.random() * 500; // 0-500ms
+        setTimeout(async () => {
+          try {
+            await this.channel.send({
+              type: 'broadcast',
+              event: 'user-response',
+              payload: {
+                ...this.currentUser,
+                timestamp: Date.now(),
+                respondingTo: payload.payload.requesterId
+              }
+            });
+            console.log('📤 Respuesta enviada exitosamente');
+          } catch (error) {
+            console.error('❌ Error al enviar respuesta:', error);
           }
-        });
+        }, delay);
+      } else {
+        console.log('⏸️ No respondo (es mi propia solicitud o no hay usuario)');
       }
     });
 
-    // Recibir respuestas de otros usuarios
+    // Recibir respuestas de otros usuarios MEJORADO
     this.channel.on('broadcast', { event: 'user-response' }, (payload) => {
+      console.log('📥 Respuesta de usuario recibida:', {
+        userName: payload.payload.name,
+        userId: payload.payload.id,
+        respondingTo: payload.payload.respondingTo,
+        myId: this.currentUser?.id
+      });
+      
       if (this.callbacks.onUserJoined && payload.payload.id !== this.currentUser?.id) {
+        console.log('✅ Agregando usuario a la lista:', payload.payload.name);
         this.callbacks.onUserJoined(payload.payload);
+      } else {
+        console.log('⏸️ No agregar (es mi propio usuario o no hay callback)');
       }
     });
 
@@ -442,16 +516,17 @@ class CollaborationService {
     this.isReconnecting = false;
   }
 
-  // 💓 Iniciar heartbeat para detectar desconexiones
+  // 💓 Iniciar heartbeat REFORZADO para detectar desconexiones
   startHeartbeat() {
     if (this.stopHeartbeat) this.stopHeartbeat(); // Limpiar cualquier heartbeat previo
     
+    // Heartbeat principal cada 10 segundos
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastHeartbeat = now - this.lastHeartbeat;
       
       if (timeSinceLastHeartbeat > this.heartbeatFrequency * 2) {
-        console.warn('⚠️ Heartbeat perdido - posible desconexión');
+        console.warn('⚠️ Heartbeat perdido - RECONECTANDO automáticamente');
         this.connectionStatus = 'unstable';
         
         if (this.callbacks.onConnectionStatusChange) {
@@ -460,6 +535,12 @@ class CollaborationService {
             previousStatus: 'connected',
             reconnectAttempts: this.reconnectAttempts,
           });
+        }
+        
+        // 🔥 RECONEXIÓN AUTOMÁTICA AGRESIVA
+        if (this.currentSession) {
+          console.log('🔄 Intentando reconexión automática...');
+          this.attemptReconnection(this.currentSession.id);
         }
       }
       
@@ -474,13 +555,37 @@ class CollaborationService {
           },
         }).then(() => {
           this.lastHeartbeat = now;
+          // Resetear a connected si estaba unstable
+          if (this.connectionStatus === 'unstable') {
+            console.log('✅ Conexión restaurada');
+            this.connectionStatus = 'connected';
+          }
         }).catch((error) => {
           console.error('❌ Error al enviar heartbeat:', error);
+          // Intentar reconectar si falla 3 veces seguidas
+          this.reconnectAttempts++;
+          if (this.reconnectAttempts >= 3 && this.currentSession) {
+            console.log('🔄 3 fallos consecutivos - reconectando...');
+            this.attemptReconnection(this.currentSession.id);
+          }
         });
       }
     }, this.heartbeatFrequency);
     
-    console.log('💓 Heartbeat iniciado');
+    // 🔥 Keep-alive ADICIONAL cada 5 segundos para mantener canal vivo
+    this.keepAliveInterval = setInterval(() => {
+      if (this.channel && this.currentUser) {
+        this.channel.send({
+          type: 'broadcast',
+          event: 'ping',
+          payload: { userId: this.currentUser.id, timestamp: Date.now() },
+        }).catch(() => {
+          // Silencioso, solo para mantener conexión
+        });
+      }
+    }, 5000); // Ping cada 5 segundos
+    
+    console.log('💓 Heartbeat REFORZADO iniciado (10s + keep-alive 5s)');
   }
 
   // 🛑 Detener heartbeat
@@ -488,8 +593,12 @@ class CollaborationService {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
-      console.log('🛑 Heartbeat detenido');
     }
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+    console.log('🛑 Heartbeat y keep-alive detenidos');
   }
 
   // 📦 Vaciar buffer de cambios offline
@@ -536,7 +645,7 @@ class CollaborationService {
 
   // 🚀 Transmitir cambio en archivo (mejorado con buffer offline)
   async broadcastFileChange(filePath, content, cursorPosition, version) {
-    console.log('📡 broadcastFileChange llamado:', {
+    console.log('📡 broadcastFileChange llamado con DIFF:', {
       hasChannel: !!this.channel,
       hasUser: !!this.currentUser,
       filePath,
@@ -548,6 +657,23 @@ class CollaborationService {
       console.error('❌ NO se puede enviar - falta usuario');
       return;
     }
+
+    // 🔥 CALCULAR DIFF en lugar de enviar contenido completo
+    const oldContent = this.fileCache[filePath] || '';
+    const diffData = diffService.calculateDiff(oldContent, content);
+    
+    console.log('📊 Diff calculado:', {
+      type: diffData.type,
+      size: diffData.size,
+      originalSize: content.length,
+      savings: content.length > 0 ? `${Math.round((1 - diffData.size / content.length) * 100)}%` : '0%'
+    });
+
+    // Actualizar cache
+    this.fileCache[filePath] = content;
+
+    // Generar hash para verificación de integridad
+    const contentHash = diffService.generateHash(content);
 
     // Generar ID único para el mensaje
     const messageId = `${this.currentUser.id}-${filePath}-${Date.now()}`;
@@ -561,16 +687,27 @@ class CollaborationService {
         userName: this.currentUser.name,
         userColor: this.currentUser.color,
         filePath,
-        content,
+        diffData, // 🔥 En lugar de content completo
+        contentHash, // 🔥 Para verificar integridad
         cursorPosition,
         version: typeof version === 'number' ? version : undefined,
         timestamp: Date.now(),
       }
     };
     
+    // 🔌 DEBUG: Verificar estado de conexión
+    console.log('🔌 Estado de conexión:', {
+      hasChannel: !!this.channel,
+      connectionStatus: this.connectionStatus,
+      willBuffer: !this.channel || this.connectionStatus !== 'connected'
+    });
+    
     // Si no hay canal o está desconectado, agregar al buffer
     if (!this.channel || this.connectionStatus !== 'connected') {
-      console.warn('⚠️ Sin conexión - agregando al buffer offline');
+      console.warn('⚠️ Sin conexión - agregando al buffer offline', {
+        hasChannel: !!this.channel,
+        status: this.connectionStatus
+      });
       
       if (this.offlineBuffer.length < this.maxBufferSize) {
         this.offlineBuffer.push(message);
@@ -629,27 +766,61 @@ class CollaborationService {
     });
   }
 
-  // Notificar que un usuario se unió
+  // 🔥 Notificar que un usuario se unió - REFORZADO con reintentos
   async broadcastUserJoined() {
     if (!this.channel || !this.currentUser) return;
 
-    // 1. Anunciar mi llegada a todos
-    await this.channel.send({
-      type: 'broadcast',
-      event: 'user-joined',
-      payload: this.currentUser,
-    });
+    console.log('👋 Anunciando mi llegada:', this.currentUser.name);
 
-    // 2. Solicitar lista de usuarios existentes
-    // Esto hará que todos los demás usuarios respondan con su información
-    await this.channel.send({
-      type: 'broadcast',
-      event: 'request-user-list',
-      payload: {
-        requesterId: this.currentUser.id,
-        timestamp: Date.now()
+    // 1. Anunciar mi llegada a todos
+    try {
+      await this.channel.send({
+        type: 'broadcast',
+        event: 'user-joined',
+        payload: this.currentUser,
+      });
+      console.log('✅ Anuncio de llegada enviado');
+    } catch (error) {
+      console.error('❌ Error al anunciar llegada:', error);
+    }
+
+    // 2. Solicitar lista de usuarios existentes CON REINTENTOS
+    const requestUserList = async (attempt = 1, maxAttempts = 3) => {
+      try {
+        console.log(`📢 Solicitando lista de usuarios (intento ${attempt}/${maxAttempts})`);
+        
+        await this.channel.send({
+          type: 'broadcast',
+          event: 'request-user-list',
+          payload: {
+            requesterId: this.currentUser.id,
+            timestamp: Date.now(),
+            attempt
+          }
+        });
+        
+        console.log('✅ Solicitud de lista enviada');
+        
+        // Reenviar después de 1 segundo si no es el último intento
+        if (attempt < maxAttempts) {
+          setTimeout(() => {
+            requestUserList(attempt + 1, maxAttempts);
+          }, 1000 * attempt); // 1s, 2s, 3s
+        }
+      } catch (error) {
+        console.error(`❌ Error al solicitar lista (intento ${attempt}):`, error);
+        
+        // Reintentar si hay error
+        if (attempt < maxAttempts) {
+          setTimeout(() => {
+            requestUserList(attempt + 1, maxAttempts);
+          }, 1000);
+        }
       }
-    });
+    };
+
+    // Iniciar solicitud con reintentos
+    await requestUserList(1, 3);
   }
 
   // Notificar que un usuario se fue

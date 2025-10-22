@@ -10,7 +10,10 @@ export default function SessionManager({
   onClose, 
   onCreateSession, 
   onJoinSession,
-  isConfigured 
+  isConfigured,
+  // 🔐 Props de autenticación
+  isAuthenticated,
+  user
 }) {
   const [mode, setMode] = useState('menu'); // menu, create, join, created
   const [sessionName, setSessionName] = useState('');
@@ -24,6 +27,14 @@ export default function SessionManager({
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+
+  // 🔐 Auto-completar nombre de usuario si está autenticado
+  useEffect(() => {
+    if (isOpen && isAuthenticated && user) {
+      const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'Usuario';
+      setUserName(displayName);
+    }
+  }, [isOpen, isAuthenticated, user]);
 
   // Detectar ID de sesión en la URL cuando se abre el modal
   useEffect(() => {
@@ -266,14 +277,27 @@ VITE_SUPABASE_ANON_KEY=tu_key_aqui
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Tu Nombre *
+                  {isAuthenticated && (
+                    <span className="ml-2 text-xs text-green-400">✓ Desde tu cuenta</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full bg-[#2d2d30] border border-[#3e3e42] rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  disabled={isAuthenticated}
+                  className={`w-full border rounded px-3 py-2 focus:outline-none ${
+                    isAuthenticated
+                      ? 'bg-[#1e1e1e] border-green-600/30 text-green-400 cursor-not-allowed'
+                      : 'bg-[#2d2d30] border-[#3e3e42] text-white placeholder-gray-500 focus:border-blue-500'
+                  }`}
                 />
+                {isAuthenticated && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Tu nombre se tomó automáticamente de tu cuenta
+                  </p>
+                )}
               </div>
 
               <div>
@@ -381,15 +405,28 @@ VITE_SUPABASE_ANON_KEY=tu_key_aqui
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Tu Nombre *
+                  {isAuthenticated && (
+                    <span className="ml-2 text-xs text-green-400">✓ Desde tu cuenta</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder="Ej: María García"
-                  className="w-full bg-[#2d2d30] border border-[#3e3e42] rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-                  autoFocus
+                  disabled={isAuthenticated}
+                  className={`w-full border rounded px-3 py-2 focus:outline-none ${
+                    isAuthenticated
+                      ? 'bg-[#1e1e1e] border-green-600/30 text-green-400 cursor-not-allowed'
+                      : 'bg-[#2d2d30] border-[#3e3e42] text-white placeholder-gray-500 focus:border-purple-500'
+                  }`}
+                  autoFocus={!isAuthenticated}
                 />
+                {isAuthenticated && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Tu nombre se tomó automáticamente de tu cuenta
+                  </p>
+                )}
               </div>
 
               <div>
