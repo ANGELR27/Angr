@@ -912,13 +912,11 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           endColumn: word.endColumn
         };
 
-        let suggestions = getHTMLSnippets(monaco, range);
-
         // Detectar si estamos en un atributo src, href, etc.
         const inSrcAttribute = /(?:src|href|data)=["'][^"']*$/.test(textUntilPosition);
         
         if (inSrcAttribute) {
-          // Agregar archivos del proyecto
+          // Cuando estamos dentro de un atributo, SOLO mostrar rutas de archivos
           const { files: filePaths } = getCachedPaths();
           const fromDir = getDirname(activePathRef.current || '');
           const query = extractHtmlAttrQuery(textUntilPosition);
@@ -955,29 +953,26 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             range
           }));
 
-          // Snippets especiales para imágenes del proyecto
-          const imgExts = new Set(['png','jpg','jpeg','gif','svg','webp','avif']);
-          const imageFileSnippets = filePaths
-            .filter(f => imgExts.has(String(f.extension||'').toLowerCase()))
-            .map((f, i) => ({
-              label: `img: ${f.path}`,
-              kind: monaco.languages.CompletionItemKind.Snippet,
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              insertText: `<img src="${relativePath(fromDir, f.path)}" alt="${f.name.split('.')[0]}" width="\${1:300}" height="\${2:auto}" />`,
-              documentation: `Insertar etiqueta <img> para ${f.name}`,
-              sortText: `1${i}`,
-              range
-            }));
-
-          const ranked = [
+          // Solo sugerir rutas cuando estamos dentro de src=""
+          const allCompletions = [
             ...sortByFuzzy(folderCompletions, x => x.label, query),
             ...sortByFuzzy(imageCompletions, x => x.label || '', query),
-            ...sortByFuzzy(imageFileSnippets, x => x.label, query),
             ...sortByFuzzy(fileCompletions, x => x.label, query)
           ];
-          suggestions = [...ranked, ...suggestions];
+          
+          // Eliminar duplicados basado en label
+          const seen = new Set();
+          const suggestions = allCompletions.filter(item => {
+            if (seen.has(item.label)) return false;
+            seen.add(item.label);
+            return true;
+          });
+          
+          return { suggestions };
         }
-
+        
+        // Si no estamos en un atributo, mostrar snippets HTML normales
+        const suggestions = getHTMLSnippets(monaco, range);
         return { suggestions };
       }
     });
@@ -1026,22 +1021,19 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
           range
         }));
 
-        // Snippets de background para imágenes
-        const bgSnippets = imageFiles.map((f, i) => ({
-          label: `background-cover: ${f.path}`,
-          kind: monaco.languages.CompletionItemKind.Snippet,
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          insertText: `background: url('${relativePath(fromDir, f.path)}') center/cover no-repeat;`,
-          documentation: `background con cover para ${f.name}`,
-          sortText: `1${i}`,
-          range
-        }));
-
-        const ranked = [
+        // Solo sugerir rutas cuando estamos dentro de url()
+        const allItems = [
           ...sortByFuzzy(folderItems, x => x.label, query),
-          ...sortByFuzzy(fileItems, x => x.label, query),
-          ...sortByFuzzy(bgSnippets, x => x.label, query)
+          ...sortByFuzzy(fileItems, x => x.label, query)
         ];
+        
+        // Eliminar duplicados basado en label
+        const seen = new Set();
+        const ranked = allItems.filter(item => {
+          if (seen.has(item.label)) return false;
+          seen.add(item.label);
+          return true;
+        });
 
         return { suggestions: ranked };
       }
