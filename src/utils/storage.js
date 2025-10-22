@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   SIDEBAR_WIDTH: 'code-editor-sidebar-width',
   PREVIEW_WIDTH: 'code-editor-preview-width',
   TERMINAL_HEIGHT: 'code-editor-terminal-height',
+  EDITOR_BACKGROUND: 'code-editor-background',
 };
 
 // Verificar si localStorage está disponible y tiene espacio

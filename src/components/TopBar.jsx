@@ -50,6 +50,8 @@ function TopBar({
   isAuthenticated,
   user,
   onLogout,
+  // 🎨 Fondo personalizado
+  onOpenBackground,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -551,6 +553,28 @@ function TopBar({
                   }}
                 >
                   Imágenes
+                </button>
+              )}
+
+              {/* Fondo del editor - solo en modo no-lite */}
+              {!isLite && onOpenBackground && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Fondo clicked');
+                    onOpenBackground();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Fondo
                 </button>
               )}
 

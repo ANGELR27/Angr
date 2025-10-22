@@ -6,6 +6,7 @@ import TopBar from './components/TopBar'
 import Terminal from './components/Terminal'
 import ImageManager from './components/ImageManager'
 import ThemeSelector from './components/ThemeSelector'
+import BackgroundSelector from './components/BackgroundSelector'
 import ShortcutsHelp from './components/ShortcutsHelp'
 import AutoSaveIndicator from './components/AutoSaveIndicator'
 import SessionManager from './components/SessionManager'
@@ -243,12 +244,16 @@ function App() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
+  const [showBackgroundSelector, setShowBackgroundSelector] = useState(false);
+  const [editorBackground, setEditorBackground] = useState(() => {
+    return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15 });
+  });
   // 🔥 NUEVO: Estados para chat
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
-    return loadFromStorage(STORAGE_KEYS.THEME, 'vs-dark');
+    return loadFromStorage(STORAGE_KEYS.THEME, 'neon-cyan');
   });
   const [images, setImages] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.IMAGES, []);
@@ -739,6 +744,14 @@ function App() {
 
   const handleResetAll = () => setShowResetModal(true);
 
+  // Handler de fondo personalizado
+  const handleBackgroundChange = (bgId, bgImage, opacity) => {
+    const newBackground = { id: bgId, image: bgImage, opacity };
+    setEditorBackground(newBackground);
+    saveToStorage(STORAGE_KEYS.EDITOR_BACKGROUND, newBackground);
+    localStorage.setItem('background-opacity', opacity);
+  };
+
   // Handlers de colaboración
   const handleCreateSession = async (sessionData) => {
     const result = await createSession(sessionData);
@@ -1188,6 +1201,20 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-editor-bg text-white relative overflow-hidden">
+      {/* Fondo personalizado del editor */}
+      {editorBackground.image && (
+        <div 
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: `url(${editorBackground.image})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: editorBackground.opacity || 0.15,
+          }}
+        />
+      )}
+      
       {/* Efectos de esquinas con glow azul y amarillo */}
       <div className="absolute top-0 left-0 w-64 h-64 pointer-events-none z-0" style={{
         background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
@@ -1231,6 +1258,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         user={user}
         onLogout={logout}
+        onOpenBackground={() => setShowBackgroundSelector(true)}
       />
 
       {/* Indicador de guardado automático */}
@@ -1268,6 +1296,13 @@ function App() {
         onClose={() => setShowThemeSelector(false)}
         currentTheme={currentTheme}
         onThemeChange={setCurrentTheme}
+      />
+
+      <BackgroundSelector
+        isOpen={showBackgroundSelector}
+        onClose={() => setShowBackgroundSelector(false)}
+        currentBackground={editorBackground.id}
+        onBackgroundChange={handleBackgroundChange}
       />
 
       <ShortcutsHelp

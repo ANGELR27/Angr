@@ -750,6 +750,61 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
 
     // NOTA: El listener de cursor ahora está en un useEffect para que se active dinámicamente
 
+    // 🚀 Auto-expansión del snippet "!" para HTML5
+    editor.onDidChangeModelContent((e) => {
+      const model = editor.getModel();
+      if (!model || language !== 'html') return;
+      
+      // Verificar si el cambio fue de un solo carácter
+      if (e.changes.length !== 1) return;
+      const change = e.changes[0];
+      
+      // Verificar si el texto insertado fue "!"
+      if (change.text === '!') {
+        const position = editor.getPosition();
+        const lineContent = model.getLineContent(position.lineNumber);
+        
+        // Verificar si el "!" está al inicio de la línea (opcionalmente con espacios)
+        const textBeforeExclamation = lineContent.substring(0, position.column - 1).trim();
+        
+        if (textBeforeExclamation === '') {
+          // Eliminar el "!" que acabamos de escribir
+          const range = new monaco.Range(
+            position.lineNumber,
+            position.column - 1,
+            position.lineNumber,
+            position.column
+          );
+          
+          // Insertar el HTML5 boilerplate
+          editor.executeEdits('html5-snippet', [{
+            range: range,
+            text: `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+</html>`,
+            forceMoveMarkers: true
+          }]);
+          
+          // Mover el cursor al título
+          setTimeout(() => {
+            editor.setPosition({ lineNumber: position.lineNumber + 5, column: 12 });
+            editor.setSelection(new monaco.Selection(
+              position.lineNumber + 5, 12,
+              position.lineNumber + 5, 20
+            ));
+          }, 0);
+        }
+      }
+    });
+
     // Función auxiliar para obtener todas las rutas de archivos
     const getAllFilePaths = (files, basePath = '') => {
       let paths = [];
@@ -840,6 +895,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
 
     // HTML Snippets + Autocompletado de rutas
     const htmlProvider = monaco.languages.registerCompletionItemProvider('html', {
+      triggerCharacters: ['!', '<', '.', '#', ' '],
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,

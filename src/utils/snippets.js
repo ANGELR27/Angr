@@ -4,7 +4,26 @@ export const getHTMLSnippets = (monaco, range) => {
   const Rule = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
   
   return [
-    { label: '!', kind: Kind, insertText: '<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>${1:Document}</title>\n</head>\n<body>\n    ${2}\n</body>\n</html>', insertTextRules: Rule, documentation: '✨ HTML5 completo (Emmet)', range },
+    // 🚀 Snippet principal "!" - HTML5 completo
+    { 
+      label: '!', 
+      kind: Kind, 
+      insertText: '<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>${1:Document}</title>\n</head>\n<body>\n    ${2}\n</body>\n</html>', 
+      insertTextRules: Rule, 
+      documentation: '✨ Estructura HTML5 completa (escriba "!" y presione Tab o Enter)', 
+      detail: 'HTML5 Boilerplate',
+      sortText: '0000', // Prioridad máxima
+      range 
+    },
+    { 
+      label: 'html5', 
+      kind: Kind, 
+      insertText: '<!DOCTYPE html>\n<html lang="es">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>${1:Document}</title>\n</head>\n<body>\n    ${2}\n</body>\n</html>', 
+      insertTextRules: Rule, 
+      documentation: '✨ Estructura HTML5 completa', 
+      detail: 'HTML5 Boilerplate',
+      range 
+    },
     { label: 'div', kind: Kind, insertText: '<div class="${1}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con clase', range },
     { label: 'div.', kind: Kind, insertText: '<div class="${1:class-name}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con clase (rápido)', range },
     { label: 'div#', kind: Kind, insertText: '<div id="${1:id-name}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con ID', range },
