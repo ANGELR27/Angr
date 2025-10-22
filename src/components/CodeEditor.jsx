@@ -1409,6 +1409,19 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {/* Estilos CSS personalizados para línea actual muy transparente */}
+        <style>{`
+          .monaco-editor .current-line,
+          .monaco-editor .view-overlays .current-line {
+            background-color: rgba(0, 0, 0, 0.10) !important;
+            border: none !important;
+          }
+          .monaco-editor .margin-view-overlays .current-line {
+            background-color: rgba(0, 0, 0, 0.06) !important;
+            border: none !important;
+          }
+        `}</style>
+        
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
 
         {/* Widget de búsqueda y reemplazo */}
