@@ -20,6 +20,9 @@ function BackgroundSelector({ isOpen, onClose, currentBackground, onBackgroundCh
   const [opacity, setOpacity] = useState(() => {
     return parseFloat(localStorage.getItem('background-opacity')) || 0.15;
   });
+  const [blur, setBlur] = useState(() => {
+    return parseFloat(localStorage.getItem('background-blur')) || 0;
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -30,14 +33,22 @@ function BackgroundSelector({ isOpen, onClose, currentBackground, onBackgroundCh
   const handleSelect = (bgId) => {
     setSelectedBg(bgId);
     const selectedBgData = backgrounds.find(bg => bg.id === bgId);
-    onBackgroundChange(bgId, selectedBgData?.image || null, opacity);
+    onBackgroundChange(bgId, selectedBgData?.image || null, opacity, blur);
   };
 
   const handleOpacityChange = (newOpacity) => {
     setOpacity(newOpacity);
     const selectedBgData = backgrounds.find(bg => bg.id === selectedBg);
     if (selectedBg !== 'none') {
-      onBackgroundChange(selectedBg, selectedBgData?.image || null, newOpacity);
+      onBackgroundChange(selectedBg, selectedBgData?.image || null, newOpacity, blur);
+    }
+  };
+
+  const handleBlurChange = (newBlur) => {
+    setBlur(newBlur);
+    const selectedBgData = backgrounds.find(bg => bg.id === selectedBg);
+    if (selectedBg !== 'none') {
+      onBackgroundChange(selectedBg, selectedBgData?.image || null, opacity, newBlur);
     }
   };
 
@@ -81,25 +92,49 @@ function BackgroundSelector({ isOpen, onClose, currentBackground, onBackgroundCh
 
         {/* Content */}
         <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 140px)' }}>
-          {/* Control de opacidad */}
+          {/* Controles de personalización */}
           {selectedBg !== 'none' && (
-            <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--theme-background-secondary)' }}>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--theme-text)' }}>
-                Opacidad del fondo: {Math.round(opacity * 100)}%
-              </label>
-              <input
-                type="range"
-                min="0.05"
-                max="0.3"
-                step="0.01"
-                value={opacity}
-                onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
-                className="w-full"
-                style={{ accentColor: 'var(--theme-primary)' }}
-              />
-              <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--theme-text-secondary)' }}>
-                <span>Más transparente (mejor para leer)</span>
-                <span>Más visible</span>
+            <div className="mb-6 space-y-4">
+              {/* Control de opacidad */}
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--theme-background-secondary)' }}>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--theme-text)' }}>
+                  Opacidad del fondo: {Math.round(opacity * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.05"
+                  max="0.3"
+                  step="0.01"
+                  value={opacity}
+                  onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: 'var(--theme-primary)' }}
+                />
+                <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--theme-text-secondary)' }}>
+                  <span>Más transparente (mejor para leer)</span>
+                  <span>Más visible</span>
+                </div>
+              </div>
+
+              {/* Control de desenfoque */}
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--theme-background-secondary)' }}>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--theme-text)' }}>
+                  Desenfoque: {blur}px
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={blur}
+                  onChange={(e) => handleBlurChange(parseFloat(e.target.value))}
+                  className="w-full"
+                  style={{ accentColor: 'var(--theme-primary)' }}
+                />
+                <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--theme-text-secondary)' }}>
+                  <span>Nítido</span>
+                  <span>Difuminado</span>
+                </div>
               </div>
             </div>
           )}

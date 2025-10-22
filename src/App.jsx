@@ -246,7 +246,7 @@ function App() {
   const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
   const [showBackgroundSelector, setShowBackgroundSelector] = useState(false);
   const [editorBackground, setEditorBackground] = useState(() => {
-    return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15 });
+    return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15, blur: 0 });
   });
   // 🔥 NUEVO: Estados para chat
   const [showChat, setShowChat] = useState(false);
@@ -339,6 +339,15 @@ function App() {
   useEffect(() => {
     applyGlobalTheme(currentTheme);
   }, []);
+
+  // Ocultar efectos de fondo del body cuando hay imagen personalizada
+  useEffect(() => {
+    if (editorBackground.image) {
+      document.body.classList.add('has-custom-background');
+    } else {
+      document.body.classList.remove('has-custom-background');
+    }
+  }, [editorBackground.image]);
 
   // Toggle modo lite conservando el tema previo
   const handleToggleLite = () => {
@@ -745,11 +754,12 @@ function App() {
   const handleResetAll = () => setShowResetModal(true);
 
   // Handler de fondo personalizado
-  const handleBackgroundChange = (bgId, bgImage, opacity) => {
-    const newBackground = { id: bgId, image: bgImage, opacity };
+  const handleBackgroundChange = (bgId, bgImage, opacity, blur = 0) => {
+    const newBackground = { id: bgId, image: bgImage, opacity, blur };
     setEditorBackground(newBackground);
     saveToStorage(STORAGE_KEYS.EDITOR_BACKGROUND, newBackground);
     localStorage.setItem('background-opacity', opacity);
+    localStorage.setItem('background-blur', blur);
   };
 
   // Handlers de colaboración
@@ -1200,7 +1210,15 @@ function App() {
   const activeFile = getFileByPath(activeTab);
 
   return (
-    <div className="h-screen flex flex-col bg-editor-bg text-white relative overflow-hidden">
+    <div className={`h-screen flex flex-col text-white relative overflow-hidden ${!editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
+      {editorBackground.image && (
+        <style>{`
+          /* Hacer transparente el fondo del editor Monaco cuando hay imagen de fondo */
+          .monaco-editor, .monaco-editor .margin, .monaco-editor-background, .monaco-editor .overflow-guard, .monaco-editor .monaco-scrollable-element {
+            background: transparent !important;
+          }
+        `}</style>
+      )}
       {/* Fondo personalizado del editor */}
       {editorBackground.image && (
         <div 
@@ -1211,26 +1229,31 @@ function App() {
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             opacity: editorBackground.opacity || 0.15,
+            filter: editorBackground.blur ? `blur(${editorBackground.blur}px)` : 'none',
           }}
         />
       )}
       
-      {/* Efectos de esquinas con glow azul y amarillo */}
-      <div className="absolute top-0 left-0 w-64 h-64 pointer-events-none z-0" style={{
-        background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
-        filter: 'blur(40px)',
-        animation: 'pulseBlueGlow 4s ease-in-out infinite'
-      }}></div>
-      <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none z-0" style={{
-        background: 'radial-gradient(circle at top right, rgba(234, 179, 8, 0.15) 0%, transparent 70%)',
-        filter: 'blur(40px)',
-        animation: 'pulseYellowGlow 4s ease-in-out infinite 2s'
-      }}></div>
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-64 pointer-events-none z-0" style={{
-        background: 'radial-gradient(circle at bottom center, rgba(147, 51, 234, 0.1) 0%, transparent 70%)',
-        filter: 'blur(50px)',
-        animation: 'pulseMixedGlow 5s ease-in-out infinite 1s'
-      }}></div>
+      {/* Efectos de esquinas con glow azul y amarillo - ocultos cuando hay fondo personalizado */}
+      {!editorBackground.image && (
+        <>
+          <div className="absolute top-0 left-0 w-64 h-64 pointer-events-none z-0" style={{
+            background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+            animation: 'pulseBlueGlow 4s ease-in-out infinite'
+          }}></div>
+          <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none z-0" style={{
+            background: 'radial-gradient(circle at top right, rgba(234, 179, 8, 0.15) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+            animation: 'pulseYellowGlow 4s ease-in-out infinite 2s'
+          }}></div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-64 pointer-events-none z-0" style={{
+            background: 'radial-gradient(circle at bottom center, rgba(147, 51, 234, 0.1) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+            animation: 'pulseMixedGlow 5s ease-in-out infinite 1s'
+          }}></div>
+        </>
+      )}
       <TopBar className="relative z-10" 
         showPreview={showPreview}
         setShowPreview={setShowPreview}
@@ -1381,7 +1404,7 @@ function App() {
           <>
             <div 
               style={{ width: `${sidebarWidth}px`, minWidth: '180px', maxWidth: '400px' }}
-              className="flex-shrink-0 shadow-blue-glow relative"
+              className={`flex-shrink-0 relative ${!editorBackground.image ? 'shadow-blue-glow' : ''}`}
             >
               <FileExplorer 
                 files={files} 
@@ -1423,7 +1446,7 @@ function App() {
             >
               <div 
                 style={{ width: showPreview ? `${100 - previewWidth}%` : '100%' }}
-                className="flex-shrink-0 shadow-mixed-glow overflow-hidden relative"
+                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image ? 'shadow-mixed-glow' : ''}`}
               >
                 {/* Botón toggle sidebar */}
                 {!showSidebar && (
@@ -1455,6 +1478,7 @@ function App() {
                   isImage={activeFile?.isImage || false}
                   activePath={activeTab}
                   onAddImageFile={handleAddImageFile}
+                  hasCustomBackground={!!editorBackground.image}
                   onRealtimeChange={handleRealtimeChange}
                   isCollaborating={isCollaborating}
                   remoteCursors={remoteCursors}
@@ -1482,7 +1506,7 @@ function App() {
                   />
                   <div 
                     style={{ width: `${previewWidth}%` }}
-                    className="flex-shrink-0 shadow-yellow-glow overflow-hidden"
+                    className={`flex-shrink-0 overflow-hidden ${!editorBackground.image ? 'shadow-yellow-glow' : ''}`}
                   >
                     <Preview 
                       content={getPreviewContent()}
@@ -1511,7 +1535,7 @@ function App() {
                     document.body.style.userSelect = 'none';
                   }}
                 />
-                <div style={{ height: `${terminalHeight}px` }} className="shadow-blue-glow-strong flex-shrink-0">
+                <div style={{ height: `${terminalHeight}px` }} className={`flex-shrink-0 ${!editorBackground.image ? 'shadow-blue-glow-strong' : ''}`}>
                   <Terminal 
                     ref={terminalRef}
                     isOpen={showTerminal}
@@ -1520,6 +1544,7 @@ function App() {
                     isMaximized={isTerminalMaximized}
                     onExecuteCode={handleExecuteCode}
                     onOpenThemes={() => setShowThemeSelector(true)}
+                    backgroundActive={!!editorBackground.image}
                     currentTheme={currentTheme}
                     projectFiles={files}
                     onFileSelect={handleFileSelect}

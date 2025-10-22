@@ -7,7 +7,7 @@ import SearchWidget from './SearchWidget';
 import CommandPalette from './CommandPalette';
 import TypingIndicator from './TypingIndicator';
 
-function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers }) {
+function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, hasCustomBackground = false, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -1391,7 +1391,7 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
 
   return (
     isImage && value ? (
-      <div className="h-full bg-editor-bg flex items-center justify-center p-8">
+      <div className={`h-full flex items-center justify-center p-8 ${!hasCustomBackground ? 'bg-editor-bg' : ''}`}>
         <div className="max-w-full max-h-full flex flex-col items-center gap-4">
           <img
             src={value}

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 're
 import { Terminal as TerminalIcon, X, Minus, Maximize2, Play } from 'lucide-react';
 import * as termCmd from '../utils/terminalCommands';
 
-const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExecuteCode, onOpenThemes, currentTheme, projectFiles, onFileSelect }, ref) => {
+const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExecuteCode, onOpenThemes, backgroundActive = false, currentTheme, projectFiles, onFileSelect }, ref) => {
   const [history, setHistory] = useState([
     { type: 'info', text: '> Terminal de Code Editor v1.0' },
     { type: 'success', text: '> ¡Bienvenido! Escribe "help" para ver comandos disponibles.' },
@@ -849,7 +849,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     <div
       className={`flex flex-col transition-all duration-300 ease-in-out h-full`}
       style={{
-        backgroundColor: 'var(--theme-background)',
+        backgroundColor: backgroundActive ? 'transparent' : 'var(--theme-background)',
         borderTop: '1px solid var(--theme-border)',
         boxShadow: isMaximized ? '0 -4px 20px rgba(0,0,0,0.3)' : 'none',
         ...(isMaximized ? {
