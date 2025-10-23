@@ -7,7 +7,7 @@ import SearchWidget from './SearchWidget';
 import CommandPalette from './CommandPalette';
 import TypingIndicator from './TypingIndicator';
 
-function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, hasCustomBackground = false, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers }) {
+function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, hasCustomBackground = false, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers, onExecuteCode }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -725,27 +725,51 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       editor.updateOptions({ minimap: { enabled: !minimapEnabled } });
     });
 
-    // Guardar (Ctrl+S) - mensaje visual
+    // Guardar (Ctrl+S) - ejecutar código si está disponible
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      // Mostrar notificación visual de guardado
-      const notification = document.createElement('div');
-      notification.textContent = '💾 ¡Guardado automático activo!';
-      notification.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: rgba(34, 197, 94, 0.9);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
-        z-index: 9999;
-        animation: slideIn 0.3s ease-out;
-      `;
-      document.body.appendChild(notification);
-      setTimeout(() => notification.remove(), 2000);
+      // Ejecutar código JavaScript/Python si la función está disponible
+      if (onExecuteCode && (language === 'javascript' || activePath?.endsWith('.js') || activePath?.endsWith('.py'))) {
+        onExecuteCode();
+        // Mostrar notificación de ejecución
+        const notification = document.createElement('div');
+        notification.textContent = '▶️ ¡Código ejecutado!';
+        notification.style.cssText = `
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          background: rgba(139, 92, 246, 0.9);
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+          z-index: 9999;
+          animation: slideIn 0.3s ease-out;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 2000);
+      } else {
+        // Mostrar notificación visual de guardado
+        const notification = document.createElement('div');
+        notification.textContent = '💾 ¡Guardado automático activo!';
+        notification.style.cssText = `
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          background: rgba(34, 197, 94, 0.9);
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+          z-index: 9999;
+          animation: slideIn 0.3s ease-out;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 2000);
+      }
     });
 
     // NOTA: El listener de cursor ahora está en un useEffect para que se active dinámicamente

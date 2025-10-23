@@ -1486,6 +1486,7 @@ function App() {
                   currentUser={currentUser}
                   activeFile={activeFile}
                   typingUsers={typingUsers}
+                  onExecuteCode={handleExecuteCode}
                 />
               </div>
               
@@ -1510,7 +1511,6 @@ function App() {
                   >
                     <Preview 
                       content={getPreviewContent()}
-                      onConsoleLog={handleConsoleLog}
                       projectFiles={files}
                       projectImages={images}
                       currentTheme={currentTheme}
