@@ -29,8 +29,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
   // Exponer método para agregar logs desde fuera
   useImperativeHandle(ref, () => ({
     addLog: (method, args) => {
-      const timestamp = new Date().toLocaleTimeString('es-ES');
-      const text = `[${timestamp}] ${args.join(' ')}`;
+      const text = args.join(' ');
       
       let type = 'console';
       if (method === 'error') type = 'error';
@@ -53,8 +52,6 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
 
   // 🐍 Ejecutar código Python (simulado en JavaScript)
   const executePythonCode = (code) => {
-    const timestamp = new Date().toLocaleTimeString("es-ES");
-
     setHistory((prev) => [
       ...prev,
       { type: "info", text: `▸ Ejecutando código Python...` },
@@ -65,7 +62,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         ...prev,
         {
           type: "warning",
-          text: `[${timestamp}] ⚠ No hay código para ejecutar`,
+          text: `⚠ No hay código para ejecutar`,
         },
       ]);
       return;
@@ -75,7 +72,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       ...prev,
       {
         type: "warning",
-        text: `[${timestamp}] ⚠ Python no está disponible en el navegador`,
+        text: `⚠ Python no está disponible en el navegador`,
       },
       {
         type: "info",
@@ -105,8 +102,6 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
   };
 
   const executeJavaScript = (code) => {
-    const timestamp = new Date().toLocaleTimeString("es-ES");
-
     setHistory((prev) => [
       ...prev,
       { type: "info", text: `▸ Ejecutando código JavaScript...` },
@@ -118,7 +113,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         ...prev,
         {
           type: "warning",
-          text: `[${timestamp}] ⚠ No hay código para ejecutar`,
+          text: `⚠ No hay código para ejecutar`,
         },
       ]);
       return;
@@ -142,7 +137,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               }
               return String(arg);
             }).join(' ');
-            logs.push({ type: 'console', text: `[${timestamp}] ${text}` });
+            logs.push({ type: 'console', text: `  ${text}` });
           } catch (e) {
             errors.push(`Error al procesar log: ${e.message}`);
           }
@@ -150,7 +145,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         error: (...args) => {
           try {
             const text = args.map(arg => String(arg)).join(' ');
-            logs.push({ type: 'error', text: `[${timestamp}] ${text}` });
+            logs.push({ type: 'error', text: text });
           } catch (e) {
             errors.push(`Error al procesar error: ${e.message}`);
           }
@@ -158,7 +153,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         warn: (...args) => {
           try {
             const text = args.map(arg => String(arg)).join(' ');
-            logs.push({ type: 'warning', text: `[${timestamp}] ${text}` });
+            logs.push({ type: 'warning', text: text });
           } catch (e) {
             errors.push(`Error al procesar warning: ${e.message}`);
           }
@@ -166,7 +161,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         info: (...args) => {
           try {
             const text = args.map(arg => String(arg)).join(' ');
-            logs.push({ type: 'info', text: `[${timestamp}] ${text}` });
+            logs.push({ type: 'info', text: text });
           } catch (e) {
             errors.push(`Error al procesar info: ${e.message}`);
           }
@@ -183,7 +178,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               }
               return String(arg);
             }).join(' ');
-            logs.push({ type: 'console', text: `[${timestamp}] TABLE:\n${text}` });
+            logs.push({ type: 'console', text: `TABLE:\n${text}` });
           } catch (e) {
             errors.push(`Error al procesar table: ${e.message}`);
           }
@@ -206,7 +201,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       // Agregar errores internos si los hay
       if (errors.length > 0) {
         errors.forEach(err => {
-          logs.push({ type: 'error', text: `[${timestamp}] ⚠ ${err}` });
+          logs.push({ type: 'error', text: `⚠ ${err}` });
         });
       }
       
@@ -218,7 +213,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           ...prev,
           {
             type: "success",
-            text: `[${timestamp}] ✓ Código ejecutado correctamente (sin salida)`,
+            text: `✓ Código ejecutado correctamente (sin salida)`,
           },
         ]);
       }
@@ -231,7 +226,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         ...prev,
         {
           type: "error",
-          text: `[${timestamp}] ✗ ${errorName}: ${errorMessage}`,
+          text: `✗ ${errorName}: ${errorMessage}`,
         },
       ]);
       
