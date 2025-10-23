@@ -15,6 +15,8 @@ import CollaborationBanner from './components/CollaborationBanner'
 import CollaborationNotification from './components/CollaborationNotification'
 import ChatPanel from './components/ChatPanel'
 import AuthModal from './components/AuthModal'
+import SnippetManager from './components/SnippetManager'
+import GitPanel from './components/GitPanel'
 import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
@@ -245,6 +247,8 @@ function App() {
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
   const [showBackgroundSelector, setShowBackgroundSelector] = useState(false);
+  const [showSnippetManager, setShowSnippetManager] = useState(false);
+  const [showGitPanel, setShowGitPanel] = useState(false);
   const [editorBackground, setEditorBackground] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15, blur: 0 });
   });
@@ -252,6 +256,9 @@ function App() {
   const [practiceModeEnabled, setPracticeModeEnabled] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.PRACTICE_MODE, false);
   });
+  // 📂 NUEVO: Estado para Split View
+  const [splitViewEnabled, setSplitViewEnabled] = useState(false);
+  const [secondPanelTab, setSecondPanelTab] = useState(null);
   // 🔥 NUEVO: Estados para chat
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -461,6 +468,37 @@ function App() {
     };
     
     setFiles(updateNestedFile(files, parts, value));
+  };
+
+  // Handler para insertar snippets en el editor
+  const handleInsertSnippet = (snippetCode) => {
+    const activeFile = getFileByPath(activeTab);
+    if (!activeFile) return;
+
+    // Insertar snippet al final del contenido actual
+    const currentContent = activeFile.content || '';
+    const newContent = currentContent + '\n\n' + snippetCode;
+    handleCodeChange(newContent);
+  };
+
+  // Handler para activar/desactivar Split View
+  const handleToggleSplitView = () => {
+    if (!splitViewEnabled && openTabs.length > 1) {
+      // Activar split view: usar el segundo tab como segundo panel
+      setSplitViewEnabled(true);
+      setSecondPanelTab(openTabs[1]);
+    } else if (!splitViewEnabled && openTabs.length === 1) {
+      alert('Necesitas al menos 2 archivos abiertos para usar Split View');
+    } else {
+      // Desactivar split view
+      setSplitViewEnabled(false);
+      setSecondPanelTab(null);
+    }
+  };
+
+  // Handler para cambiar archivo del segundo panel
+  const handleSecondPanelChange = (filePath) => {
+    setSecondPanelTab(filePath);
   };
 
   // Handler para cambios en tiempo real (con debounce ya aplicado desde CodeEditor)
@@ -1289,6 +1327,10 @@ function App() {
         onOpenBackground={() => setShowBackgroundSelector(true)}
         practiceModeEnabled={practiceModeEnabled}
         onTogglePracticeMode={() => setPracticeModeEnabled(!practiceModeEnabled)}
+        onOpenSnippets={() => setShowSnippetManager(true)}
+        splitViewEnabled={splitViewEnabled}
+        onToggleSplitView={handleToggleSplitView}
+        onOpenGit={() => setShowGitPanel(true)}
       />
 
       {/* Indicador de guardado automático */}
@@ -1338,6 +1380,20 @@ function App() {
       <ShortcutsHelp
         isOpen={showShortcutsHelp}
         onClose={() => setShowShortcutsHelp(false)}
+      />
+
+      <SnippetManager
+        isOpen={showSnippetManager}
+        onClose={() => setShowSnippetManager(false)}
+        onInsertSnippet={handleInsertSnippet}
+        currentTheme={currentTheme}
+      />
+
+      <GitPanel
+        isOpen={showGitPanel}
+        onClose={() => setShowGitPanel(false)}
+        files={files}
+        currentTheme={currentTheme}
       />
 
       <SessionManager
@@ -1475,27 +1531,131 @@ function App() {
                   </button>
                 )}
                 
-                <CodeEditor
-                  value={activeFile?.content || ''}
-                  language={activeFile?.language || 'plaintext'}
-                  onChange={handleCodeChange}
-                  projectFiles={files}
-                  projectImages={images}
-                  currentTheme={currentTheme}
-                  isImage={activeFile?.isImage || false}
-                  activePath={activeTab}
-                  onAddImageFile={handleAddImageFile}
-                  hasCustomBackground={!!editorBackground.image}
-                  onRealtimeChange={handleRealtimeChange}
-                  isCollaborating={isCollaborating}
-                  remoteCursors={remoteCursors}
-                  onCursorMove={broadcastCursorMove}
-                  currentUser={currentUser}
-                  activeFile={activeFile}
-                  typingUsers={typingUsers}
-                  onExecuteCode={handleExecuteCode}
-                  practiceModeEnabled={practiceModeEnabled}
-                />
+                {/* Split View: 2 editores lado a lado */}
+                {splitViewEnabled && secondPanelTab ? (
+                  <div className="flex h-full">
+                    {/* Editor Panel 1 */}
+                    <div className="flex-1 relative" style={{ borderRight: '1px solid var(--theme-border)' }}>
+                      <div className="absolute top-1 right-1 z-10 px-2 py-1 rounded text-xs font-medium" style={{ 
+                        backgroundColor: 'var(--theme-background-secondary)',
+                        color: 'var(--theme-text-secondary)',
+                        border: '1px solid var(--theme-border)'
+                      }}>
+                        {activeTab.split('/').pop()}
+                      </div>
+                      <CodeEditor
+                        value={activeFile?.content || ''}
+                        language={activeFile?.language || 'plaintext'}
+                        onChange={handleCodeChange}
+                        projectFiles={files}
+                        projectImages={images}
+                        currentTheme={currentTheme}
+                        isImage={activeFile?.isImage || false}
+                        activePath={activeTab}
+                        onAddImageFile={handleAddImageFile}
+                        hasCustomBackground={!!editorBackground.image}
+                        onRealtimeChange={handleRealtimeChange}
+                        isCollaborating={isCollaborating}
+                        remoteCursors={remoteCursors}
+                        onCursorMove={broadcastCursorMove}
+                        currentUser={currentUser}
+                        activeFile={activeFile}
+                        typingUsers={typingUsers}
+                        onExecuteCode={handleExecuteCode}
+                        practiceModeEnabled={practiceModeEnabled}
+                      />
+                    </div>
+                    
+                    {/* Editor Panel 2 */}
+                    <div className="flex-1 relative">
+                      <div className="absolute top-1 right-1 z-10 flex gap-1">
+                        {/* Selector de archivo para panel 2 */}
+                        <select
+                          value={secondPanelTab}
+                          onChange={(e) => handleSecondPanelChange(e.target.value)}
+                          className="px-2 py-1 rounded text-xs font-medium cursor-pointer"
+                          style={{ 
+                            backgroundColor: 'var(--theme-background-secondary)',
+                            color: 'var(--theme-text)',
+                            border: '1px solid var(--theme-border)'
+                          }}
+                        >
+                          {openTabs.filter(tab => tab !== activeTab).map(tab => (
+                            <option key={tab} value={tab}>
+                              {tab.split('/').pop()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <CodeEditor
+                        value={getFileByPath(secondPanelTab)?.content || ''}
+                        language={getFileByPath(secondPanelTab)?.language || 'plaintext'}
+                        onChange={(value) => {
+                          const parts = secondPanelTab.split('/');
+                          const updateNestedFile = (obj, path, newContent) => {
+                            if (path.length === 1) {
+                              return {
+                                ...obj,
+                                [path[0]]: {
+                                  ...obj[path[0]],
+                                  content: newContent
+                                }
+                              };
+                            }
+                            const [first, ...rest] = path;
+                            return {
+                              ...obj,
+                              [first]: {
+                                ...obj[first],
+                                children: updateNestedFile(obj[first].children, rest, newContent)
+                              }
+                            };
+                          };
+                          setFiles(updateNestedFile(files, parts, value));
+                        }}
+                        projectFiles={files}
+                        projectImages={images}
+                        currentTheme={currentTheme}
+                        isImage={getFileByPath(secondPanelTab)?.isImage || false}
+                        activePath={secondPanelTab}
+                        onAddImageFile={handleAddImageFile}
+                        hasCustomBackground={!!editorBackground.image}
+                        onRealtimeChange={handleRealtimeChange}
+                        isCollaborating={isCollaborating}
+                        remoteCursors={remoteCursors}
+                        onCursorMove={broadcastCursorMove}
+                        currentUser={currentUser}
+                        activeFile={getFileByPath(secondPanelTab)}
+                        typingUsers={typingUsers}
+                        onExecuteCode={handleExecuteCode}
+                        practiceModeEnabled={practiceModeEnabled}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Vista normal: 1 solo editor */
+                  <CodeEditor
+                    value={activeFile?.content || ''}
+                    language={activeFile?.language || 'plaintext'}
+                    onChange={handleCodeChange}
+                    projectFiles={files}
+                    projectImages={images}
+                    currentTheme={currentTheme}
+                    isImage={activeFile?.isImage || false}
+                    activePath={activeTab}
+                    onAddImageFile={handleAddImageFile}
+                    hasCustomBackground={!!editorBackground.image}
+                    onRealtimeChange={handleRealtimeChange}
+                    isCollaborating={isCollaborating}
+                    remoteCursors={remoteCursors}
+                    onCursorMove={broadcastCursorMove}
+                    currentUser={currentUser}
+                    activeFile={activeFile}
+                    typingUsers={typingUsers}
+                    onExecuteCode={handleExecuteCode}
+                    practiceModeEnabled={practiceModeEnabled}
+                  />
+                )}
               </div>
               
               {showPreview && (

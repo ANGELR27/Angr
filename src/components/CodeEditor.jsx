@@ -725,14 +725,21 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
       editor.updateOptions({ minimap: { enabled: !minimapEnabled } });
     });
 
-    // Guardar (Ctrl+S) - ejecutar código si está disponible
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    // Guardar (Ctrl+S) - formatear y ejecutar código si está disponible
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+      // 🎨 Formatear código automáticamente antes de guardar
+      try {
+        await editor.getAction('editor.action.formatDocument')?.run();
+      } catch (e) {
+        console.log('Formateo no disponible para este lenguaje');
+      }
+      
       // Ejecutar código JavaScript/Python si la función está disponible
       if (onExecuteCode && (language === 'javascript' || activePath?.endsWith('.js') || activePath?.endsWith('.py'))) {
         onExecuteCode();
         // Mostrar notificación de ejecución
         const notification = document.createElement('div');
-        notification.textContent = '▶️ ¡Código ejecutado!';
+        notification.textContent = '▶️ ¡Código formateado y ejecutado!';
         notification.style.cssText = `
           position: fixed;
           top: 80px;
@@ -750,9 +757,9 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 2000);
       } else {
-        // Mostrar notificación visual de guardado
+        // Mostrar notificación visual de guardado y formateo
         const notification = document.createElement('div');
-        notification.textContent = '💾 ¡Guardado automático activo!';
+        notification.textContent = '✨ ¡Código formateado y guardado!';
         notification.style.cssText = `
           position: fixed;
           top: 80px;
@@ -1533,6 +1540,13 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             // Formateo
             formatOnPaste: true,
             formatOnType: true,
+            // 📁 Code Folding - Plegado de código
+            folding: true,
+            foldingStrategy: 'auto',
+            showFoldingControls: 'always',
+            foldingHighlight: true,
+            foldingImportsByDefault: false,
+            unfoldOnClickAfterEndOfLine: true,
             // Mejorar experiencia
             smoothScrolling: true,
             cursorBlinking: 'smooth',

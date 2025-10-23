@@ -55,6 +55,13 @@ function TopBar({
   // 🎯 Modo Práctica
   practiceModeEnabled,
   onTogglePracticeMode,
+  // 📝 Snippets
+  onOpenSnippets,
+  // 📂 Split View
+  splitViewEnabled,
+  onToggleSplitView,
+  // 🔀 Git
+  onOpenGit,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -559,6 +566,50 @@ function TopBar({
                 </button>
               )}
 
+              {/* Snippets Personalizados */}
+              {onOpenSnippets && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Snippets clicked');
+                    onOpenSnippets();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Snippets
+                </button>
+              )}
+
+              {/* Control de Versiones */}
+              {onOpenGit && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Git clicked');
+                    onOpenGit();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Versiones (Git)
+                </button>
+              )}
+
               {/* Fondo del editor - solo en modo no-lite */}
               {!isLite && onOpenBackground && (
                 <button
@@ -649,6 +700,34 @@ function TopBar({
                     fontWeight: "600"
                   }}>
                     {practiceModeEnabled ? "ON" : "OFF"}
+                  </span>
+                </button>
+              )}
+
+              {/* Split View */}
+              {onToggleSplitView && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Split View clicked');
+                    onToggleSplitView();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer flex items-center justify-between"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  <span>Split View</span>
+                  <span className="ml-2 text-xs" style={{ 
+                    color: splitViewEnabled ? "#4ade80" : "#94a3b8",
+                    fontWeight: "600"
+                  }}>
+                    {splitViewEnabled ? "ON" : "OFF"}
                   </span>
                 </button>
               )}
