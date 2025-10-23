@@ -326,6 +326,12 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           { type: 'info', text: '  history          - Historial de comandos' },
           { type: 'info', text: '  sysinfo          - Información del sistema' },
           { type: 'info', text: '' },
+          { type: 'success', text: '🔀 Git (Control de Versiones):' },
+          { type: 'info', text: '  git status       - Ver cambios pendientes' },
+          { type: 'info', text: '  git log          - Ver historial de commits' },
+          { type: 'info', text: '  git commit -m "mensaje" - Hacer commit' },
+          { type: 'info', text: '  git diff <archivo> - Ver diferencias' },
+          { type: 'info', text: '' },
           { type: 'success', text: '🎨 General:' },
           { type: 'info', text: '  clear / cls      - Limpia terminal' },
           { type: 'info', text: '  echo <texto>     - Imprime texto (usa $VAR)' },
@@ -436,6 +442,155 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             text: `  ${lang}: ${data.count} archivos (${termCmd.formatBytes(data.size)})`
           }))
         ]);
+        break;
+      
+      case 'git':
+        if (!args[0]) {
+          setHistory(prev => [...prev, 
+            { type: 'error', text: 'Uso: git <comando>' },
+            { type: 'info', text: 'Comandos disponibles: status, log, commit, diff' }
+          ]);
+          break;
+        }
+        
+        const gitSubcmd = args[0];
+        const gitArgs = args.slice(1);
+        
+        switch (gitSubcmd) {
+          case 'status':
+            const statusResult = termCmd.gitStatus(projectFiles || {});
+            if (statusResult.error) {
+              setHistory(prev => [...prev, { type: 'error', text: statusResult.error }]);
+            } else {
+              const { changes } = statusResult;
+              const total = changes.modified.length + changes.added.length + changes.deleted.length;
+              
+              if (total === 0) {
+                setHistory(prev => [...prev, 
+                  { type: 'success', text: '✅ No hay cambios pendientes' },
+                  { type: 'info', text: 'El área de trabajo está limpia' }
+                ]);
+              } else {
+                setHistory(prev => [...prev,
+                  { type: 'success', text: `═══ Estado del Repositorio (${total} cambios) ═══` },
+                  { type: 'info', text: '' },
+                  ...(changes.modified.length > 0 ? [
+                    { type: 'warning', text: `📝 Modificados (${changes.modified.length}):` },
+                    ...changes.modified.map(path => ({ type: 'info', text: `   ${path}` })),
+                    { type: 'info', text: '' }
+                  ] : []),
+                  ...(changes.added.length > 0 ? [
+                    { type: 'success', text: `➕ Agregados (${changes.added.length}):` },
+                    ...changes.added.map(path => ({ type: 'info', text: `   ${path}` })),
+                    { type: 'info', text: '' }
+                  ] : []),
+                  ...(changes.deleted.length > 0 ? [
+                    { type: 'error', text: `🗑️  Eliminados (${changes.deleted.length}):` },
+                    ...changes.deleted.map(path => ({ type: 'info', text: `   ${path}` })),
+                    { type: 'info', text: '' }
+                  ] : []),
+                  { type: 'info', text: `💡 Usa "git commit -m \\"mensaje\\"" para guardar cambios` }
+                ]);
+              }
+            }
+            break;
+          
+          case 'log':
+            const limit = parseInt(gitArgs[0]) || 10;
+            const logResult = termCmd.gitLog(limit);
+            if (logResult.error) {
+              setHistory(prev => [...prev, { type: 'error', text: logResult.error }]);
+            } else if (logResult.commits.length === 0) {
+              setHistory(prev => [...prev, 
+                { type: 'warning', text: 'No hay commits en el historial' },
+                { type: 'info', text: 'Haz tu primer commit con: git commit -m "mensaje"' }
+              ]);
+            } else {
+              setHistory(prev => [...prev,
+                { type: 'success', text: `═══ Historial (${logResult.commits.length} commits) ═══` },
+                { type: 'info', text: '' },
+                ...logResult.commits.flatMap((commit, idx) => [
+                  { type: 'success', text: `📌 Commit #${idx + 1}: [${commit.id.slice(-6)}]` },
+                  { type: 'info', text: `   📝 ${commit.message}` },
+                  { type: 'info', text: `   📅 ${new Date(commit.timestamp).toLocaleString('es-ES')}` },
+                  { type: 'info', text: `   📊 ${commit.filesCount} archivo(s) cambiado(s)` },
+                  { type: 'info', text: '' }
+                ])
+              ]);
+            }
+            break;
+          
+          case 'commit':
+            // Parsear mensaje entre comillas
+            const fullCommand = gitArgs.join(' ');
+            const messageMatch = fullCommand.match(/-m\s+["'](.+?)["']/);
+            
+            if (!messageMatch) {
+              setHistory(prev => [...prev, 
+                { type: 'error', text: 'Uso: git commit -m "tu mensaje aquí"' },
+                { type: 'info', text: 'Ejemplo: git commit -m "Agregada nueva funcionalidad"' }
+              ]);
+              break;
+            }
+            
+            const commitResult = termCmd.gitCommit(messageMatch[1], projectFiles || {});
+            if (commitResult.error) {
+              setHistory(prev => [...prev, { type: 'error', text: commitResult.error }]);
+            } else if (commitResult.message && !commitResult.success) {
+              setHistory(prev => [...prev, { type: 'warning', text: commitResult.message }]);
+            } else {
+              setHistory(prev => [...prev,
+                { type: 'success', text: '✅ Commit guardado exitosamente' },
+                { type: 'info', text: `   ${commitResult.message}` },
+                { type: 'info', text: `   📊 ${commitResult.filesCount} archivo(s) cambiado(s)` }
+              ]);
+            }
+            break;
+          
+          case 'diff':
+            if (!gitArgs[0]) {
+              setHistory(prev => [...prev, 
+                { type: 'error', text: 'Uso: git diff <archivo>' },
+                { type: 'info', text: 'Ejemplo: git diff index.html' }
+              ]);
+              break;
+            }
+            
+            const diffResult = termCmd.gitDiff(gitArgs[0], projectFiles || {});
+            if (diffResult.error) {
+              setHistory(prev => [...prev, { type: 'error', text: diffResult.error }]);
+            } else if (diffResult.message) {
+              setHistory(prev => [...prev, { type: 'info', text: diffResult.message }]);
+            } else if (!diffResult.hasChanges) {
+              setHistory(prev => [...prev, 
+                { type: 'success', text: `✅ Sin cambios en ${diffResult.filePath}` }
+              ]);
+            } else {
+              setHistory(prev => [...prev,
+                { type: 'success', text: `═══ Diferencias en ${diffResult.filePath} (${diffResult.diff.length} cambios) ═══` },
+                { type: 'info', text: '' },
+                ...diffResult.diff.map(change => {
+                  if (change.type === 'added') {
+                    return { type: 'success', text: `+ ${change.line}: ${change.content}` };
+                  } else if (change.type === 'deleted') {
+                    return { type: 'error', text: `- ${change.line}: ${change.content}` };
+                  } else {
+                    return [
+                      { type: 'error', text: `- ${change.line}: ${change.old}` },
+                      { type: 'success', text: `+ ${change.line}: ${change.new}` }
+                    ];
+                  }
+                }).flat()
+              ]);
+            }
+            break;
+          
+          default:
+            setHistory(prev => [...prev, 
+              { type: 'error', text: `git: '${gitSubcmd}' no es un comando válido` },
+              { type: 'info', text: 'Comandos disponibles: status, log, commit, diff' }
+            ]);
+        }
         break;
       
       case 'calc':

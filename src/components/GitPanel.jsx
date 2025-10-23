@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { X, GitBranch, Clock, FileText, Download } from 'lucide-react';
+import { X, GitBranch, Clock, FileText, Download, Eye, RotateCcw, BarChart3 } from 'lucide-react';
+import DiffViewer from './DiffViewer';
 
-function GitPanel({ isOpen, onClose, files, currentTheme }) {
+function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
   const [fileHistory, setFileHistory] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [changes, setChanges] = useState([]);
+  const [showDiff, setShowDiff] = useState(false);
+  const [diffFile, setDiffFile] = useState(null);
+  const [showStats, setShowStats] = useState(false);
   const isLite = currentTheme === 'lite';
 
   // Cargar historial desde localStorage
@@ -114,9 +118,126 @@ function GitPanel({ isOpen, onClose, files, currentTheme }) {
     alert('✅ Commit guardado exitosamente');
   };
 
+  const handleViewDiff = (changePath) => {
+    const getAllFiles = (fileTree, basePath = '') => {
+      let result = [];
+      Object.entries(fileTree || {}).forEach(([key, item]) => {
+        const currentPath = basePath ? `${basePath}/${key}` : key;
+        if (item.type === 'file') {
+          result.push({
+            path: currentPath,
+            name: item.name,
+            content: item.content || ''
+          });
+        } else if (item.type === 'folder' && item.children) {
+          result = result.concat(getAllFiles(item.children, currentPath));
+        }
+      });
+      return result;
+    };
+
+    const currentFiles = getAllFiles(files);
+    const currentFile = currentFiles.find(f => f.path === changePath);
+    
+    const saved = localStorage.getItem('code-editor-last-snapshot');
+    if (!saved) {
+      alert('No hay versión anterior para comparar');
+      return;
+    }
+
+    try {
+      const lastSnapshot = JSON.parse(saved);
+      const oldFile = lastSnapshot.find(f => f.path === changePath);
+      
+      setDiffFile({
+        path: changePath,
+        oldContent: oldFile?.content || '',
+        newContent: currentFile?.content || ''
+      });
+      setShowDiff(true);
+    } catch (e) {
+      alert('Error al cargar diff');
+    }
+  };
+
+  const handleRestoreCommit = (commit) => {
+    if (!confirm(`¿Restaurar el proyecto al commit "${commit.message}"?\n\n⚠️ Se perderán los cambios no guardados.`)) {
+      return;
+    }
+    
+    // Aquí se implementará la restauración completa
+    alert('🚧 Funcionalidad de restaurar en desarrollo');
+  };
+
   const handleExportProject = () => {
-    // Esta funcionalidad se implementará en el próximo paso
-    alert('🚧 Función de exportar próximamente');
+    try {
+      // Crear contenido para exportar
+      const exportData = {
+        project: 'Code Editor Project',
+        exportDate: new Date().toISOString(),
+        files: files,
+        history: fileHistory,
+        totalCommits: fileHistory.length
+      };
+
+      // Convertir a JSON
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Descargar
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proyecto-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert('✅ Proyecto exportado exitosamente');
+    } catch (e) {
+      alert('❌ Error al exportar proyecto');
+      console.error(e);
+    }
+  };
+
+  const getProjectStats = () => {
+    const getAllFiles = (fileTree, basePath = '') => {
+      let result = [];
+      Object.entries(fileTree || {}).forEach(([key, item]) => {
+        const currentPath = basePath ? `${basePath}/${key}` : key;
+        if (item.type === 'file') {
+          result.push({
+            path: currentPath,
+            name: item.name,
+            content: item.content || '',
+            language: item.language
+          });
+        } else if (item.type === 'folder' && item.children) {
+          result = result.concat(getAllFiles(item.children, currentPath));
+        }
+      });
+      return result;
+    };
+
+    const allFiles = getAllFiles(files);
+    const totalLines = allFiles.reduce((sum, f) => sum + f.content.split('\n').length, 0);
+    const byLanguage = {};
+    
+    allFiles.forEach(f => {
+      if (!byLanguage[f.language]) {
+        byLanguage[f.language] = { files: 0, lines: 0 };
+      }
+      byLanguage[f.language].files++;
+      byLanguage[f.language].lines += f.content.split('\n').length;
+    });
+
+    return {
+      totalFiles: allFiles.length,
+      totalLines,
+      totalCommits: fileHistory.length,
+      byLanguage
+    };
   };
 
   const formatDate = (timestamp) => {
@@ -214,22 +335,35 @@ function GitPanel({ isOpen, onClose, files, currentTheme }) {
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
-                          {change.name}
-                        </span>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded font-medium"
-                          style={{
-                            backgroundColor: getStatusColor(change.status) + '20',
-                            color: getStatusColor(change.status)
-                          }}
-                        >
-                          {getStatusLabel(change.status)}
-                        </span>
+                        <div className="flex-1">
+                          <span className="text-sm font-medium" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+                            {change.name}
+                          </span>
+                          <p className="text-xs mt-1" style={{ color: isLite ? '#6b7280' : '#9ca3af' }}>
+                            {change.path}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {change.status !== 'added' && (
+                            <button
+                              onClick={() => handleViewDiff(change.path)}
+                              className="p-1.5 rounded hover:bg-blue-500/20 transition-colors"
+                              title="Ver diferencias"
+                            >
+                              <Eye className="w-4 h-4" style={{ color: isLite ? '#3b82f6' : '#60a5fa' }} />
+                            </button>
+                          )}
+                          <span
+                            className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{
+                              backgroundColor: getStatusColor(change.status) + '20',
+                              color: getStatusColor(change.status)
+                            }}
+                          >
+                            {getStatusLabel(change.status)}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-xs mt-1" style={{ color: isLite ? '#6b7280' : '#9ca3af' }}>
-                        {change.path}
-                      </p>
                     </div>
                   ))}
                 </div>
@@ -280,19 +414,63 @@ function GitPanel({ isOpen, onClose, files, currentTheme }) {
                 <Clock className="w-4 h-4" />
                 Historial ({fileHistory.length})
               </h3>
-              <button
-                onClick={handleExportProject}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity"
-                style={{
-                  backgroundColor: isLite ? '#e5e7eb' : '#3e3e42',
-                  color: isLite ? '#374151' : '#e0e0e0'
-                }}
-                title="Exportar proyecto"
-              >
-                <Download className="w-3 h-3" />
-                Exportar
-              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setShowStats(!showStats)}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: showStats ? (isLite ? '#8b5cf6' : '#7c3aed') : (isLite ? '#e5e7eb' : '#3e3e42'),
+                    color: showStats ? '#ffffff' : (isLite ? '#374151' : '#e0e0e0')
+                  }}
+                  title="Estadísticas del proyecto"
+                >
+                  <BarChart3 className="w-3 h-3" />
+                  Stats
+                </button>
+                <button
+                  onClick={handleExportProject}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity"
+                  style={{
+                    backgroundColor: isLite ? '#e5e7eb' : '#3e3e42',
+                    color: isLite ? '#374151' : '#e0e0e0'
+                  }}
+                  title="Exportar proyecto"
+                >
+                  <Download className="w-3 h-3" />
+                  Exportar
+                </button>
+              </div>
             </div>
+
+            {/* Estadísticas del Proyecto */}
+            {showStats && (
+              <div className="mb-4 p-3 rounded border" style={{
+                backgroundColor: isLite ? '#f0fdf4' : '#1f3d1f',
+                borderColor: isLite ? '#86efac' : 'rgba(34, 197, 94, 0.3)'
+              }}>
+                <h4 className="text-sm font-bold mb-2" style={{ color: isLite ? '#166534' : '#86efac' }}>
+                  📊 Estadísticas del Proyecto
+                </h4>
+                {(() => {
+                  const stats = getProjectStats();
+                  return (
+                    <>
+                      <div className="text-xs space-y-1" style={{ color: isLite ? '#166534' : '#d1fae5' }}>
+                        <p>📄 Total archivos: {stats.totalFiles}</p>
+                        <p>📝 Total líneas: {stats.totalLines.toLocaleString()}</p>
+                        <p>📌 Total commits: {stats.totalCommits}</p>
+                        <p className="mt-2 font-semibold">Por lenguaje:</p>
+                        {Object.entries(stats.byLanguage).map(([lang, data]) => (
+                          <p key={lang} className="ml-2">
+                            • {lang}: {data.files} archivos ({data.lines} líneas)
+                          </p>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
             {fileHistory.length === 0 ? (
               <div className="text-center py-8" style={{ color: isLite ? '#9ca3af' : '#6b7280' }}>
@@ -334,6 +512,21 @@ function GitPanel({ isOpen, onClose, files, currentTheme }) {
           </div>
         </div>
       </div>
+
+      {/* Diff Viewer Modal */}
+      {showDiff && diffFile && (
+        <DiffViewer
+          isOpen={showDiff}
+          onClose={() => {
+            setShowDiff(false);
+            setDiffFile(null);
+          }}
+          filePath={diffFile.path}
+          oldContent={diffFile.oldContent}
+          newContent={diffFile.newContent}
+          currentTheme={currentTheme}
+        />
+      )}
     </div>
   );
 }

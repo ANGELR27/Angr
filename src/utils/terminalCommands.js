@@ -370,3 +370,219 @@ export const createASCIITable = (data, headers) => {
   
   return [topLine, headerLine, sepLine, ...dataLines, bottomLine].join('\n');
 };
+
+/**
+ * ========================================
+ * COMANDOS GIT - CONTROL DE VERSIONES
+ * ========================================
+ */
+
+/**
+ * git status - Ver cambios pendientes
+ */
+export const gitStatus = (files) => {
+  const getAllFiles = (fileTree, basePath = '') => {
+    let result = [];
+    Object.entries(fileTree || {}).forEach(([key, item]) => {
+      const currentPath = basePath ? `${basePath}/${key}` : key;
+      if (item.type === 'file') {
+        result.push({
+          path: currentPath,
+          name: item.name,
+          content: item.content || ''
+        });
+      } else if (item.type === 'folder' && item.children) {
+        result = result.concat(getAllFiles(item.children, currentPath));
+      }
+    });
+    return result;
+  };
+
+  const currentFiles = getAllFiles(files);
+  const saved = localStorage.getItem('code-editor-last-snapshot');
+  
+  const changes = {
+    modified: [],
+    added: [],
+    deleted: []
+  };
+
+  if (saved) {
+    try {
+      const lastSnapshot = JSON.parse(saved);
+      
+      currentFiles.forEach(file => {
+        const oldFile = lastSnapshot.find(f => f.path === file.path);
+        if (oldFile && oldFile.content !== file.content) {
+          changes.modified.push(file.path);
+        } else if (!oldFile) {
+          changes.added.push(file.path);
+        }
+      });
+
+      lastSnapshot.forEach(oldFile => {
+        if (!currentFiles.find(f => f.path === oldFile.path)) {
+          changes.deleted.push(oldFile.path);
+        }
+      });
+    } catch (e) {
+      return { error: 'Error al leer el estado de git' };
+    }
+  } else {
+    // Primera vez, todos son nuevos
+    changes.added = currentFiles.map(f => f.path);
+  }
+
+  return { changes };
+};
+
+/**
+ * git log - Ver historial de commits
+ */
+export const gitLog = (limit = 10) => {
+  const saved = localStorage.getItem('code-editor-file-history');
+  if (!saved) {
+    return { commits: [] };
+  }
+
+  try {
+    const history = JSON.parse(saved);
+    return { commits: history.slice(0, limit) };
+  } catch (e) {
+    return { error: 'Error al leer el historial' };
+  }
+};
+
+/**
+ * git commit -m "mensaje" - Hacer commit
+ */
+export const gitCommit = (message, files) => {
+  if (!message || !message.trim()) {
+    return { error: 'Debes proporcionar un mensaje de commit: git commit -m "mensaje"' };
+  }
+
+  const statusResult = gitStatus(files);
+  if (statusResult.error) return statusResult;
+
+  const { changes } = statusResult;
+  const totalChanges = changes.modified.length + changes.added.length + changes.deleted.length;
+
+  if (totalChanges === 0) {
+    return { message: 'No hay cambios para hacer commit' };
+  }
+
+  // Crear commit
+  const commit = {
+    id: Date.now().toString(),
+    message: message.trim(),
+    timestamp: new Date().toISOString(),
+    changes: [
+      ...changes.modified.map(path => ({ path, status: 'modified' })),
+      ...changes.added.map(path => ({ path, status: 'added' })),
+      ...changes.deleted.map(path => ({ path, status: 'deleted' }))
+    ],
+    filesCount: totalChanges
+  };
+
+  // Guardar en historial
+  const saved = localStorage.getItem('code-editor-file-history');
+  const history = saved ? JSON.parse(saved) : [];
+  const updatedHistory = [commit, ...history].slice(0, 50);
+  localStorage.setItem('code-editor-file-history', JSON.stringify(updatedHistory));
+
+  // Actualizar snapshot
+  const getAllFiles = (fileTree, basePath = '') => {
+    let result = [];
+    Object.entries(fileTree || {}).forEach(([key, item]) => {
+      const currentPath = basePath ? `${basePath}/${key}` : key;
+      if (item.type === 'file') {
+        result.push({
+          path: currentPath,
+          name: item.name,
+          content: item.content || ''
+        });
+      } else if (item.type === 'folder' && item.children) {
+        result = result.concat(getAllFiles(item.children, currentPath));
+      }
+    });
+    return result;
+  };
+  localStorage.setItem('code-editor-last-snapshot', JSON.stringify(getAllFiles(files)));
+
+  return { 
+    success: true,
+    message: `[${commit.id.slice(-6)}] ${message}`,
+    filesCount: totalChanges
+  };
+};
+
+/**
+ * git diff [archivo] - Ver diferencias
+ */
+export const gitDiff = (filePath, files) => {
+  if (!filePath) {
+    return { error: 'Especifica un archivo: git diff <archivo>' };
+  }
+
+  const getAllFiles = (fileTree, basePath = '') => {
+    let result = [];
+    Object.entries(fileTree || {}).forEach(([key, item]) => {
+      const currentPath = basePath ? `${basePath}/${key}` : key;
+      if (item.type === 'file') {
+        result.push({
+          path: currentPath,
+          name: item.name,
+          content: item.content || ''
+        });
+      } else if (item.type === 'folder' && item.children) {
+        result = result.concat(getAllFiles(item.children, currentPath));
+      }
+    });
+    return result;
+  };
+
+  const currentFiles = getAllFiles(files);
+  const currentFile = currentFiles.find(f => f.path === filePath);
+
+  if (!currentFile) {
+    return { error: `El archivo '${filePath}' no existe` };
+  }
+
+  const saved = localStorage.getItem('code-editor-last-snapshot');
+  if (!saved) {
+    return { message: 'No hay versión anterior para comparar' };
+  }
+
+  try {
+    const lastSnapshot = JSON.parse(saved);
+    const oldFile = lastSnapshot.find(f => f.path === filePath);
+
+    if (!oldFile) {
+      return { message: `Archivo nuevo: ${filePath}` };
+    }
+
+    const oldLines = oldFile.content.split('\n');
+    const newLines = currentFile.content.split('\n');
+
+    const diff = [];
+    const maxLines = Math.max(oldLines.length, newLines.length);
+
+    for (let i = 0; i < maxLines; i++) {
+      if (i >= oldLines.length) {
+        diff.push({ line: i + 1, type: 'added', content: newLines[i] });
+      } else if (i >= newLines.length) {
+        diff.push({ line: i + 1, type: 'deleted', content: oldLines[i] });
+      } else if (oldLines[i] !== newLines[i]) {
+        diff.push({ line: i + 1, type: 'modified', old: oldLines[i], new: newLines[i] });
+      }
+    }
+
+    return { 
+      filePath,
+      diff,
+      hasChanges: diff.length > 0
+    };
+  } catch (e) {
+    return { error: 'Error al comparar archivos' };
+  }
+};
