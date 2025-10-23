@@ -52,6 +52,9 @@ function TopBar({
   onLogout,
   // 🎨 Fondo personalizado
   onOpenBackground,
+  // 🎯 Modo Práctica
+  practiceModeEnabled,
+  onTogglePracticeMode,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -619,6 +622,34 @@ function TopBar({
                   }}
                 >
                   Atajos
+                </button>
+              )}
+
+              {/* Modo Práctica */}
+              {onTogglePracticeMode && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Modo Práctica clicked');
+                    onTogglePracticeMode();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer flex items-center justify-between"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  <span>Modo Práctica</span>
+                  <span className="ml-2 text-xs" style={{ 
+                    color: practiceModeEnabled ? "#4ade80" : "#94a3b8",
+                    fontWeight: "600"
+                  }}>
+                    {practiceModeEnabled ? "ON" : "OFF"}
+                  </span>
                 </button>
               )}
 

@@ -248,6 +248,10 @@ function App() {
   const [editorBackground, setEditorBackground] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15, blur: 0 });
   });
+  // 🎯 NUEVO: Estado para modo práctica (sin autocompletado)
+  const [practiceModeEnabled, setPracticeModeEnabled] = useState(() => {
+    return loadFromStorage(STORAGE_KEYS.PRACTICE_MODE, false);
+  });
   // 🔥 NUEVO: Estados para chat
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -292,6 +296,7 @@ function App() {
     [STORAGE_KEYS.SIDEBAR_WIDTH]: sidebarWidth,
     [STORAGE_KEYS.PREVIEW_WIDTH]: previewWidth,
     [STORAGE_KEYS.TERMINAL_HEIGHT]: terminalHeight,
+    [STORAGE_KEYS.PRACTICE_MODE]: practiceModeEnabled,
   }, 1000, handleSaveStatusChange);
 
   // Hook de colaboración en tiempo real
@@ -1282,6 +1287,8 @@ function App() {
         user={user}
         onLogout={logout}
         onOpenBackground={() => setShowBackgroundSelector(true)}
+        practiceModeEnabled={practiceModeEnabled}
+        onTogglePracticeMode={() => setPracticeModeEnabled(!practiceModeEnabled)}
       />
 
       {/* Indicador de guardado automático */}
@@ -1487,6 +1494,7 @@ function App() {
                   activeFile={activeFile}
                   typingUsers={typingUsers}
                   onExecuteCode={handleExecuteCode}
+                  practiceModeEnabled={practiceModeEnabled}
                 />
               </div>
               

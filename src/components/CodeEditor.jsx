@@ -7,7 +7,7 @@ import SearchWidget from './SearchWidget';
 import CommandPalette from './CommandPalette';
 import TypingIndicator from './TypingIndicator';
 
-function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, hasCustomBackground = false, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers, onExecuteCode }) {
+function CodeEditor({ value, language, onChange, projectFiles, projectImages, currentTheme, isImage, activePath, onAddImageFile, hasCustomBackground = false, onRealtimeChange, isCollaborating, remoteCursors, onCursorMove, currentUser, activeFile, typingUsers, onExecuteCode, practiceModeEnabled = false }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -1496,28 +1496,28 @@ function CodeEditor({ value, language, onChange, projectFiles, projectImages, cu
             fontFamily: "'Consolas', 'Courier New', monospace",
             fontLigatures: true,
             padding: { top: 16, bottom: 120 },
-            // Autocompletado robusto
-            suggestOnTriggerCharacters: true,
-            quickSuggestions: {
+            // 🎯 Autocompletado - desactivado en Modo Práctica
+            suggestOnTriggerCharacters: !practiceModeEnabled,
+            quickSuggestions: practiceModeEnabled ? false : {
               other: true,
               comments: false,
               strings: true
             },
-            parameterHints: { enabled: true },
-            acceptSuggestionOnCommitCharacter: true,
-            acceptSuggestionOnEnter: 'on',
-            tabCompletion: 'on',
-            wordBasedSuggestions: true,
+            parameterHints: { enabled: !practiceModeEnabled },
+            acceptSuggestionOnCommitCharacter: !practiceModeEnabled,
+            acceptSuggestionOnEnter: practiceModeEnabled ? 'off' : 'on',
+            tabCompletion: practiceModeEnabled ? 'off' : 'on',
+            wordBasedSuggestions: !practiceModeEnabled,
             suggest: {
-              showKeywords: true,
-              showSnippets: true,
-              showClasses: true,
-              showFunctions: true,
-              showVariables: true,
-              showModules: true,
-              showProperties: true,
-              showValues: true,
-              showColors: true
+              showKeywords: !practiceModeEnabled,
+              showSnippets: !practiceModeEnabled,
+              showClasses: !practiceModeEnabled,
+              showFunctions: !practiceModeEnabled,
+              showVariables: !practiceModeEnabled,
+              showModules: !practiceModeEnabled,
+              showProperties: !practiceModeEnabled,
+              showValues: !practiceModeEnabled,
+              showColors: !practiceModeEnabled
             },
             // Autocerrado robusto
             autoClosingBrackets: 'always',
