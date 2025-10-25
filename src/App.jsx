@@ -1293,34 +1293,68 @@ function App() {
   const activeFile = getFileByPath(activeTab);
   const isFadeMode = currentTheme === 'fade';
 
-  // ⌨️ Atajo: Ctrl + Alt + R -> Alterna terminal en modo Fade con animación
+  // ⌨️ Atajos: Ctrl + Alt + R (Terminal) y Ctrl + Alt + P (Preview) en modo Fade con animación
   useEffect(() => {
     const onKeyDown = (e) => {
+      // Atajo para Terminal: Ctrl + Alt + R
       const isCtrlAltR = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'r' || e.key === 'R');
-      if (!isCtrlAltR) return;
-      e.preventDefault();
-      if (!isFadeMode) {
-        setShowTerminal((v) => !v);
+      if (isCtrlAltR) {
+        e.preventDefault();
+        if (!isFadeMode) {
+          setShowTerminal((v) => !v);
+          return;
+        }
+        // Limpiar timers previos
+        if (swapTimerRef.current) {
+          clearTimeout(swapTimerRef.current);
+          swapTimerRef.current = null;
+        }
+        if (!showTerminal) {
+          // Editor -> Terminal
+          setSwapAnim('toTerminal');
+          setShowPreview(false); // Ocultar preview en modo Fade
+          setShowTerminal(true);
+          swapTimerRef.current = setTimeout(() => setSwapAnim('none'), 650);
+        } else {
+          // Terminal -> Editor
+          setSwapAnim('toEditor');
+          // mantener terminal montada hasta fin de animación
+          swapTimerRef.current = setTimeout(() => {
+            setShowTerminal(false);
+            setSwapAnim('none');
+          }, 650);
+        }
         return;
       }
-      // Limpiar timers previos
-      if (swapTimerRef.current) {
-        clearTimeout(swapTimerRef.current);
-        swapTimerRef.current = null;
-      }
-      if (!showTerminal) {
-        // Editor -> Terminal
-        setSwapAnim('toTerminal');
-        setShowTerminal(true);
-        swapTimerRef.current = setTimeout(() => setSwapAnim('none'), 450);
-      } else {
-        // Terminal -> Editor
-        setSwapAnim('toEditor');
-        // mantener terminal montada hasta fin de animación
-        swapTimerRef.current = setTimeout(() => {
-          setShowTerminal(false);
-          setSwapAnim('none');
-        }, 450);
+
+      // Atajo para Preview: Ctrl + Alt + P
+      const isCtrlAltP = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'p' || e.key === 'P');
+      if (isCtrlAltP) {
+        e.preventDefault();
+        if (!isFadeMode) {
+          setShowPreview((v) => !v);
+          return;
+        }
+        // Limpiar timers previos
+        if (swapTimerRef.current) {
+          clearTimeout(swapTimerRef.current);
+          swapTimerRef.current = null;
+        }
+        if (!showPreview) {
+          // Editor -> Preview
+          setSwapAnim('toPreview');
+          setShowTerminal(false); // Ocultar terminal en modo Fade
+          setShowPreview(true);
+          swapTimerRef.current = setTimeout(() => setSwapAnim('none'), 650);
+        } else {
+          // Preview -> Editor
+          setSwapAnim('toEditor');
+          // mantener preview montada hasta fin de animación
+          swapTimerRef.current = setTimeout(() => {
+            setShowPreview(false);
+            setSwapAnim('none');
+          }, 650);
+        }
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -1328,7 +1362,7 @@ function App() {
       window.removeEventListener('keydown', onKeyDown);
       if (swapTimerRef.current) clearTimeout(swapTimerRef.current);
     };
-  }, [isFadeMode, showTerminal]);
+  }, [isFadeMode, showTerminal, showPreview]);
 
   return (
     <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
@@ -1592,40 +1626,58 @@ function App() {
         {!showSidebar && (
           <div
             className="absolute left-0 top-0 h-full"
-            style={{ width: '10px', cursor: 'pointer' }}
+            style={{ 
+              width: '20px', 
+              cursor: 'pointer',
+              zIndex: 999,
+              backgroundColor: 'rgba(96, 165, 250, 0.05)',
+              transition: 'background-color 200ms ease'
+            }}
             onDoubleClick={() => setShowSidebar(true)}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(96, 165, 250, 0.15)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(96, 165, 250, 0.05)'}
             title="Doble clic para mostrar el explorador"
           />
         )}
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className={`flex-1 flex flex-col overflow-hidden main-content-area ${isFadeMode ? 'items-center justify-center' : ''}`} style={isFadeMode ? { padding: '2rem 1rem' } : {}}>
+          <div className={`flex-1 flex flex-col overflow-hidden main-content-area ${isFadeMode ? 'items-center justify-center' : ''}`} style={isFadeMode ? { padding: '2rem 1rem', perspective: '1200px', perspectiveOrigin: 'center center', position: 'relative' } : {}}>
             <div 
               className="flex overflow-hidden editor-preview-container"
               style={{ 
                 height: showTerminal && !isFadeMode ? `calc(100% - ${terminalHeight}px - 4px)` : '100%',
                 ...(isFadeMode ? { 
-                  maxWidth: '850px',
-                  maxHeight: '550px',
-                  width: '90%', 
-                  margin: '0 auto',
+                  width: '100%', 
+                  height: '100%',
+                  position: 'relative'
                 } : {})
               }}
             >
               <div 
                 style={{ 
-                  width: showPreview ? `${100 - previewWidth}%` : '100%',
+                  width: showPreview && !isFadeMode ? `${100 - previewWidth}%` : '100%',
                   ...(isFadeMode ? { 
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    maxWidth: '850px',
+                    maxHeight: '550px',
+                    width: '90%',
+                    height: '550px',
                     borderRadius: '16px', 
                     border: '1px solid #3f3f46',
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)',
                     overflow: 'hidden',
-                    position: 'relative',
-                    transition: 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 450ms ease, filter 450ms ease',
-                    transform: (showTerminal ? 'translateY(-8px) scale(0.985)' : 'translateY(0) scale(1)'),
-                    opacity: showTerminal ? 0 : 1,
-                    zIndex: showTerminal ? 1 : 2,
-                    filter: showTerminal ? 'blur(0.4px)' : 'none'
+                    transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    transform: (showTerminal || showPreview) 
+                      ? 'translate(-50%, calc(-50% - 30px)) scale(0.92) rotateX(5deg)' 
+                      : 'translate(-50%, -50%) scale(1) rotateX(0deg)',
+                    opacity: (showTerminal || showPreview) ? 0 : 1,
+                    zIndex: (showTerminal || showPreview) ? 1 : 3,
+                    filter: (showTerminal || showPreview) ? 'blur(2px) brightness(0.7)' : 'blur(0px) brightness(1)',
+                    transformOrigin: 'center center',
+                    perspective: '1000px',
+                    pointerEvents: (showTerminal || showPreview) ? 'none' : 'auto'
                   } : {})
                 }}
                 className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
@@ -1777,24 +1829,50 @@ function App() {
                 )}
               </div>
               
-              {showPreview && (
+              {(showPreview || (isFadeMode && swapAnim !== 'none')) && (
                 <>
-                  {/* Resize handle para preview */}
-                  <div
-                    className="w-px cursor-col-resize resize-handle transition-colors flex-shrink-0"
-                    style={{
-                      background: 'rgba(234, 179, 8, 0.15)'
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      isResizingPreview.current = true;
-                      document.body.style.cursor = 'col-resize';
-                      document.body.style.userSelect = 'none';
-                    }}
-                  />
+                  {/* Resize handle para preview - oculto en modo Fade */}
+                  {!isFadeMode && (
+                    <div
+                      className="w-px cursor-col-resize resize-handle transition-colors flex-shrink-0"
+                      style={{
+                        background: 'rgba(234, 179, 8, 0.15)'
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        isResizingPreview.current = true;
+                        document.body.style.cursor = 'col-resize';
+                        document.body.style.userSelect = 'none';
+                      }}
+                    />
+                  )}
                   <div 
-                    style={{ width: `${previewWidth}%` }}
-                    className={`flex-shrink-0 overflow-hidden ${!editorBackground.image ? 'shadow-yellow-glow' : ''}`}
+                    style={{ 
+                      width: isFadeMode ? '90%' : `${previewWidth}%`,
+                      ...(isFadeMode ? {
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        maxWidth: '850px',
+                        maxHeight: '550px',
+                        height: '550px',
+                        borderRadius: '16px',
+                        border: '1px solid #3f3f46',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
+                        overflow: 'hidden',
+                        transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        transform: showPreview 
+                          ? 'translate(-50%, -50%) scale(1) rotateY(0deg)' 
+                          : 'translate(calc(-50% + 30px), -50%) scale(0.92) rotateY(-5deg)',
+                        opacity: showPreview ? 1 : 0,
+                        zIndex: showPreview ? 4 : 1,
+                        filter: showPreview ? 'blur(0px) brightness(1)' : 'blur(2px) brightness(0.7)',
+                        transformOrigin: 'center center',
+                        perspective: '1000px',
+                        pointerEvents: showPreview ? 'auto' : 'none'
+                      } : {})
+                    }}
+                    className={`flex-shrink-0 overflow-hidden ${!editorBackground.image && !isFadeMode ? 'shadow-yellow-glow' : ''}`}
                   >
                     <Preview 
                       content={getPreviewContent()}
@@ -1807,7 +1885,7 @@ function App() {
               )}
             </div>
             
-            {showTerminal && (
+            {(showTerminal || (isFadeMode && swapAnim !== 'none')) && (
               <>
                 {/* Resize handle para terminal - oculto en modo Fade */}
                 {!isFadeMode && (
@@ -1828,20 +1906,27 @@ function App() {
                   style={{ 
                     height: isFadeMode ? '100%' : `${terminalHeight}px`,
                     ...(isFadeMode ? {
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
                       maxWidth: '850px',
                       maxHeight: '550px',
                       width: '90%',
-                      margin: '0 auto',
+                      height: '550px',
                       borderRadius: '16px',
                       border: '1px solid #3f3f46',
                       overflow: 'hidden',
                       boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
-                      position: 'relative',
-                      transition: 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 450ms ease, filter 450ms ease',
-                      transform: (isFadeMode ? (showTerminal ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.985)') : 'none'),
-                      opacity: isFadeMode ? (showTerminal ? 1 : 0) : 1,
-                      zIndex: isFadeMode ? (showTerminal ? 3 : 1) : 'auto',
-                      filter: isFadeMode ? (showTerminal ? 'none' : 'blur(0.4px)') : 'none'
+                      transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      transform: showTerminal 
+                        ? 'translate(-50%, -50%) scale(1) rotateX(0deg)' 
+                        : 'translate(-50%, calc(-50% + 30px)) scale(0.92) rotateX(-5deg)',
+                      opacity: showTerminal ? 1 : 0,
+                      zIndex: showTerminal ? 4 : 1,
+                      filter: showTerminal ? 'blur(0px) brightness(1)' : 'blur(2px) brightness(0.7)',
+                      transformOrigin: 'center center',
+                      perspective: '1000px',
+                      pointerEvents: showTerminal ? 'auto' : 'none'
                     } : {})
                   }} 
                   className={`flex-shrink-0 ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}

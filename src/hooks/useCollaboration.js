@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import collaborationService from "../services/collaborationService";
+import collaborationService from "../services/collaborationServiceV2"; // ✅ Usando V2 con Presence
 
 /**
  * Hook personalizado para gestionar colaboración en tiempo real
@@ -233,60 +233,62 @@ export function useCollaboration(files, onFilesChange) {
       }, 2000);
     };
 
-    const handleUserJoined = (user) => {
-      console.log('👥 handleUserJoined recibido:', {
-        userName: user.name,
-        userId: user.id,
-        currentActiveUsers: activeUsers.length
+    // 🔥 NUEVO: Un solo handler para usuarios (Presence automático)
+    const handleUsersChanged = (users) => {
+      console.log('👥 Lista de usuarios actualizada (Presence):', {
+        totalUsers: users.length,
+        userNames: users.map(u => u.name),
+        previousCount: activeUsers.length
       });
 
-      setActiveUsers((prev) => {
-        console.log('📋 Lista actual de usuarios:', prev.map(u => u.name));
-        
-        // Evitar duplicados
-        if (prev.some((u) => u.id === user.id)) {
-          console.log('⏸️ Usuario ya existe en la lista:', user.name);
-          return prev;
+      // Detectar usuarios nuevos
+      const previousIds = new Set(activeUsers.map(u => u.id));
+      const newUsers = users.filter(u => !previousIds.has(u.id));
+      
+      // Detectar usuarios que se fueron
+      const currentIds = new Set(users.map(u => u.id));
+      const leftUsers = activeUsers.filter(u => !currentIds.has(u.id));
+
+      // Actualizar lista
+      setActiveUsers(users);
+
+      // Notificaciones para nuevos usuarios
+      newUsers.forEach(user => {
+        if (user.id !== currentUser?.id) { // No notificar sobre ti mismo
+          addNotification({
+            type: "user-joined",
+            userName: user.name,
+            userColor: user.color,
+            message: "se ha unido a la sesión",
+          });
         }
-        
-        const newList = [...prev, user];
-        console.log('✅ Usuario agregado. Nueva lista:', newList.map(u => u.name));
-        return newList;
       });
 
-      // Agregar notificación
-      addNotification({
-        type: "user-joined",
-        userName: user.name,
-        userColor: user.color,
-        message: "se ha unido a la sesión",
+      // Notificaciones para usuarios que se fueron
+      leftUsers.forEach(user => {
+        if (user.id !== currentUser?.id) {
+          addNotification({
+            type: "user-left",
+            userName: user.name,
+            userColor: user.color,
+            message: "ha salido de la sesión",
+          });
+          
+          // Limpiar cursores y typing
+          setRemoteCursors((prev) => {
+            const newCursors = { ...prev };
+            delete newCursors[user.id];
+            return newCursors;
+          });
+          setTypingUsers((prev) => {
+            const newTyping = { ...prev };
+            delete newTyping[user.id];
+            return newTyping;
+          });
+        }
       });
-    };
 
-    const handleUserLeft = (data) => {
-      const user = activeUsers.find((u) => u.id === data.userId);
-
-      setActiveUsers((prev) => prev.filter((u) => u.id !== data.userId));
-      setRemoteCursors((prev) => {
-        const newCursors = { ...prev };
-        delete newCursors[data.userId];
-        return newCursors;
-      });
-      setTypingUsers((prev) => {
-        const newTyping = { ...prev };
-        delete newTyping[data.userId];
-        return newTyping;
-      });
-
-      // Agregar notificación
-      if (user) {
-        addNotification({
-          type: "user-left",
-          userName: user.name,
-          userColor: user.color,
-          message: "ha salido de la sesión",
-        });
-      }
+      console.log('✅ Usuarios actualizados:', users.length);
     };
 
     const handleCursorMove = (payload) => {
@@ -398,10 +400,9 @@ export function useCollaboration(files, onFilesChange) {
       }
     };
 
-    // 🔥 REGISTRAR LISTENERS
+    // 🔥 REGISTRAR LISTENERS (V2 con Presence)
     collaborationService.on("fileChange", handleFileChange);
-    collaborationService.on("userJoined", handleUserJoined);
-    collaborationService.on("userLeft", handleUserLeft);
+    collaborationService.on("usersChanged", handleUsersChanged); // ✅ Un solo evento para usuarios
     collaborationService.on("cursorMove", handleCursorMove);
     collaborationService.on("accessChanged", handleAccessChanged);
     collaborationService.on("projectState", handleProjectState);
@@ -422,8 +423,7 @@ export function useCollaboration(files, onFilesChange) {
 
       // Remover listeners (establecer a null)
       collaborationService.callbacks.onFileChange = null;
-      collaborationService.callbacks.onUserJoined = null;
-      collaborationService.callbacks.onUserLeft = null;
+      collaborationService.callbacks.onUsersChanged = null; // ✅ V2
       collaborationService.callbacks.onCursorMove = null;
       collaborationService.callbacks.onAccessChanged = null;
       collaborationService.callbacks.onProjectState = null;
