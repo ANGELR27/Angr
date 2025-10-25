@@ -45,6 +45,16 @@ export class YjsSupabaseProvider {
       this._applyRemoteAwareness(payload);
     });
 
+    // 🔥 Escuchar solicitudes de sincronización
+    this.channel.on('broadcast', { event: 'yjs-sync-request' }, () => {
+      this._respondToSyncRequest();
+    });
+
+    // 🔥 Escuchar respuestas de sincronización
+    this.channel.on('broadcast', { event: 'yjs-sync-response' }, ({ payload }) => {
+      this._applyFullState(payload);
+    });
+
     // Sincronización inicial
     this._requestSync();
   }
@@ -158,6 +168,43 @@ export class YjsSupabaseProvider {
     });
 
     console.log('🔄 Solicitando sincronización inicial...');
+  }
+
+  /**
+   * Responder a solicitud de sync con estado completo
+   */
+  _respondToSyncRequest() {
+    // Enviar estado completo del documento
+    const state = Y.encodeStateAsUpdate(this.doc);
+    const stateArray = Array.from(state);
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'yjs-sync-response',
+      payload: {
+        state: stateArray,
+        timestamp: Date.now(),
+      },
+    });
+
+    console.log('📤 Enviando estado completo:', stateArray.length, 'bytes');
+  }
+
+  /**
+   * Aplicar estado completo recibido
+   */
+  _applyFullState(payload) {
+    if (!payload.state || this.synced) return;
+
+    try {
+      const state = new Uint8Array(payload.state);
+      Y.applyUpdate(this.doc, state, 'supabase');
+      
+      this.synced = true;
+      console.log('✅ Estado completo aplicado:', state.length, 'bytes');
+    } catch (error) {
+      console.error('❌ Error aplicando estado completo:', error);
+    }
   }
 
   /**

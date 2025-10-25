@@ -770,7 +770,18 @@ function CodeEditor({
   useEffect(() => {
     if (isCollaborating && editorRef.current && activePath) {
       console.log('📂 Archivo cambió, actualizando Yjs binding:', activePath);
-      setupYjsBinding(editorRef.current);
+      
+      // Verificar que Yjs esté listo antes de crear binding
+      const updateBinding = () => {
+        if (collaborationService.getYDoc()) {
+          setupYjsBinding(editorRef.current);
+        } else {
+          console.log('⏳ Yjs no listo aún, esperando...');
+          setTimeout(updateBinding, 200);
+        }
+      };
+      
+      setTimeout(updateBinding, 100);
     }
   }, [activePath, isCollaborating]);
 
@@ -2167,9 +2178,17 @@ function CodeEditor({
 
     // 🔥 Inicializar Yjs binding si estamos colaborando
     if (isCollaborating) {
-      setTimeout(() => {
-        setupYjsBinding(editor);
-      }, 100);
+      // Esperar a que Yjs esté completamente inicializado
+      const initYjsBinding = () => {
+        if (collaborationService.getYDoc()) {
+          setupYjsBinding(editor);
+        } else {
+          console.log('⏳ Esperando inicialización de Yjs...');
+          setTimeout(initYjsBinding, 200);
+        }
+      };
+      
+      setTimeout(initYjsBinding, 300);
     }
   };
 
@@ -2209,6 +2228,33 @@ function CodeEditor({
     if (!ytext) {
       console.warn('⚠️ No se pudo obtener YText para:', activePath);
       return;
+    }
+
+    // 🔥 SINCRONIZACIÓN INICIAL: Contenido Monaco ↔ Yjs
+    const currentContent = editor.getValue();
+    const ytextContent = ytext.toString();
+
+    console.log('📊 Estado sincronización:', {
+      ytextLength: ytextContent.length,
+      monacoLength: currentContent.length,
+      ytextEmpty: ytextContent.length === 0,
+      monacoEmpty: currentContent.length === 0,
+    });
+
+    // Si Yjs está vacío pero Monaco tiene contenido → Cargar Monaco a Yjs
+    if (ytextContent.length === 0 && currentContent.length > 0) {
+      console.log('📤 Cargando contenido de Monaco a Yjs:', currentContent.length, 'caracteres');
+      ytext.insert(0, currentContent);
+    }
+    // Si Yjs tiene contenido pero Monaco está vacío → Cargar Yjs a Monaco
+    else if (ytextContent.length > 0 && currentContent.length === 0) {
+      console.log('📥 Cargando contenido de Yjs a Monaco:', ytextContent.length, 'caracteres');
+      editor.setValue(ytextContent);
+    }
+    // Si ambos tienen contenido diferente → Yjs gana (el más reciente)
+    else if (ytextContent.length > 0 && ytextContent !== currentContent) {
+      console.log('🔄 Sincronizando Yjs → Monaco (Yjs tiene contenido más reciente)');
+      editor.setValue(ytextContent);
     }
 
     try {
