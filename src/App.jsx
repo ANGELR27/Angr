@@ -227,6 +227,7 @@ function App() {
   const [files, setFiles] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.FILES, initialFiles);
   });
+
   const [openTabs, setOpenTabs] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.OPEN_TABS, ['index.html']);
   });
@@ -266,6 +267,9 @@ function App() {
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   // ✨ NUEVO: Estado para menú de herramientas dev
   const [showDevToolsMenu, setShowDevToolsMenu] = useState(false);
+  // ✨ Nuevo: Animación de intercambio editor/terminal en Fade
+  const [swapAnim, setSwapAnim] = useState('none'); // 'none' | 'toTerminal' | 'toEditor'
+  const swapTimerRef = useRef(null);
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'neon-cyan');
   });
@@ -1289,6 +1293,43 @@ function App() {
   const activeFile = getFileByPath(activeTab);
   const isFadeMode = currentTheme === 'fade';
 
+  // ⌨️ Atajo: Ctrl + Alt + R -> Alterna terminal en modo Fade con animación
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const isCtrlAltR = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'r' || e.key === 'R');
+      if (!isCtrlAltR) return;
+      e.preventDefault();
+      if (!isFadeMode) {
+        setShowTerminal((v) => !v);
+        return;
+      }
+      // Limpiar timers previos
+      if (swapTimerRef.current) {
+        clearTimeout(swapTimerRef.current);
+        swapTimerRef.current = null;
+      }
+      if (!showTerminal) {
+        // Editor -> Terminal
+        setSwapAnim('toTerminal');
+        setShowTerminal(true);
+        swapTimerRef.current = setTimeout(() => setSwapAnim('none'), 450);
+      } else {
+        // Terminal -> Editor
+        setSwapAnim('toEditor');
+        // mantener terminal montada hasta fin de animación
+        swapTimerRef.current = setTimeout(() => {
+          setShowTerminal(false);
+          setSwapAnim('none');
+        }, 450);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (swapTimerRef.current) clearTimeout(swapTimerRef.current);
+    };
+  }, [isFadeMode, showTerminal]);
+
   return (
     <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
       {/* Grid overlay para modo Fade */}
@@ -1568,7 +1609,6 @@ function App() {
                   maxHeight: '550px',
                   width: '90%', 
                   margin: '0 auto',
-                  display: showTerminal ? 'none' : 'flex'
                 } : {})
               }}
             >
@@ -1578,10 +1618,17 @@ function App() {
                   ...(isFadeMode ? { 
                     borderRadius: '16px', 
                     border: '1px solid #3f3f46',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)'
+                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    transition: 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 450ms ease, filter 450ms ease',
+                    transform: (showTerminal ? 'translateY(-8px) scale(0.985)' : 'translateY(0) scale(1)'),
+                    opacity: showTerminal ? 0 : 1,
+                    zIndex: showTerminal ? 1 : 2,
+                    filter: showTerminal ? 'blur(0.4px)' : 'none'
                   } : {})
                 }}
-                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-mixed-glow' : ''}`}
+                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
               >
                 {/* Botón toggle sidebar */}
                 {!showSidebar && !isFadeMode && (
@@ -1788,7 +1835,13 @@ function App() {
                       borderRadius: '16px',
                       border: '1px solid #3f3f46',
                       overflow: 'hidden',
-                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)'
+                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
+                      position: 'relative',
+                      transition: 'transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 450ms ease, filter 450ms ease',
+                      transform: (isFadeMode ? (showTerminal ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.985)') : 'none'),
+                      opacity: isFadeMode ? (showTerminal ? 1 : 0) : 1,
+                      zIndex: isFadeMode ? (showTerminal ? 3 : 1) : 'auto',
+                      filter: isFadeMode ? (showTerminal ? 'none' : 'blur(0.4px)') : 'none'
                     } : {})
                   }} 
                   className={`flex-shrink-0 ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}
