@@ -13,6 +13,8 @@ import {
 import SearchWidget from "./SearchWidget";
 import CommandPalette from "./CommandPalette";
 import TypingIndicator from "./TypingIndicator";
+import { MonacoBinding } from "y-monaco"; // 🔥 Yjs binding
+import collaborationService from "../services/collaborationServiceV2"; // 🔥 Servicio V2
 
 function CodeEditor({
   value,
@@ -51,6 +53,7 @@ function CodeEditor({
   const cursorDecorationsRef = useRef([]);
   const cursorWidgetsRef = useRef([]);
   const cursorMoveTimeoutRef = useRef(null);
+  const yjsBindingRef = useRef(null); // 🔥 Yjs Monaco binding
 
   // Memo: listas aplanadas de archivos/carpetas
   const buildAllFilePaths = (files, basePath = "") => {
@@ -762,6 +765,29 @@ function CodeEditor({
       editor.focus();
     }
   };
+
+  // 🔥 useEffect: Actualizar Yjs binding cuando cambia el archivo activo
+  useEffect(() => {
+    if (isCollaborating && editorRef.current && activePath) {
+      console.log('📂 Archivo cambió, actualizando Yjs binding:', activePath);
+      setupYjsBinding(editorRef.current);
+    }
+  }, [activePath, isCollaborating]);
+
+  // 🔥 useEffect: Cleanup Yjs binding al desmontar
+  useEffect(() => {
+    return () => {
+      if (yjsBindingRef.current) {
+        try {
+          yjsBindingRef.current.destroy();
+          yjsBindingRef.current = null;
+          console.log('🧹 Yjs binding destruido (unmount)');
+        } catch (e) {
+          console.error('Error al destruir binding en cleanup:', e);
+        }
+      }
+    };
+  }, []);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -2138,6 +2164,66 @@ function CodeEditor({
         return { suggestions };
       },
     });
+
+    // 🔥 Inicializar Yjs binding si estamos colaborando
+    if (isCollaborating) {
+      setTimeout(() => {
+        setupYjsBinding(editor);
+      }, 100);
+    }
+  };
+
+  // 🔥 FUNCIÓN: Setup Yjs binding
+  const setupYjsBinding = (editor) => {
+    if (!editor || !isCollaborating) {
+      console.warn('⚠️ No se puede crear Yjs binding');
+      return;
+    }
+
+    if (!collaborationService.getYDoc()) {
+      console.warn('⚠️ Yjs no inicializado aún');
+      return;
+    }
+
+    if (!activePath) {
+      console.warn('⚠️ No hay archivo activo');
+      return;
+    }
+
+    console.log('🔥 Configurando Yjs binding para:', activePath);
+
+    // Destruir binding anterior si existe
+    if (yjsBindingRef.current) {
+      try {
+        yjsBindingRef.current.destroy();
+        yjsBindingRef.current = null;
+        console.log('🧹 Binding anterior destruido');
+      } catch (e) {
+        console.error('Error al destruir binding:', e);
+      }
+    }
+
+    // Obtener o crear YText para este archivo
+    const ytext = collaborationService.setActiveFile(activePath);
+    
+    if (!ytext) {
+      console.warn('⚠️ No se pudo obtener YText para:', activePath);
+      return;
+    }
+
+    try {
+      // Crear nuevo binding Monaco ↔ Yjs
+      yjsBindingRef.current = new MonacoBinding(
+        ytext,
+        editor.getModel(),
+        new Set([editor]),
+        collaborationService.yjsProvider?.awareness
+      );
+
+      console.log('✅ Yjs binding creado exitosamente para:', activePath);
+    } catch (error) {
+      console.error('❌ Error al crear Yjs binding:', error);
+    }
   };
 
   return isImage && value ? (

@@ -1,18 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import * as Y from 'yjs';
+import { YjsSupabaseProvider } from './yjsSupabaseProvider';
 
 // Configuración de Supabase
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://tu-proyecto.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'tu-anon-key-aqui';
 
 /**
- * 🚀 SERVICIO DE COLABORACIÓN V2
+ * 🚀 SERVICIO DE COLABORACIÓN V2 + YJS CRDT
  * Mejoras principales:
  * - ✅ Presence nativo de Supabase (no más eventos manuales)
  * - ✅ Links cortos y QR codes
  * - ✅ Persistencia en base de datos
  * - ✅ Compression de payloads grandes
  * - ✅ Batching de cursores
+ * - 🔥 Yjs CRDT para resolución automática de conflictos
  */
 class CollaborationServiceV2 {
   constructor() {
@@ -20,6 +23,12 @@ class CollaborationServiceV2 {
     this.currentSession = null;
     this.currentUser = null;
     this.channel = null;
+    
+    // 🔥 YJS CRDT
+    this.ydoc = null; // Documento compartido
+    this.yjsProvider = null; // Provider Supabase
+    this.ytext = null; // Texto compartido para el editor
+    this.yfiles = null; // Map de archivos compartidos
     
     // Callbacks
     this.callbacks = {
@@ -392,6 +401,9 @@ class CollaborationServiceV2 {
         
         console.log('✅ Presencia anunciada:', this.currentUser.name);
         
+        // 🔥 Inicializar Yjs CRDT
+        this.initializeYjs();
+        
         // Iniciar heartbeat
         this.startHeartbeat();
         
@@ -644,6 +656,93 @@ class CollaborationServiceV2 {
     }
   }
 
+  // =========================================
+  // 🔥 MÉTODOS YJS CRDT
+  // =========================================
+  
+  initializeYjs() {
+    if (!this.channel) {
+      console.warn('⚠️ No se puede inicializar Yjs sin canal');
+      return;
+    }
+
+    console.log('🔥 Inicializando Yjs CRDT...');
+
+    // Crear documento compartido
+    this.ydoc = new Y.Doc();
+    
+    // Crear texto compartido para el editor actual
+    this.ytext = this.ydoc.getText('monaco');
+    
+    // Crear Map para todos los archivos
+    this.yfiles = this.ydoc.getMap('files');
+    
+    // Crear awareness para cursores y presencia
+    const awareness = new Y.Awareness(this.ydoc);
+    awareness.setLocalState({
+      user: this.currentUser,
+      cursor: null,
+      selection: null,
+    });
+
+    // Crear provider que conecta Yjs con Supabase
+    this.yjsProvider = new YjsSupabaseProvider(
+      this.ydoc,
+      this.channel,
+      awareness
+    );
+
+    console.log('✅ Yjs CRDT inicializado');
+  }
+
+  /**
+   * Obtener documento Yjs
+   */
+  getYDoc() {
+    return this.ydoc;
+  }
+
+  /**
+   * Obtener texto compartido actual (para Monaco binding)
+   */
+  getYText() {
+    return this.ytext;
+  }
+
+  /**
+   * Obtener Map de archivos compartidos
+   */
+  getYFiles() {
+    return this.yfiles;
+  }
+
+  /**
+   * Cambiar archivo activo (crea/obtiene YText para ese archivo)
+   */
+  setActiveFile(filePath) {
+    if (!this.ydoc || !this.yfiles) {
+      console.warn('⚠️ Yjs no inicializado');
+      return null;
+    }
+
+    // Obtener o crear YText para este archivo
+    let fileText = this.yfiles.get(filePath);
+    if (!fileText) {
+      fileText = new Y.Text();
+      this.yfiles.set(filePath, fileText);
+      console.log('📄 Archivo Yjs creado:', filePath);
+    }
+
+    // Actualizar referencia actual
+    this.ytext = fileText;
+    
+    return fileText;
+  }
+
+  // =========================================
+  // 💾 PERSISTENCIA
+  // =========================================
+
   async setProjectState(files, images = []) {
     if (!this.currentSession?.dbId || this.currentUser?.role !== 'owner') return;
     
@@ -663,6 +762,15 @@ class CollaborationServiceV2 {
   }
 
   async leaveSession() {
+    // 🔥 Destruir Yjs provider
+    if (this.yjsProvider) {
+      this.yjsProvider.destroy();
+      this.yjsProvider = null;
+    }
+    this.ydoc = null;
+    this.ytext = null;
+    this.yfiles = null;
+    
     if (this.channel) {
       // Anunciar salida con untrack
       await this.channel.untrack();
