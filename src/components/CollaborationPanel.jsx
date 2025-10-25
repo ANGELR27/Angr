@@ -166,10 +166,10 @@ export default function CollaborationPanel({
               return (
                 <div
                   key={user.id}
-                  className="flex items-center gap-2 p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-b border-white/10 dark:border-black/10 last:border-b-0"
+                  className="flex items-start gap-2 p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-b border-white/10 dark:border-black/10 last:border-b-0"
                 >
                   <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm relative"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm relative flex-shrink-0"
                     style={{ backgroundColor: user.color }}
                   >
                     {user.name?.charAt(0).toUpperCase()}
@@ -184,7 +184,7 @@ export default function CollaborationPanel({
                     )}
                   </div>
                   
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-gray-900 dark:text-white truncate">
                         {user.name}
@@ -221,18 +221,31 @@ export default function CollaborationPanel({
                     </div>
                   </div>
 
-                  {/* Actions for owner */}
+                  {/* Actions for owner - Icon buttons */}
                   {isOwner && !isCurrentUser && (
-                    <div className="flex gap-1">
-                      <select
-                        value={user.role}
-                        onChange={(e) => onChangePermissions(user.id, e.target.value)}
-                        className="text-xs bg-black/10 dark:bg-white/10 border border-white/20 dark:border-black/20 rounded px-2 py-1 text-gray-900 dark:text-white"
-                        title="Cambiar rol"
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => onChangePermissions(user.id, 'editor')}
+                        className={`p-1.5 rounded transition-all ${
+                          user.role === 'editor'
+                            ? 'bg-blue-500 text-white shadow-md'
+                            : 'bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-blue-500/20'
+                        }`}
+                        title="Cambiar a Editor"
                       >
-                        <option value="editor">Editor</option>
-                        <option value="viewer">Observador</option>
-                      </select>
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onChangePermissions(user.id, 'viewer')}
+                        className={`p-1.5 rounded transition-all ${
+                          user.role === 'viewer'
+                            ? 'bg-gray-500 text-white shadow-md'
+                            : 'bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-500/20'
+                        }`}
+                        title="Cambiar a Observador"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -243,13 +256,13 @@ export default function CollaborationPanel({
       </div>
 
       {/* Actions */}
-      <div className="p-3 border-t border-white/10 dark:border-black/10 bg-white/5 dark:bg-black/5">
+      <div className="p-3 border-t border-white/10 dark:border-black/10">
         <button
           onClick={onLeaveSession}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-500 dark:text-red-400 rounded transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
         >
           <LogOut className="w-4 h-4" />
-          <span className="text-sm font-medium">Salir de la Sesión</span>
+          <span className="text-sm">Salir de la Sesión</span>
         </button>
       </div>
 

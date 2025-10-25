@@ -314,14 +314,25 @@ class CollaborationServiceV2 {
     // Evento: Lista completa de usuarios (sync)
     this.channel.on('presence', { event: 'sync' }, () => {
       const presenceState = this.channel.presenceState();
-      const users = Object.values(presenceState)
+      const allUsers = Object.values(presenceState)
         .flat()
-        .map(p => p.user);
+        .map(p => p.user)
+        .filter(u => u && u.id); // Filtrar usuarios válidos
       
-      console.log('👥 Usuarios en línea (sync):', users.length, users.map(u => u.name));
+      // 🔧 FIX: Deduplicar por userId (evita duplicados al reconectar)
+      const uniqueUsers = Array.from(
+        new Map(allUsers.map(user => [user.id, user])).values()
+      );
+      
+      console.log('👥 Usuarios en línea (sync):', {
+        raw: allUsers.length,
+        unique: uniqueUsers.length,
+        duplicados: allUsers.length - uniqueUsers.length,
+        nombres: uniqueUsers.map(u => u.name)
+      });
       
       if (this.callbacks.onUsersChanged) {
-        this.callbacks.onUsersChanged(users);
+        this.callbacks.onUsersChanged(uniqueUsers);
       }
     });
 
@@ -379,6 +390,40 @@ class CollaborationServiceV2 {
     this.channel.on('broadcast', { event: 'project-state' }, (payload) => {
       if (this.callbacks.onProjectState && payload.payload.fromUserId !== this.currentUser?.id) {
         this.callbacks.onProjectState(payload.payload);
+      }
+    });
+
+    // =========================================
+    // 🔐 BROADCAST: Cambio de permisos
+    // =========================================
+    
+    this.channel.on('broadcast', { event: 'permission-change' }, async (payload) => {
+      const { userId, newRole } = payload.payload;
+      
+      console.log('📥 Cambio de permisos recibido:', { userId, newRole });
+      
+      // Si el cambio es para el usuario actual, actualizar su rol
+      if (userId === this.currentUser?.id) {
+        console.log('🔄 Actualizando tu rol a:', newRole);
+        this.currentUser.role = newRole;
+        
+        // Actualizar tracking de presence con nuevo rol
+        await this.channel.track({
+          user: this.currentUser,
+          online_at: new Date().toISOString(),
+        });
+        
+        // Guardar en localStorage
+        const session = this.getCurrentSession();
+        if (session) {
+          session.userRole = newRole;
+          this.saveSessionToStorage(session);
+        }
+      }
+      
+      // Notificar al callback si existe
+      if (this.callbacks.onAccessChanged) {
+        this.callbacks.onAccessChanged({ userId, role: newRole });
       }
     });
 
@@ -559,6 +604,14 @@ class CollaborationServiceV2 {
     
     try {
       if (this.channel) {
+        // 🔧 FIX: Hacer untrack antes de unsubscribe para limpiar presence
+        console.log('🧹 Limpiando presence antiguo antes de reconectar...');
+        try {
+          await this.channel.untrack();
+        } catch (e) {
+          console.warn('⚠️ No se pudo hacer untrack:', e.message);
+        }
+        
         await this.channel.unsubscribe();
         this.channel = null;
       }
@@ -759,6 +812,41 @@ class CollaborationServiceV2 {
     } catch (error) {
       console.error('Error al guardar estado:', error);
     }
+  }
+
+  // =========================================
+  // 🔐 CAMBIAR PERMISOS DE USUARIO
+  // =========================================
+  
+  async changeUserPermissions(userId, newRole) {
+    if (!this.channel || !this.currentUser || this.currentUser.role !== 'owner') {
+      console.warn('⚠️ Solo el propietario puede cambiar permisos');
+      return;
+    }
+
+    console.log('🔐 Cambiando permisos:', { userId, newRole });
+
+    // Broadcast a todos los usuarios del cambio
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'permission-change',
+      payload: {
+        userId,
+        newRole,
+        timestamp: Date.now(),
+      },
+    });
+
+    // Si es el propio usuario, actualizar su presencia
+    if (userId === this.currentUser.id) {
+      this.currentUser.role = newRole;
+      await this.channel.track({
+        user: this.currentUser,
+        online_at: new Date().toISOString(),
+      });
+    }
+
+    console.log('✅ Cambio de permisos enviado');
   }
 
   async leaveSession() {

@@ -241,16 +241,27 @@ export function useCollaboration(files, onFilesChange) {
         previousCount: activeUsers.length
       });
 
+      // 🔧 FIX: Deduplicar usuarios por ID (evita duplicados al reconectar)
+      const uniqueUsers = Array.from(
+        new Map(users.map(user => [user.id, user])).values()
+      );
+
+      console.log('🧹 Usuarios después de deduplicar:', {
+        antes: users.length,
+        después: uniqueUsers.length,
+        eliminados: users.length - uniqueUsers.length
+      });
+
       // Detectar usuarios nuevos
       const previousIds = new Set(activeUsers.map(u => u.id));
-      const newUsers = users.filter(u => !previousIds.has(u.id));
+      const newUsers = uniqueUsers.filter(u => !previousIds.has(u.id));
       
       // Detectar usuarios que se fueron
-      const currentIds = new Set(users.map(u => u.id));
+      const currentIds = new Set(uniqueUsers.map(u => u.id));
       const leftUsers = activeUsers.filter(u => !currentIds.has(u.id));
 
-      // Actualizar lista
-      setActiveUsers(users);
+      // Actualizar lista con usuarios únicos
+      setActiveUsers(uniqueUsers);
 
       // Notificaciones para nuevos usuarios
       newUsers.forEach(user => {
@@ -327,12 +338,24 @@ export function useCollaboration(files, onFilesChange) {
     };
 
     const handleAccessChanged = (payload) => {
+      console.log('🔐 handleAccessChanged:', payload);
+      
+      // Actualizar el rol del usuario actual si es necesario
       if (currentUser && payload.userId === currentUser.id) {
         setCurrentUser((prev) => ({
           ...prev,
-          role: payload.newRole,
+          role: payload.role,
         }));
       }
+      
+      // Actualizar el rol en la lista de usuarios activos
+      setActiveUsers((prev) => 
+        prev.map(user => 
+          user.id === payload.userId 
+            ? { ...user, role: payload.role }
+            : user
+        )
+      );
     };
 
     const handleProjectState = (payload) => {
