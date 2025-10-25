@@ -12,7 +12,7 @@ import {
 } from 'react-icons/si';
 import { VscTerminalBash, VscJson, VscFile } from 'react-icons/vsc';
 
-function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme }) {
+function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme, onToggleSidebar }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set(['components', 'examples']));
   const [contextMenu, setContextMenu] = useState(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -850,7 +850,9 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     <div 
       className="w-full h-full border-r overflow-y-auto relative" 
       style={{ backgroundColor: 'var(--theme-background-tertiary)', borderColor: 'var(--theme-border)' }}
-      onClick={closeContextMenu}
+      onDoubleClick={() => {
+        if (typeof onToggleSidebar === 'function') onToggleSidebar();
+      }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

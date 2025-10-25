@@ -1527,6 +1527,7 @@ function App() {
                 onCreateFile={handleNewFile}
                 onCreateFolder={handleNewFolder}
                 currentTheme={currentTheme}
+                onToggleSidebar={() => setShowSidebar(false)}
               />
             </div>
             
@@ -1544,6 +1545,16 @@ function App() {
               }}
             />
           </>
+        )}
+
+        {/* Área sensible en el borde izquierdo para mostrar el sidebar con doble clic cuando esté oculto */}
+        {!showSidebar && (
+          <div
+            className="absolute left-0 top-0 h-full"
+            style={{ width: '10px', cursor: 'pointer' }}
+            onDoubleClick={() => setShowSidebar(true)}
+            title="Doble clic para mostrar el explorador"
+          />
         )}
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
