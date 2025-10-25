@@ -6,6 +6,8 @@ const THEMES = [
   { id: 'vs', name: 'VS Light', description: 'Tema claro' },
   { id: 'hc-black', name: 'High Contrast', description: 'Alto contraste' },
   { id: 'lite', name: 'Lite', description: 'Compacto, limpio, negro con verde' },
+  { id: 'feel', name: 'Feel', description: 'Minimalista con tipografía Comico' },
+  { id: 'fade', name: 'Fade', description: 'Minimalista centrado para código rápido' },
   { id: 'matrix', name: 'Matrix', description: 'Estilo Matrix verde' },
   { id: 'tokyo-night', name: 'Tokyo Night', description: 'Tokyo Night oscuro' },
   { id: 'dracula', name: 'Dracula', description: 'Tema Dracula' },
@@ -66,6 +68,8 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
   const getThemeColors = (themeId) => {
     const colors = {
       'lite': { bg: '#1B1718', keyword: '#D0FC01', string: '#D0FC01', comment: '#8ea06a', number: '#D0FC01' },
+      'feel': { bg: '#10100E', keyword: '#FFFFE3', string: '#FFFFCC', comment: '#FFFFB3', number: '#FFFFE3' },
+      'fade': { bg: '#171717', keyword: '#60a5fa', string: '#fbbf24', comment: '#71717a', number: '#facc15' },
       'matrix': { bg: '#0d0208', keyword: '#00ff41', string: '#39ff14', comment: '#00ff00', number: '#00ff88' },
       'tokyo-night': { bg: '#1a1b26', keyword: '#bb9af7', string: '#9ece6a', comment: '#565f89', number: '#ff9e64' },
       'dracula': { bg: '#282a36', keyword: '#ff79c6', string: '#f1fa8c', comment: '#6272a4', number: '#bd93f9' },
@@ -255,6 +259,12 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                   )}
                   {theme.id === 'lite' && (
                     <div className="flex-1 bg-gradient-to-r from-[#1B1718] via-[#343031] to-[#D0FC01]"></div>
+                  )}
+                  {theme.id === 'feel' && (
+                    <div className="flex-1 bg-gradient-to-r from-[#10100E] via-[#1C1C15] to-[#FFFFE3]"></div>
+                  )}
+                  {theme.id === 'fade' && (
+                    <div className="flex-1 bg-gradient-to-r from-[#60a5fa] via-[#171717] to-[#fbbf24]"></div>
                   )}
                   {theme.id === 'tokyo-night' && (
                     <div className="flex-1 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400"></div>

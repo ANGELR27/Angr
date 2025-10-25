@@ -586,3 +586,173 @@ export const gitDiff = (filePath, files) => {
     return { error: 'Error al comparar archivos' };
   }
 };
+
+/**
+ * Ejecuta código Java simulado (sin compilador real, solo interpretación básica)
+ * Soporta System.out.println(), Scanner, y operaciones básicas
+ */
+export const executeJavaCode = async (code, onInput) => {
+  const results = [];
+  
+  try {
+    // Extraer clase principal
+    const classMatch = code.match(/public\s+class\s+(\w+)/);
+    if (!classMatch) {
+      return { error: 'No se encontró una clase pública' };
+    }
+    
+    const className = classMatch[1];
+    
+    // Extraer método main
+    const mainMatch = code.match(/public\s+static\s+void\s+main\s*\([^)]*\)\s*{([\s\S]*?)}\s*}/);
+    if (!mainMatch) {
+      return { error: 'No se encontró el método main' };
+    }
+    
+    let mainBody = mainMatch[1];
+    
+    // Variables para almacenar el estado
+    const variables = {};
+    let scannerInput = [];
+    
+    // Simular Scanner
+    const scannerMatch = mainBody.match(/Scanner\s+(\w+)\s*=\s*new\s+Scanner\s*\(\s*System\.in\s*\)/);
+    if (scannerMatch) {
+      const scannerVar = scannerMatch[1];
+      
+      // Buscar todas las llamadas a next() o nextInt()
+      const inputCalls = [...mainBody.matchAll(new RegExp(`${scannerVar}\\.(next(?:Int|Line|Double|Float|Boolean)?\\(\\))`, 'g'))];
+      
+      if (inputCalls.length > 0 && onInput) {
+        // Solicitar inputs al usuario
+        for (let i = 0; i < inputCalls.length; i++) {
+          const inputValue = await onInput(`Ingrese valor ${i + 1}:`);
+          scannerInput.push(inputValue);
+        }
+      }
+      
+      // Reemplazar llamadas a Scanner con valores de input
+      let inputIndex = 0;
+      mainBody = mainBody.replace(new RegExp(`${scannerVar}\\.(next(?:Int|Line|Double|Float|Boolean)?\\(\\))`, 'g'), () => {
+        const value = scannerInput[inputIndex++];
+        return `"${value}"`;
+      });
+    }
+    
+    // Capturar System.out.println()
+    const printMatches = [...mainBody.matchAll(/System\.out\.println\s*\(\s*([^)]+)\s*\)/g)];
+    for (const match of printMatches) {
+      let expression = match[1].trim();
+      
+      // Evaluar expresión simple
+      try {
+        // Reemplazar variables conocidas
+        for (const [varName, varValue] of Object.entries(variables)) {
+          expression = expression.replace(new RegExp(`\\b${varName}\\b`, 'g'), varValue);
+        }
+        
+        // Remover comillas si es string literal
+        if (expression.startsWith('"') && expression.endsWith('"')) {
+          results.push({ type: 'output', text: expression.slice(1, -1) });
+        } else {
+          // Intentar evaluar como JavaScript
+          const result = eval(expression.replace(/"/g, ''));
+          results.push({ type: 'output', text: String(result) });
+        }
+      } catch (e) {
+        results.push({ type: 'output', text: expression.replace(/"/g, '') });
+      }
+    }
+    
+    // Capturar System.out.print() (sin salto de línea)
+    const printNoLineMatches = [...mainBody.matchAll(/System\.out\.print\s*\(\s*([^)]+)\s*\)/g)];
+    for (const match of printNoLineMatches) {
+      let expression = match[1].trim();
+      
+      try {
+        for (const [varName, varValue] of Object.entries(variables)) {
+          expression = expression.replace(new RegExp(`\\b${varName}\\b`, 'g'), varValue);
+        }
+        
+        if (expression.startsWith('"') && expression.endsWith('"')) {
+          results.push({ type: 'output', text: expression.slice(1, -1), newline: false });
+        } else {
+          const result = eval(expression.replace(/"/g, ''));
+          results.push({ type: 'output', text: String(result), newline: false });
+        }
+      } catch (e) {
+        results.push({ type: 'output', text: expression.replace(/"/g, ''), newline: false });
+      }
+    }
+    
+    // Detectar variables int, String, double, etc.
+    const varDeclarations = [...mainBody.matchAll(/(?:int|String|double|float|boolean)\s+(\w+)\s*=\s*([^;]+);/g)];
+    for (const match of varDeclarations) {
+      const varName = match[1];
+      let varValue = match[2].trim();
+      
+      // Limpiar el valor
+      if (varValue.startsWith('"') && varValue.endsWith('"')) {
+        varValue = varValue.slice(1, -1);
+      }
+      
+      variables[varName] = varValue;
+    }
+    
+    return { 
+      success: true,
+      output: results,
+      className
+    };
+    
+  } catch (error) {
+    return { 
+      error: `Error de compilación: ${error.message}`,
+      details: error.stack
+    };
+  }
+};
+
+/**
+ * Compila y ejecuta código Java (simulado)
+ */
+export const compileJava = (code) => {
+  try {
+    // Validaciones básicas
+    const errors = [];
+    
+    if (!code.includes('public class')) {
+      errors.push('Error: Se requiere una clase pública');
+    }
+    
+    if (!code.includes('public static void main')) {
+      errors.push('Error: Se requiere el método main');
+    }
+    
+    // Verificar sintaxis básica
+    const openBraces = (code.match(/{/g) || []).length;
+    const closeBraces = (code.match(/}/g) || []).length;
+    
+    if (openBraces !== closeBraces) {
+      errors.push(`Error: Llaves desbalanceadas (${openBraces} abiertos, ${closeBraces} cerrados)`);
+    }
+    
+    if (errors.length > 0) {
+      return {
+        success: false,
+        errors
+      };
+    }
+    
+    return {
+      success: true,
+      message: 'Compilación exitosa'
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      errors: [error.message]
+    };
+  }
+};

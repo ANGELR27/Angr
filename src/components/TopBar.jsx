@@ -15,6 +15,8 @@ import {
   Users,
   MessageCircle,
   MoreVertical,
+  Palette,
+  Check,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -35,6 +37,8 @@ function TopBar({
   onExport,
   currentTheme,
   onToggleLite,
+  onToggleFeel,
+  onToggleFade,
   tabs,
   activeTab,
   onTabClick,
@@ -62,13 +66,20 @@ function TopBar({
   onToggleSplitView,
   // 🔀 Git
   onOpenGit,
+  // 🛠️ DevTools
+  onOpenDevTools,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [modesMenuOpen, setModesMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const menuPortalRef = useRef(null);
+  const modesMenuRef = useRef(null);
+  const modesMenuPortalRef = useRef(null);
   const isLite = currentTheme === "lite";
+  const isFeel = currentTheme === "feel";
+  const isFade = currentTheme === "fade";
 
   // Cerrar menú al hacer click fuera
   useEffect(() => {
@@ -94,6 +105,28 @@ function TopBar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [menuOpen]);
+
+  // Cerrar menú de modos al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const isModesMenuButton = modesMenuRef.current && modesMenuRef.current.contains(event.target);
+      const isModesMenuPortal = modesMenuPortalRef.current && modesMenuPortalRef.current.contains(event.target);
+      
+      if (!isModesMenuButton && !isModesMenuPortal && modesMenuOpen) {
+        setModesMenuOpen(false);
+      }
+    };
+
+    if (modesMenuOpen) {
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [modesMenuOpen]);
 
   const handleNewFile = () => {
     const fileName = prompt(
@@ -170,7 +203,7 @@ function TopBar({
 
   // 🎨 Usar iconos profesionales de cada tecnología
   const getFileIcon = (fileName) => {
-    const baseColor = isLite ? 'var(--theme-secondary)' : '';
+    const baseColor = (isLite || isFade) ? (isFade ? '#a1a1aa' : 'var(--theme-secondary)') : '';
     return getProFileIcon(fileName, 14, baseColor);
   };
 
@@ -183,9 +216,10 @@ function TopBar({
     <div
       className="border-b border-border-color flex items-center relative"
       style={{
-        height: isLite ? "40px" : "48px",
-        backgroundColor: "var(--theme-background-tertiary)",
-        boxShadow: isLite ? "none" : undefined,
+        height: (isLite || isFade) ? "40px" : "48px",
+        backgroundColor: isFade ? "#1f1f1f" : "var(--theme-background-tertiary)",
+        boxShadow: (isLite || isFade) ? "none" : undefined,
+        borderColor: isFade ? "#3f3f46" : undefined,
       }}
     >
       <input
@@ -196,7 +230,7 @@ function TopBar({
         className="hidden"
       />
 
-      {!isLite && (
+      {!isLite && !isFade && (
         <div className="absolute inset-0 bg-gradient-to-r from-theme-primary/5 via-transparent to-theme-accent/5 pointer-events-none"></div>
       )}
 
@@ -206,7 +240,7 @@ function TopBar({
           className="relative"
           style={{ padding: isLite ? "4px" : "8px", borderRadius: "8px" }}
         >
-          {!isLite && (
+          {!isLite && !isFade && (
             <div
               className="absolute inset-0 blur-2xl opacity-60"
               style={{
@@ -217,12 +251,12 @@ function TopBar({
           )}
           <Code2
             className="w-5 h-5 relative z-10"
-            style={{ color: "var(--theme-secondary)" }}
+            style={{ color: isFade ? "#a1a1aa" : "var(--theme-secondary)" }}
           />
         </div>
         <span
           className="text-sm font-semibold relative z-10"
-          style={{ color: "var(--theme-text)" }}
+          style={{ color: isFade ? "#e4e4e7" : "var(--theme-text)" }}
         >
           Code Editor
         </span>
@@ -403,21 +437,151 @@ function TopBar({
           </div>
         )}
 
-        {/* Botón de modo Lite */}
-        <button
-          onClick={onToggleLite}
-          className="flex items-center justify-center transition-all p-1.5 hover:scale-110"
-          style={{
-            backgroundColor: "transparent",
-            color:
-              currentTheme === "lite" ? "#D0FC01" : "var(--theme-secondary)",
-          }}
-          title={
-            currentTheme === "lite" ? "Salir de modo Lite" : "Activar modo Lite"
-          }
-        >
-          <span style={{ fontSize: "14px" }}>●</span>
-        </button>
+        {/* Menú de Modos */}
+        <div className="relative" ref={modesMenuRef}>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const newState = !modesMenuOpen;
+              setModesMenuOpen(newState);
+              if (!modesMenuOpen) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                modesMenuRef.current.dataset.buttonRight = rect.right;
+                modesMenuRef.current.dataset.buttonBottom = rect.bottom;
+              }
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all hover:scale-105"
+            style={{
+              backgroundColor: modesMenuOpen ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+              border: `1px solid ${modesMenuOpen ? (isFade ? '#3f3f46' : 'var(--theme-border)') : 'transparent'}`,
+              color: isFade ? "#e4e4e7" : "var(--theme-text)",
+            }}
+            title="Cambiar modo"
+          >
+            <Palette className="w-3.5 h-3.5" style={{ color: isFade ? "#a1a1aa" : "var(--theme-secondary)" }} />
+            <span className="text-xs font-medium">Modos</span>
+            <ChevronDown className="w-3 h-3" style={{ 
+              color: isFade ? "#71717a" : "var(--theme-text-secondary)",
+              transform: modesMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s'
+            }} />
+          </button>
+
+          {/* Dropdown de modos con Portal */}
+          {modesMenuOpen && typeof document !== 'undefined' && createPortal(
+            <div
+              ref={modesMenuPortalRef}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed rounded-lg shadow-2xl overflow-hidden"
+              style={{
+                backgroundColor: isFade ? '#1f1f1f' : 'var(--theme-background-secondary)',
+                width: '200px',
+                border: isFade ? '1px solid #3f3f46' : '1px solid var(--theme-border)',
+                zIndex: 999999,
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                top: `${modesMenuRef.current?.dataset.buttonBottom || 0}px`,
+                right: `${window.innerWidth - (modesMenuRef.current?.dataset.buttonRight || window.innerWidth)}px`,
+              }}
+            >
+              {/* Lite Mode */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleLite();
+                  setModesMenuOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
+                style={{
+                  color: 'var(--theme-text)',
+                  backgroundColor: currentTheme === 'lite' ? 'rgba(208, 252, 1, 0.1)' : 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => {
+                  if (currentTheme !== 'lite') {
+                    e.currentTarget.style.backgroundColor = 'var(--theme-surface)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentTheme !== 'lite') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#D0FC01' }}></div>
+                  <span>Lite</span>
+                </div>
+                {currentTheme === 'lite' && <Check className="w-4 h-4" style={{ color: '#D0FC01' }} />}
+              </button>
+
+              {/* Feel Mode */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleFeel();
+                  setModesMenuOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
+                style={{
+                  color: 'var(--theme-text)',
+                  backgroundColor: currentTheme === 'feel' ? 'rgba(255, 255, 227, 0.1)' : 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => {
+                  if (currentTheme !== 'feel') {
+                    e.currentTarget.style.backgroundColor = 'var(--theme-surface)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentTheme !== 'feel') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FFFFE3' }}></div>
+                  <span style={{ fontFamily: currentTheme === 'feel' ? '"Comic Neue", "Comic Sans MS", cursive' : undefined }}>Feel</span>
+                </div>
+                {currentTheme === 'feel' && <Check className="w-4 h-4" style={{ color: '#FFFFE3' }} />}
+              </button>
+
+              {/* Fade Mode */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleFade();
+                  setModesMenuOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
+                style={{
+                  color: 'var(--theme-text)',
+                  backgroundColor: currentTheme === 'fade' ? 'rgba(161, 161, 170, 0.1)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (currentTheme !== 'fade') {
+                    e.currentTarget.style.backgroundColor = 'var(--theme-surface)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentTheme !== 'fade') {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#a1a1aa' }}></div>
+                  <span>Fade</span>
+                </div>
+                {currentTheme === 'fade' && <Check className="w-4 h-4" style={{ color: '#a1a1aa' }} />}
+              </button>
+            </div>,
+            document.body
+          )}
+        </div>
 
         {/* Menú de tres puntos */}
         <div className="relative" ref={menuRef}>
@@ -607,6 +771,27 @@ function TopBar({
                   }}
                 >
                   Versiones (Git)
+                </button>
+              )}
+
+              {/* Herramientas de Desarrollador */}
+              {onOpenDevTools && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenDevTools();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  🛠️ Herramientas Dev
                 </button>
               )}
 

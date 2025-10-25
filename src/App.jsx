@@ -17,6 +17,7 @@ import ChatPanel from './components/ChatPanel'
 import AuthModal from './components/AuthModal'
 import SnippetManager from './components/SnippetManager'
 import GitPanel from './components/GitPanel'
+import DevToolsMenu from './components/DevToolsMenu'
 import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
@@ -263,6 +264,8 @@ function App() {
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
+  // ✨ NUEVO: Estado para menú de herramientas dev
+  const [showDevToolsMenu, setShowDevToolsMenu] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'neon-cyan');
   });
@@ -368,6 +371,31 @@ function App() {
     } else {
       prevThemeRef.current = currentTheme;
       setCurrentTheme('lite');
+    }
+  };
+
+  // Toggle modo feel conservando el tema previo
+  const handleToggleFeel = () => {
+    if (currentTheme === 'feel') {
+      setCurrentTheme(prevThemeRef.current || 'vs-dark');
+    } else {
+      prevThemeRef.current = currentTheme;
+      setCurrentTheme('feel');
+    }
+  };
+
+  // Toggle modo fade conservando el tema previo
+  const handleToggleFade = () => {
+    if (currentTheme === 'fade') {
+      setCurrentTheme(prevThemeRef.current || 'vs-dark');
+      setShowSidebar(true);
+      setShowPreview(false);
+    } else {
+      prevThemeRef.current = currentTheme;
+      setCurrentTheme('fade');
+      // En modo Fade: ocultar sidebar y preview
+      setShowSidebar(false);
+      setShowPreview(false);
     }
   };
 
@@ -979,16 +1007,24 @@ function App() {
         }
       }, showTerminal ? 0 : 100);
     } else if (fileName.endsWith('.py')) {
-      // Ejecutar Python (mostrar info)
+      // Ejecutar Python
       if (!showTerminal) setShowTerminal(true);
       setTimeout(() => {
         if (terminalRef.current) {
           terminalRef.current.executePython(activeFile.content);
         }
       }, showTerminal ? 0 : 100);
+    } else if (fileName.endsWith('.java')) {
+      // Ejecutar Java
+      if (!showTerminal) setShowTerminal(true);
+      setTimeout(() => {
+        if (terminalRef.current) {
+          terminalRef.current.executeJava(activeFile.content);
+        }
+      }, showTerminal ? 0 : 100);
     } else {
       if (terminalRef.current) {
-        terminalRef.current.addLog('error', [`No se puede ejecutar archivos .${fileName.split('.').pop()}`, 'Solo JavaScript (.js) se puede ejecutar en el navegador']);
+        terminalRef.current.addLog('error', [`No se puede ejecutar archivos .${fileName.split('.').pop()}`, 'Soportados: JavaScript (.js), Python (.py), Java (.java)']);
       }
     }
   };
@@ -1251,9 +1287,12 @@ function App() {
   }, [sidebarWidth, previewWidth, terminalHeight]); // Dependencias necesarias para el resize
 
   const activeFile = getFileByPath(activeTab);
+  const isFadeMode = currentTheme === 'fade';
 
   return (
-    <div className={`h-screen flex flex-col text-white relative overflow-hidden ${!editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
+    <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
+      {/* Grid overlay para modo Fade */}
+      {isFadeMode && <div className="fade-grid-overlay" />}
       {editorBackground.image && (
         <style>{`
           /* Hacer transparente el fondo del editor Monaco cuando hay imagen de fondo */
@@ -1311,6 +1350,8 @@ function App() {
         onExport={handleExport}
         currentTheme={currentTheme}
         onToggleLite={handleToggleLite}
+        onToggleFeel={handleToggleFeel}
+        onToggleFade={handleToggleFade}
         tabs={openTabs}
         activeTab={activeTab}
         onTabClick={setActiveTab}
@@ -1331,6 +1372,7 @@ function App() {
         splitViewEnabled={splitViewEnabled}
         onToggleSplitView={handleToggleSplitView}
         onOpenGit={() => setShowGitPanel(true)}
+        onOpenDevTools={() => setShowDevToolsMenu(true)}
       />
 
       {/* Indicador de guardado automático */}
@@ -1395,6 +1437,11 @@ function App() {
         files={files}
         currentTheme={currentTheme}
       />
+
+      {/* Menú de herramientas de desarrollador */}
+      {showDevToolsMenu && (
+        <DevToolsMenu onClose={() => setShowDevToolsMenu(false)} />
+      )}
 
       <SessionManager
         isOpen={showSessionManager}
@@ -1500,19 +1547,33 @@ function App() {
         )}
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden main-content-area">
+          <div className={`flex-1 flex flex-col overflow-hidden main-content-area ${isFadeMode ? 'items-center justify-center' : ''}`} style={isFadeMode ? { padding: '2rem 1rem' } : {}}>
             <div 
               className="flex overflow-hidden editor-preview-container"
               style={{ 
-                height: showTerminal ? `calc(100% - ${terminalHeight}px - 4px)` : '100%' 
+                height: showTerminal && !isFadeMode ? `calc(100% - ${terminalHeight}px - 4px)` : '100%',
+                ...(isFadeMode ? { 
+                  maxWidth: '850px',
+                  maxHeight: '550px',
+                  width: '90%', 
+                  margin: '0 auto',
+                  display: showTerminal ? 'none' : 'flex'
+                } : {})
               }}
             >
               <div 
-                style={{ width: showPreview ? `${100 - previewWidth}%` : '100%' }}
-                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image ? 'shadow-mixed-glow' : ''}`}
+                style={{ 
+                  width: showPreview ? `${100 - previewWidth}%` : '100%',
+                  ...(isFadeMode ? { 
+                    borderRadius: '16px', 
+                    border: '1px solid #3f3f46',
+                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)'
+                  } : {})
+                }}
+                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-mixed-glow' : ''}`}
               >
                 {/* Botón toggle sidebar */}
-                {!showSidebar && (
+                {!showSidebar && !isFadeMode && (
                   <button
                     onClick={handleToggleSidebar}
                     className="absolute top-2 left-2 z-50 p-2 rounded-md transition-all hover:scale-110"
@@ -1690,20 +1751,37 @@ function App() {
             
             {showTerminal && (
               <>
-                {/* Resize handle para terminal */}
-                <div
-                  className="h-px cursor-row-resize resize-handle transition-colors flex-shrink-0"
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.15)'
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    isResizingTerminal.current = true;
-                    document.body.style.cursor = 'row-resize';
-                    document.body.style.userSelect = 'none';
-                  }}
-                />
-                <div style={{ height: `${terminalHeight}px` }} className={`flex-shrink-0 ${!editorBackground.image ? 'shadow-blue-glow-strong' : ''}`}>
+                {/* Resize handle para terminal - oculto en modo Fade */}
+                {!isFadeMode && (
+                  <div
+                    className="h-px cursor-row-resize resize-handle transition-colors flex-shrink-0"
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.15)'
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      isResizingTerminal.current = true;
+                      document.body.style.cursor = 'row-resize';
+                      document.body.style.userSelect = 'none';
+                    }}
+                  />
+                )}
+                <div 
+                  style={{ 
+                    height: isFadeMode ? '100%' : `${terminalHeight}px`,
+                    ...(isFadeMode ? {
+                      maxWidth: '850px',
+                      maxHeight: '550px',
+                      width: '90%',
+                      margin: '0 auto',
+                      borderRadius: '16px',
+                      border: '1px solid #3f3f46',
+                      overflow: 'hidden',
+                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)'
+                    } : {})
+                  }} 
+                  className={`flex-shrink-0 ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}
+                >
                   <Terminal 
                     ref={terminalRef}
                     isOpen={showTerminal}

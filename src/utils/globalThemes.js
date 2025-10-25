@@ -416,6 +416,38 @@ export const GLOBAL_THEME_COLORS = {
     scrollbarThumb: 'linear-gradient(135deg, rgba(208,252,1,0.7) 0%, rgba(208,252,1,0.5) 100%)',
     scrollbarThumbHover: 'linear-gradient(135deg, rgba(208,252,1,0.9) 0%, rgba(208,252,1,0.7) 100%)',
   },
+  'feel': {
+    primary: '#FFFFE3',
+    secondary: '#FFFFE3',
+    accent: '#FFFFE3',
+    background: '#10100E',
+    backgroundSecondary: '#16160F',
+    backgroundTertiary: '#1C1C15',
+    surface: '#22221A',
+    border: '#FFFFE3',
+    text: '#FFFFE3',
+    textSecondary: '#FFFFCC',
+    textMuted: '#FFFFB3',
+    glow: 'rgba(255, 255, 227, 0.3)',
+    scrollbarThumb: 'linear-gradient(135deg, rgba(255,255,227,0.7) 0%, rgba(255,255,227,0.5) 100%)',
+    scrollbarThumbHover: 'linear-gradient(135deg, rgba(255,255,227,0.9) 0%, rgba(255,255,227,0.7) 100%)',
+  },
+  'fade': {
+    primary: '#60a5fa',
+    secondary: '#fbbf24',
+    accent: '#facc15',
+    background: '#171717',
+    backgroundSecondary: '#1f1f1f',
+    backgroundTertiary: '#262626',
+    surface: '#2a2a2a',
+    border: '#3f3f46',
+    text: '#e4e4e7',
+    textSecondary: '#a1a1aa',
+    textMuted: '#71717a',
+    glow: 'rgba(96, 165, 250, 0.3)',
+    scrollbarThumb: 'linear-gradient(135deg, rgba(96,165,250,0.5) 0%, rgba(251,191,36,0.5) 100%)',
+    scrollbarThumbHover: 'linear-gradient(135deg, rgba(96,165,250,0.7) 0%, rgba(251,191,36,0.7) 100%)',
+  },
 };
 
 // Función para aplicar el tema globalmente
@@ -438,4 +470,19 @@ export const applyGlobalTheme = (themeName) => {
   root.style.setProperty('--theme-glow', theme.glow);
   root.style.setProperty('--theme-scrollbar-thumb', theme.scrollbarThumb);
   root.style.setProperty('--theme-scrollbar-thumb-hover', theme.scrollbarThumbHover);
+
+  // Aplicar fuente Comico para modo Feel
+  if (themeName === 'feel') {
+    // Cargar fuente Comico si no está cargada
+    if (!document.getElementById('comico-font')) {
+      const link = document.createElement('link');
+      link.id = 'comico-font';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap';
+      document.head.appendChild(link);
+    }
+    root.style.setProperty('--theme-font-family', '"Comic Neue", "Comic Sans MS", cursive');
+  } else {
+    root.style.setProperty('--theme-font-family', 'system-ui, -apple-system, sans-serif');
+  }
 };

@@ -23,6 +23,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const [dragFileTypes, setDragFileTypes] = useState([]);
   const [isDraggingInternalToRoot, setIsDraggingInternalToRoot] = useState(false);
   const isLite = currentTheme === 'lite';
+  const isFeel = currentTheme === 'feel';
   
   // Referencias para inputs de archivo
   const folderInputRef = useRef(null);
@@ -788,16 +789,16 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
                 dragOverFolder === currentPath ? 'scale-105' : ''
               }`}
               style={{
-                padding: isLite ? '4px 6px' : '6px 12px',
+                padding: (isLite || isFeel) ? '4px 6px' : '6px 12px',
                 paddingLeft: '12px',
                 backgroundColor: dragOverFolder === currentPath 
-                  ? (isLite ? 'rgba(208, 252, 1, 0.15)' : 'rgba(139, 92, 246, 0.15)') 
+                  ? (isFeel ? 'rgba(255, 255, 227, 0.15)' : isLite ? 'rgba(208, 252, 1, 0.15)' : 'rgba(139, 92, 246, 0.15)') 
                   : 'transparent',
                 borderLeft: dragOverFolder === currentPath 
-                  ? (isLite ? '3px solid var(--theme-secondary)' : '3px solid rgba(139, 92, 246, 0.6)') 
+                  ? (isFeel ? '3px solid #FFFFE3' : isLite ? '3px solid var(--theme-secondary)' : '3px solid rgba(139, 92, 246, 0.6)') 
                   : '3px solid transparent',
                 boxShadow: dragOverFolder === currentPath 
-                  ? (isLite ? '0 0 15px rgba(208, 252, 1, 0.3)' : '0 0 15px rgba(139, 92, 246, 0.3)') 
+                  ? (isFeel ? '0 0 15px rgba(255, 255, 227, 0.3)' : isLite ? '0 0 15px rgba(208, 252, 1, 0.3)' : '0 0 15px rgba(139, 92, 246, 0.3)') 
                   : 'none'
               }}
             >
@@ -832,10 +833,10 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
           onDragEnd={onDragEndItem}
           className={`flex items-center gap-2 cursor-pointer transition-all group`}
           style={{
-            padding: isLite ? '4px 6px' : '6px 12px',
+            padding: (isLite || isFeel) ? '4px 6px' : '6px 12px',
             paddingLeft: '12px',
-            backgroundColor: isActive ? (isLite ? 'var(--theme-background-secondary)' : 'rgba(59,130,246,0.2)') : 'transparent',
-            borderLeft: isActive ? (isLite ? '3px solid var(--theme-primary)' : '3px solid rgba(59,130,246,0.8)') : '3px solid transparent'
+            backgroundColor: isActive ? (isFeel ? 'rgba(255, 255, 227, 0.15)' : isLite ? 'var(--theme-background-secondary)' : 'rgba(59,130,246,0.2)') : 'transparent',
+            borderLeft: isActive ? (isFeel ? '3px solid #FFFFE3' : isLite ? '3px solid var(--theme-primary)' : '3px solid rgba(59,130,246,0.8)') : '3px solid transparent'
           }}
         >
           <span className="ml-3">{getFileIcon(item.name)}</span>
@@ -862,19 +863,19 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center">
           <div className="absolute inset-2 border-2 border-dashed rounded-lg transition-all" 
             style={{
-              borderColor: isLite ? 'var(--theme-secondary)' : 'rgba(59, 130, 246, 0.6)',
-              backgroundColor: isLite ? 'rgba(208, 252, 1, 0.05)' : 'rgba(59, 130, 246, 0.1)',
+              borderColor: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : 'rgba(59, 130, 246, 0.6)',
+              backgroundColor: isFeel ? 'rgba(255, 255, 227, 0.05)' : isLite ? 'rgba(208, 252, 1, 0.05)' : 'rgba(59, 130, 246, 0.1)',
               animation: 'pulse 2s ease-in-out infinite'
             }}
           />
           
           <div className="relative z-10 flex flex-col items-center gap-3 px-4 py-6 rounded-lg backdrop-blur-sm"
             style={{
-              backgroundColor: isLite ? 'rgba(27, 23, 24, 0.9)' : 'rgba(20, 20, 30, 0.9)',
-              border: `2px solid ${isLite ? 'var(--theme-secondary)' : 'rgba(59, 130, 246, 0.4)'}`
+              backgroundColor: isFeel ? 'rgba(16, 16, 14, 0.9)' : isLite ? 'rgba(27, 23, 24, 0.9)' : 'rgba(20, 20, 30, 0.9)',
+              border: `2px solid ${isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : 'rgba(59, 130, 246, 0.4)'}`
             }}
           >
-            <Folder className="w-12 h-12" style={{color: isLite ? 'var(--theme-secondary)' : '#60a5fa'}} />
+            <Folder className="w-12 h-12" style={{color: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#60a5fa'}} />
             
             <div className="text-center">
               <p className="text-sm font-semibold" style={{color: 'var(--theme-text)'}}>
@@ -893,19 +894,19 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center">
           <div className="absolute inset-2 border-2 border-dashed rounded-lg transition-all" 
             style={{
-              borderColor: isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.6)',
-              backgroundColor: isLite ? 'rgba(208, 252, 1, 0.05)' : 'rgba(139, 92, 246, 0.1)',
+              borderColor: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.6)',
+              backgroundColor: isFeel ? 'rgba(255, 255, 227, 0.05)' : isLite ? 'rgba(208, 252, 1, 0.05)' : 'rgba(139, 92, 246, 0.1)',
               animation: 'pulse 2s ease-in-out infinite'
             }}
           />
           
           <div className="relative z-10 flex flex-col items-center gap-3 px-4 py-6 rounded-lg backdrop-blur-sm"
             style={{
-              backgroundColor: isLite ? 'rgba(27, 23, 24, 0.9)' : 'rgba(20, 20, 30, 0.9)',
-              border: `2px solid ${isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.4)'}`
+              backgroundColor: isFeel ? 'rgba(16, 16, 14, 0.9)' : isLite ? 'rgba(27, 23, 24, 0.9)' : 'rgba(20, 20, 30, 0.9)',
+              border: `2px solid ${isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.4)'}`
             }}
           >
-            <Upload className="w-12 h-12" style={{color: isLite ? 'var(--theme-secondary)' : '#a78bfa'}} />
+            <Upload className="w-12 h-12" style={{color: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a78bfa'}} />
             
             <div className="text-center">
               <p className="text-sm font-semibold mb-1" style={{color: 'var(--theme-text)'}}>
@@ -914,7 +915,7 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
               <p className="text-xs" style={{color: 'var(--theme-text-secondary)'}}>
                 {dragFileCount > 0 ? (
                   <>
-                    <span className="font-semibold" style={{color: isLite ? 'var(--theme-secondary)' : '#a78bfa'}}>
+                    <span className="font-semibold" style={{color: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a78bfa'}}>
                       {dragFileCount}
                     </span> archivo{dragFileCount > 1 ? 's' : ''}
                     {dragFileTypes.length > 0 && (
@@ -1010,10 +1011,12 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         <div className="absolute bottom-3 left-3 right-3 z-50 flex justify-center animate-fade-in">
           <div className="px-4 py-2 text-sm rounded-lg border shadow-lg backdrop-blur-sm" 
             style={{
-              backgroundColor: isLite ? 'rgba(27, 23, 24, 0.95)' : 'rgba(30, 30, 40, 0.95)',
-              borderColor: isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.5)',
+              backgroundColor: isFeel ? 'rgba(16, 16, 14, 0.95)' : isLite ? 'rgba(27, 23, 24, 0.95)' : 'rgba(30, 30, 40, 0.95)',
+              borderColor: isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : 'rgba(139, 92, 246, 0.5)',
               color: 'var(--theme-text)',
-              boxShadow: isLite 
+              boxShadow: isFeel 
+                ? '0 4px 20px rgba(255, 255, 227, 0.2)' 
+                : isLite 
                 ? '0 4px 20px rgba(208, 252, 1, 0.2)' 
                 : '0 4px 20px rgba(139, 92, 246, 0.3)'
             }}>
