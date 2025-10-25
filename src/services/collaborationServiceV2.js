@@ -302,7 +302,10 @@ class CollaborationServiceV2 {
 
     this.channel = this.supabase.channel(`session:${sessionId}`, {
       config: {
-        broadcast: { self: false }, // No recibir propios broadcasts
+        broadcast: { 
+          self: false, // No recibir propios broadcasts
+          ack: true // 🔥 Confirmar entrega de mensajes
+        },
         presence: { key: this.currentUser?.id }, // ✅ PRESENCE NATIVO
       },
     });
@@ -363,13 +366,26 @@ class CollaborationServiceV2 {
     this.channel.on('broadcast', { event: 'file-change' }, (payload) => {
       const data = payload.payload;
       
+      console.log('📥 Broadcast file-change recibido:', {
+        from: data.userName,
+        userId: data.userId,
+        filePath: data.filePath,
+        contentLength: data.content?.length,
+        messageId: data.messageId,
+        hasCallback: !!this.callbacks.onFileChange
+      });
+      
       // Evitar duplicados
       if (this.isMessageProcessed(data.messageId)) {
+        console.log('⏸️ Mensaje duplicado - ignorar');
         return;
       }
       
       if (this.callbacks.onFileChange) {
+        console.log('✅ Llamando callback onFileChange');
         this.callbacks.onFileChange(data);
+      } else {
+        console.warn('⚠️ No hay callback registrado para onFileChange');
       }
     });
 
@@ -472,8 +488,24 @@ class CollaborationServiceV2 {
   // =========================================
   
   async broadcastFileChange(filePath, content, cursorPosition, version) {
+    console.log('📡 broadcastFileChange llamado:', {
+      hasChannel: !!this.channel,
+      connectionStatus: this.connectionStatus,
+      hasUser: !!this.currentUser,
+      filePath,
+      contentLength: content?.length
+    });
+
     if (!this.channel || this.connectionStatus !== 'connected') {
-      console.warn('⚠️ No se puede enviar - sin conexión');
+      console.warn('⚠️ No se puede enviar - sin conexión:', {
+        hasChannel: !!this.channel,
+        status: this.connectionStatus
+      });
+      return;
+    }
+
+    if (!this.currentUser) {
+      console.error('❌ No hay usuario actual');
       return;
     }
 
@@ -491,21 +523,29 @@ class CollaborationServiceV2 {
         userName: this.currentUser.name,
         userColor: this.currentUser.color,
         filePath,
-        content, // Por ahora enviamos contenido completo (CRDT en FASE 2)
+        content, // Contenido completo (sistema legacy)
         cursorPosition,
         version,
         timestamp: Date.now(),
       },
     };
 
+    console.log('📤 Enviando broadcast a Supabase...', {
+      event: 'file-change',
+      filePath,
+      contentLength: content.length,
+      version
+    });
+
     try {
-      await this.channel.send(message);
-      console.log('✅ Cambio enviado:', filePath);
+      const result = await this.channel.send(message);
+      console.log('✅ Broadcast enviado exitosamente:', result);
       
       // Actualizar actividad en BD
       this.updateSessionActivity();
     } catch (error) {
       console.error('❌ Error al enviar cambio:', error);
+      console.error('Stack:', error.stack);
     }
   }
 

@@ -128,22 +128,36 @@ export function useCollaboration(files, onFilesChange) {
   useEffect(() => {
     if (!isCollaborating) return;
 
-    // 🔥 FUNCIONES DE CALLBACK PARA LIMPIAR CORRECTAMENTE
+    // FUNCIONES DE CALLBACK PARA LIMPIAR CORRECTAMENTE
     const handleFileChange = (payload) => {
-      console.log("📥 MENSAJE RECIBIDO de Supabase:", {
+      console.log('📥 handleFileChange recibido:', {
         filePath: payload.filePath,
+        from: payload.userId === currentUser?.id ? 'YO' : 'REMOTO',
+        userName: payload.userName,
         contentLength: payload.content?.length,
-        fromUser: payload.userName,
-        timestamp: payload.timestamp,
+        timestamp: payload.timestamp
       });
 
-      // Evitar bucles de sincronización
-      if (isApplyingRemoteChange.current) {
-        console.log("⏸️ Aplicando cambio remoto - ignorar");
+      // 🔥 IGNORAR SIEMPRE PROPIOS CAMBIOS (incluso si no hay Yjs)
+      if (payload.userId === currentUser?.id) {
+        console.log('⏸️ Es mi propio cambio - ignorar');
+        return;
+      }
+
+      // 🔥 VERIFICAR: Si Yjs está sincronizado, los cambios vienen por Yjs, no por broadcast
+      const ydoc = collaborationService.getYDoc?.();
+      const yjsProvider = collaborationService.yjsProvider;
+      const yjsFullyActive = ydoc && yjsProvider && yjsProvider.synced === true;
+      
+      if (yjsFullyActive) {
+        console.log('⏸️ Yjs sincronizado - ignorando broadcast (Yjs maneja cambios)');
         return;
       }
       
-      // 🔥 CONTROL DE VERSIONES RELAJADO - Aceptar cambios más recientes
+      // Sistema legacy PROCESA cambios remotos
+      console.log('✅ Procesando con sistema legacy (Yjs no sincronizado)');
+      
+      // CONTROL DE VERSIONES RELAJADO - Aceptar cambios más recientes
       const currentVersion = fileVersionsRef.current[payload.filePath] || 0;
       if (typeof payload.version === "number") {
         console.log("🔢 Versión incoming:", payload.version, "vs current:", currentVersion);

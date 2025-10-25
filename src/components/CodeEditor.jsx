@@ -448,27 +448,40 @@ function CodeEditor({
     // Guardar cambio local inmediatamente
     onChange(value);
 
-    // DEBUG: Verificar estado de colaboración
+    // 🔥 SISTEMA HÍBRIDO: Verificar si Yjs está REALMENTE sincronizado
+    const ydoc = collaborationService.getYDoc?.();
+    const yjsProvider = collaborationService.yjsProvider;
+    
+    // Yjs está listo SOLO si provider está sincronizado
+    const yjsFullyReady = ydoc && yjsProvider && yjsProvider.synced === true;
+    
+    // SIEMPRE usar broadcast legacy si Yjs no está 100% sincronizado
+    const shouldBroadcast = isCollaborating && onRealtimeChange && !yjsFullyReady;
+    
     console.log("📝 handleEditorChange:", {
       isCollaborating,
-      hasOnRealtimeChange: !!onRealtimeChange,
-      activePath,
+      hasYDoc: !!ydoc,
+      hasProvider: !!yjsProvider,
+      providerSynced: yjsProvider?.synced,
+      yjsFullyReady,
+      shouldBroadcast,
+      decision: yjsFullyReady ? 'Yjs maneja' : 'Broadcast legacy',
       contentLength: value?.length,
     });
 
-    // Si estamos colaborando, enviar cambio en tiempo real con debounce corto
-    if (isCollaborating && onRealtimeChange) {
+    // Enviar broadcast si Yjs NO está totalmente listo
+    if (shouldBroadcast) {
       // Limpiar timeout anterior
       if (realtimeTimeoutRef.current) {
         clearTimeout(realtimeTimeoutRef.current);
       }
 
-      // Enviar después de 300ms de inactividad (mejor para sincronización completa)
+      // Enviar después de 150ms (más rápido para mejor UX)
       realtimeTimeoutRef.current = setTimeout(() => {
         const editor = editorRef.current;
         const position = editor?.getPosition();
 
-        console.log("📡 ENVIANDO cambio en tiempo real:", {
+        console.log("📡 ENVIANDO cambio en tiempo real (sistema legacy):", {
           filePath: activePath,
           contentLength: value.length,
           position,
@@ -484,10 +497,13 @@ function CodeEditor({
               }
             : null,
         });
-      }, 300); // Aumentado de 100ms a 300ms para sincronización completa
+      }, 150); // 🔥 Reducido de 300ms a 150ms para respuesta más rápida
+    } else if (yjsFullyReady) {
+      console.log("✅ Yjs sincronizado - Yjs maneja cambios automáticamente");
     } else {
-      console.warn("⚠️ NO se enviará cambio:", {
+      console.log("⏸️ No se envía broadcast:", {
         isCollaborating,
+        yjsFullyReady,
         hasCallback: !!onRealtimeChange,
       });
     }
@@ -2178,13 +2194,24 @@ function CodeEditor({
 
     // 🔥 Inicializar Yjs binding si estamos colaborando
     if (isCollaborating) {
+      console.log('🚀 Iniciando proceso de binding Yjs...');
+      
+      let retryCount = 0;
+      const maxRetries = 25; // 5 segundos máximo (25 * 200ms)
+      
       // Esperar a que Yjs esté completamente inicializado
       const initYjsBinding = () => {
-        if (collaborationService.getYDoc()) {
+        retryCount++;
+        const ydoc = collaborationService.getYDoc();
+        
+        if (ydoc) {
+          console.log(`✅ Yjs disponible después de ${retryCount} intentos`);
           setupYjsBinding(editor);
-        } else {
-          console.log('⏳ Esperando inicialización de Yjs...');
+        } else if (retryCount < maxRetries) {
+          console.log(`⏳ Esperando Yjs... intento ${retryCount}/${maxRetries}`);
           setTimeout(initYjsBinding, 200);
+        } else {
+          console.warn('⚠️ Yjs no se inicializó - usando sistema legacy');
         }
       };
       
