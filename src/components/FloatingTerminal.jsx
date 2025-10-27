@@ -81,29 +81,71 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            marginBottom: '15px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            paddingBottom: '10px'
+            gap: '12px',
+            marginBottom: '18px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            paddingBottom: '12px',
+            position: 'relative'
           }}
         >
-          {isError ? (
-            <XCircle size={20} color="#ef4444" />
-          ) : (
-            <CheckCircle size={20} color="#10b981" />
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Terminal size={18} color="rgba(255, 255, 255, 0.7)" />
+          {/* Icon con glow */}
+          <div
+            style={{
+              padding: '6px',
+              borderRadius: '10px',
+              background: isError 
+                ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1))'
+                : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))',
+              border: `1px solid ${isError ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+              boxShadow: isError 
+                ? '0 0 20px rgba(239, 68, 68, 0.3)'
+                : '0 0 20px rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {isError ? (
+              <XCircle size={20} color="#ef4444" strokeWidth={2.5} />
+            ) : (
+              <CheckCircle size={20} color="#10b981" strokeWidth={2.5} />
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+            <Terminal 
+              size={16} 
+              color="rgba(255, 255, 255, 0.5)" 
+              strokeWidth={2}
+            />
             <span
               style={{
-                color: 'rgba(255, 255, 255, 0.9)',
+                color: 'rgba(255, 255, 255, 0.95)',
                 fontSize: '13px',
                 fontWeight: '600',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
               }}
             >
               {isError ? 'Error de Ejecución' : 'Resultado'}
             </span>
+          </div>
+
+          {/* Badge animado */}
+          <div
+            style={{
+              padding: '4px 10px',
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              fontSize: '10px',
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontWeight: '500',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase'
+            }}
+          >
+            Ctrl+Alt+S
           </div>
         </div>
 
@@ -112,42 +154,93 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
           style={{
             maxHeight: '200px',
             overflowY: 'auto',
-            color: 'rgba(255, 255, 255, 0.85)',
+            color: 'rgba(255, 255, 255, 0.9)',
             fontSize: '13px',
             fontFamily: '"Fira Code", "Consolas", "Monaco", monospace',
-            lineHeight: '1.6',
+            lineHeight: '1.7',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            padding: '10px',
-            background: 'rgba(0, 0, 0, 0.2)',
-            borderRadius: '8px',
-            border: '1px solid rgba(255, 255, 255, 0.05)'
+            padding: '14px',
+            background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.25) 100%)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3) inset',
+            position: 'relative'
           }}
           className="custom-scrollbar"
         >
-          {output}
+          {/* Subtle shine effect */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '50%',
+              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent)',
+              borderRadius: '12px 12px 0 0',
+              pointerEvents: 'none'
+            }}
+          />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            {output}
+          </div>
         </div>
 
         {/* Progress bar */}
         <div
           style={{
-            marginTop: '15px',
-            height: '2px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '2px',
-            overflow: 'hidden'
+            marginTop: '18px',
+            height: '3px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            borderRadius: '6px',
+            overflow: 'hidden',
+            position: 'relative',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3) inset'
           }}
         >
+          {/* Glow effect */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-4px',
+              left: 0,
+              right: 0,
+              height: '10px',
+              background: isError 
+                ? 'radial-gradient(ellipse at center, rgba(239, 68, 68, 0.3), transparent)'
+                : 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.3), transparent)',
+              animation: 'shrink 5s linear',
+              width: '100%',
+              filter: 'blur(4px)'
+            }}
+          />
           <div
             style={{
               height: '100%',
               background: isError 
-                ? 'linear-gradient(90deg, #ef4444, #dc2626)'
-                : 'linear-gradient(90deg, #3b82f6, #2563eb)',
+                ? 'linear-gradient(90deg, #ef4444, #dc2626, #b91c1c)'
+                : 'linear-gradient(90deg, #3b82f6, #2563eb, #1d4ed8)',
               animation: 'shrink 5s linear',
-              width: '100%'
+              width: '100%',
+              boxShadow: isError 
+                ? '0 0 12px rgba(239, 68, 68, 0.6)'
+                : '0 0 12px rgba(59, 130, 246, 0.6)',
+              position: 'relative'
             }}
-          />
+          >
+            {/* Shine effect en la barra */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '50%',
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent)'
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -192,21 +285,28 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
         }
 
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 8px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 10px;
+          margin: 4px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15));
+          border-radius: 10px;
+          border: 2px solid rgba(0, 0, 0, 0.2);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.25));
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:active {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.3));
         }
       `}</style>
     </div>
