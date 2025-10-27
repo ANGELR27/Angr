@@ -55,7 +55,17 @@ export default function ChatPanel({
   };
 
   const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    
+    // Manejar tanto timestamps numéricos como strings ISO
     const date = new Date(timestamp);
+    
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Timestamp inválido:', timestamp);
+      return 'Ahora';
+    }
+    
     return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   };
 

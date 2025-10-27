@@ -18,6 +18,7 @@ import AuthModal from './components/AuthModal'
 import SnippetManager from './components/SnippetManager'
 import GitPanel from './components/GitPanel'
 import DevToolsMenu from './components/DevToolsMenu'
+import FloatingTerminal from './components/FloatingTerminal'
 import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
@@ -270,6 +271,10 @@ function App() {
   // ✨ Nuevo: Animación de intercambio editor/terminal en Fade
   const [swapAnim, setSwapAnim] = useState('none'); // 'none' | 'toTerminal' | 'toEditor'
   const swapTimerRef = useRef(null);
+  // 🚀 NUEVO: Terminal flotante con glassmorphism
+  const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
+  const [floatingTerminalOutput, setFloatingTerminalOutput] = useState('');
+  const [floatingTerminalError, setFloatingTerminalError] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'neon-cyan');
   });
@@ -873,17 +878,19 @@ function App() {
 
     const newMessage = {
       id: Date.now(),
-      user_id: currentUser?.id,
-      user_name: currentUser?.name,
-      user_color: currentUser?.color,
+      userId: currentUser?.id,
+      userName: currentUser?.name,
+      userColor: currentUser?.color,
       message: messageData.message,
-      message_type: messageData.messageType || 'text',
-      created_at: new Date().toISOString(),
+      messageType: messageData.messageType || 'text',
+      createdAt: new Date().toISOString(),
+      timestamp: Date.now(),
     };
 
+    // Agregar mensaje local inmediatamente (optimistic update)
     setChatMessages(prev => [...prev, newMessage]);
 
-    // Guardar en BD si está disponible
+    // Guardar en BD si está disponible (se sincronizará vía subscription)
     if (databaseService.isConfigured && currentSession?.dbId) {
       try {
         await databaseService.sendChatMessage({
@@ -894,11 +901,106 @@ function App() {
           message: messageData.message,
           messageType: messageData.messageType,
         });
+        console.log('✅ Mensaje de chat enviado a BD');
       } catch (error) {
-        console.error('Error guardando mensaje:', error);
+        console.error('❌ Error guardando mensaje:', error);
       }
     }
   }, [isCollaborating, currentSession, currentUser]);
+
+  // 🔥 NUEVO: Suscribirse a mensajes de chat en tiempo real
+  useEffect(() => {
+    if (!isCollaborating || !currentSession?.dbId || !databaseService.isConfigured) {
+      return;
+    }
+
+    console.log('🔔 Suscribiéndose a mensajes de chat para sesión:', currentSession.dbId);
+
+    // Cargar mensajes existentes
+    const loadMessages = async () => {
+      try {
+        const messages = await databaseService.getChatMessages(currentSession.dbId);
+        console.log(`📥 Cargados ${messages.length} mensajes de chat`);
+        
+        // Mapear snake_case a camelCase para compatibilidad con ChatPanel
+        const mappedMessages = messages.map(msg => {
+          console.log('📋 Mapeando mensaje de BD:', msg);
+          
+          const mapped = {
+            id: msg.id,
+            userId: msg.user_id,
+            userName: msg.user_name,
+            userColor: msg.user_color,
+            message: msg.message,
+            messageType: msg.message_type,
+            createdAt: msg.created_at,
+            timestamp: new Date(msg.created_at).getTime(),
+          };
+          
+          console.log('✅ Mensaje mapeado:', mapped);
+          return mapped;
+        });
+        
+        setChatMessages(mappedMessages);
+      } catch (error) {
+        console.error('Error cargando mensajes:', error);
+      }
+    };
+
+    loadMessages();
+
+    // Suscribirse a nuevos mensajes
+    const subscription = databaseService.subscribeToChatMessages(
+      currentSession.dbId,
+      (rawMessage) => {
+        console.log('📨 Nuevo mensaje de chat recibido (raw):', rawMessage);
+        
+        // Mapear snake_case a camelCase
+        const newMessage = {
+          id: rawMessage.id,
+          userId: rawMessage.user_id,
+          userName: rawMessage.user_name,
+          userColor: rawMessage.user_color,
+          message: rawMessage.message,
+          messageType: rawMessage.message_type,
+          createdAt: rawMessage.created_at,
+          timestamp: new Date(rawMessage.created_at).getTime(),
+        };
+        
+        console.log('🔄 Mensaje mapeado para agregar:', newMessage);
+        console.log('   - timestamp:', newMessage.timestamp, 'es válido?', !isNaN(newMessage.timestamp));
+        console.log('   - createdAt:', newMessage.createdAt);
+        
+        // Solo agregar si no es nuestro propio mensaje (optimistic update ya lo agregó)
+        setChatMessages(prev => {
+          console.log('📊 Mensajes actuales:', prev.length);
+          
+          const exists = prev.some(msg => 
+            msg.id === newMessage.id || 
+            (msg.userId === newMessage.userId && 
+             msg.createdAt === newMessage.createdAt &&
+             msg.message === newMessage.message)
+          );
+          
+          if (exists) {
+            console.log('⏸️ Mensaje ya existe (optimistic update) - NO agregar');
+            return prev;
+          }
+          
+          console.log('✅ Agregando nuevo mensaje remoto - Total será:', prev.length + 1);
+          return [...prev, newMessage];
+        });
+      }
+    );
+
+    // Cleanup: desuscribirse al desmontar
+    return () => {
+      console.log('🧹 Limpiando suscripción de chat');
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [isCollaborating, currentSession?.dbId]);
 
   // 🔐 Handler para abrir modal de colaboración (con verificación de autenticación)
   const handleOpenCollaboration = () => {
@@ -1032,6 +1134,105 @@ function App() {
       }
     }
   };
+
+  // Ejecutar JavaScript en terminal flotante
+  const executeJavaScriptFloating = useCallback((code) => {
+    if (!code || code.trim() === '') {
+      setFloatingTerminalOutput('⚠️ No hay código para ejecutar');
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+      return;
+    }
+
+    try {
+      const logs = [];
+      const customConsole = {
+        log: (...args) => {
+          const text = args.map(arg => {
+            if (typeof arg === 'object' && arg !== null) {
+              try {
+                return JSON.stringify(arg, null, 2);
+              } catch (e) {
+                return String(arg);
+              }
+            }
+            return String(arg);
+          }).join(' ');
+          logs.push(text);
+        },
+        error: (...args) => {
+          const text = args.map(arg => String(arg)).join(' ');
+          logs.push(`❌ ${text}`);
+        },
+        warn: (...args) => {
+          const text = args.map(arg => String(arg)).join(' ');
+          logs.push(`⚠️ ${text}`);
+        },
+        info: (...args) => {
+          const text = args.map(arg => String(arg)).join(' ');
+          logs.push(`ℹ️ ${text}`);
+        }
+      };
+
+      const wrappedCode = `
+        (function() {
+          'use strict';
+          const console = customConsole;
+          ${code}
+        })();
+      `;
+      
+      const func = new Function('customConsole', wrappedCode);
+      func(customConsole);
+      
+      if (logs.length > 0) {
+        setFloatingTerminalOutput(logs.join('\n'));
+        setFloatingTerminalError(false);
+      } else {
+        setFloatingTerminalOutput('✅ Código ejecutado correctamente (sin salida)');
+        setFloatingTerminalError(false);
+      }
+      setShowFloatingTerminal(true);
+    } catch (error) {
+      setFloatingTerminalOutput(`❌ ${error.name}: ${error.message}`);
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+    }
+  }, []);
+
+  // 🚀 Ejecutar código en terminal flotante (Ctrl + Alt + S)
+  const handleExecuteCodeFloating = useCallback(() => {
+    const activeFile = getFileByPath(activeTab);
+    
+    if (!activeFile) {
+      setFloatingTerminalOutput('❌ No hay archivo abierto');
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+      return;
+    }
+
+    const fileName = activeFile.name.toLowerCase();
+    const code = activeFile.content;
+    
+    if (fileName.endsWith('.js')) {
+      // Ejecutar JavaScript
+      executeJavaScriptFloating(code);
+    } else if (fileName.endsWith('.py')) {
+      // Python no soportado
+      setFloatingTerminalOutput(`⚠️ Python no está disponible en el navegador\n\n💡 Tip: Usa https://replit.com o instala Python localmente\n\n📝 Código:\n${code}`);
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+    } else if (fileName.endsWith('.java')) {
+      // Java simulado
+      setFloatingTerminalOutput(`⚠️ Java requiere compilación, usa la terminal principal (Ctrl+Alt+R)`);
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+    } else {
+      setFloatingTerminalOutput(`❌ No se puede ejecutar archivos .${fileName.split('.').pop()}\n\nSoportados: JavaScript (.js)`);
+      setFloatingTerminalError(true);
+      setShowFloatingTerminal(true);
+    }
+  }, [activeTab, files, executeJavaScriptFloating]);
 
   const handleDeleteFile = (filePath) => {
     const parts = filePath.split('/');
@@ -1293,9 +1494,17 @@ function App() {
   const activeFile = getFileByPath(activeTab);
   const isFadeMode = currentTheme === 'fade';
 
-  // ⌨️ Atajos: Ctrl + Alt + R (Terminal) y Ctrl + Alt + P (Preview) en modo Fade con animación
+  // ⌨️ Atajos: Ctrl + Alt + R (Terminal), Ctrl + Alt + P (Preview) y Ctrl + Alt + S (Terminal Flotante)
   useEffect(() => {
     const onKeyDown = (e) => {
+      // 🚀 Atajo para Terminal Flotante: Ctrl + Alt + S (funciona en TODOS los modos)
+      const isCtrlAltS = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 's' || e.key === 'S');
+      if (isCtrlAltS) {
+        e.preventDefault();
+        handleExecuteCodeFloating();
+        return;
+      }
+
       // Atajo para Terminal: Ctrl + Alt + R
       const isCtrlAltR = (e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'r' || e.key === 'R');
       if (isCtrlAltR) {
@@ -1362,7 +1571,7 @@ function App() {
       window.removeEventListener('keydown', onKeyDown);
       if (swapTimerRef.current) clearTimeout(swapTimerRef.current);
     };
-  }, [isFadeMode, showTerminal, showPreview]);
+  }, [isFadeMode, showTerminal, showPreview, handleExecuteCodeFloating]);
 
   return (
     <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
@@ -1950,6 +2159,14 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* 🚀 Terminal Flotante con Glassmorphism (Ctrl + Alt + S) */}
+      <FloatingTerminal
+        isVisible={showFloatingTerminal}
+        output={floatingTerminalOutput}
+        isError={floatingTerminalError}
+        onClose={() => setShowFloatingTerminal(false)}
+      />
     </div>
   );
 }

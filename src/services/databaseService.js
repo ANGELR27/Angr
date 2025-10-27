@@ -385,7 +385,9 @@ class DatabaseService {
   subscribeToChatMessages(sessionId, callback) {
     if (!this.supabase) throw new Error('Supabase no configurado');
 
-    return this.supabase
+    console.log('🔔 Configurando suscripción a chat_messages para session_id:', sessionId);
+
+    const channel = this.supabase
       .channel(`chat:${sessionId}`)
       .on(
         'postgres_changes',
@@ -396,10 +398,22 @@ class DatabaseService {
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
+          console.log('🔥 PostgreSQL INSERT detectado en chat_messages:', payload);
+          console.log('   - Evento:', payload.eventType);
+          console.log('   - Datos nuevos:', payload.new);
           callback(payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Estado de suscripción chat:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Suscripción a chat activa');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Error en canal de chat');
+        }
+      });
+
+    return channel;
   }
 
   // ═══════════════════════════════════════════════════════════

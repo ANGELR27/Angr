@@ -43,6 +43,9 @@ function ShortcutsHelp({ isOpen, onClose }) {
       category: 'Terminal & Ejecución',
       icon: <Zap className="w-4 h-4" />,
       items: [
+        { keys: ['Ctrl', 'Alt', 'S'], description: '🚀 Terminal flotante con resultado (5s)' },
+        { keys: ['Ctrl', 'Alt', 'R'], description: 'Toggle terminal' },
+        { keys: ['Ctrl', 'Alt', 'P'], description: 'Toggle preview' },
         { keys: ['Ctrl', 'Shift', 'T'], description: 'Abrir selector de temas' },
         { keys: ['Ctrl', '`'], description: 'Toggle terminal (Monaco default)' },
       ]
