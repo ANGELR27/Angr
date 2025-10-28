@@ -19,6 +19,8 @@ import SnippetManager from './components/SnippetManager'
 import GitPanel from './components/GitPanel'
 import DevToolsMenu from './components/DevToolsMenu'
 import FloatingTerminal from './components/FloatingTerminal'
+import CodeParticles from './components/CodeParticles'
+import ExecutionPulse from './components/ExecutionPulse'
 import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
@@ -275,6 +277,11 @@ function App() {
   const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
   const [floatingTerminalOutput, setFloatingTerminalOutput] = useState('');
   const [floatingTerminalError, setFloatingTerminalError] = useState(false);
+  
+  // 🎨 Efectos modo Fade
+  const [dayNightMode, setDayNightMode] = useState(() => loadFromStorage('DAY_NIGHT_MODE', 'auto')); // 'auto' | 'disabled'
+  const [executionPulse, setExecutionPulse] = useState({ show: false, isError: false });
+  
   const [currentTheme, setCurrentTheme] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.THEME, 'neon-cyan');
   });
@@ -1193,10 +1200,16 @@ function App() {
         setFloatingTerminalError(false);
       }
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de éxito
+      setExecutionPulse({ show: true, isError: false });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } catch (error) {
       setFloatingTerminalOutput(`❌ ${error.name}: ${error.message}`);
       setFloatingTerminalError(true);
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de error
+      setExecutionPulse({ show: true, isError: true });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     }
   }, []);
 
@@ -1208,6 +1221,9 @@ function App() {
       setFloatingTerminalOutput('❌ No hay archivo abierto');
       setFloatingTerminalError(true);
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de error
+      setExecutionPulse({ show: true, isError: true });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
       return;
     }
 
@@ -1222,15 +1238,24 @@ function App() {
       setFloatingTerminalOutput(`⚠️ Python no está disponible en el navegador\n\n💡 Tip: Usa https://replit.com o instala Python localmente\n\n📝 Código:\n${code}`);
       setFloatingTerminalError(true);
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de error
+      setExecutionPulse({ show: true, isError: true });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } else if (fileName.endsWith('.java')) {
       // Java simulado
       setFloatingTerminalOutput(`⚠️ Java requiere compilación, usa la terminal principal (Ctrl+Alt+R)`);
       setFloatingTerminalError(true);
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de error
+      setExecutionPulse({ show: true, isError: true });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } else {
       setFloatingTerminalOutput(`❌ No se puede ejecutar archivos .${fileName.split('.').pop()}\n\nSoportados: JavaScript (.js)`);
       setFloatingTerminalError(true);
       setShowFloatingTerminal(true);
+      // ⚡ Activar pulso de error
+      setExecutionPulse({ show: true, isError: true });
+      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     }
   }, [activeTab, files, executeJavaScriptFloating]);
 
@@ -1573,66 +1598,49 @@ function App() {
     };
   }, [isFadeMode, showTerminal, showPreview, handleExecuteCodeFloating]);
 
-  // 🎨 Efecto parallax al hacer scroll en modo Fade
+
+  // 🌓 Efecto de día/noche automático
   useEffect(() => {
-    if (!isFadeMode) return;
+    if (!isFadeMode || dayNightMode !== 'auto') return;
 
-    let animationFrameId;
-    let lastScrollY = 0;
+    const updateTimeBasedColors = () => {
+      const hour = new Date().getHours();
+      const overlay = document.querySelector('.fade-grid-overlay');
+      if (!overlay) return;
 
-    const handleScroll = () => {
-      // Cancelar animación previa si existe
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-
-      animationFrameId = requestAnimationFrame(() => {
-        const overlay = document.querySelector('.fade-grid-overlay');
-        if (!overlay) return;
-
-        // Detectar dirección del scroll del editor Monaco
-        const editorDom = document.querySelector('.monaco-editor .monaco-scrollable-element');
-        if (!editorDom) return;
-
-        const scrollTop = editorDom.scrollTop || 0;
-        const scrollDelta = scrollTop - lastScrollY;
-        lastScrollY = scrollTop;
-
-        // Aplicar parallax a diferentes capas con diferentes velocidades
-        const mainLayer = overlay;
-        const hexagonsLayer = overlay.querySelector('::before');
-        const particlesLayer = overlay.querySelector('::after');
-
-        // Capa principal - movimiento sutil
-        const mainOffset = (scrollTop * 0.05).toFixed(2);
-        mainLayer.style.transform = `translateY(${mainOffset}px)`;
-
-        // Aplicar también efecto horizontal sutil basado en la dirección
-        const horizontalOffset = (scrollDelta * 0.02).toFixed(2);
-        mainLayer.style.transform = `translate(${horizontalOffset}px, ${mainOffset}px)`;
-
-        // Actualizar CSS variables para las pseudo-elementos
-        document.documentElement.style.setProperty('--fade-parallax-main', `${mainOffset}px`);
-        document.documentElement.style.setProperty('--fade-parallax-hex', `${(scrollTop * 0.08).toFixed(2)}px`);
-        document.documentElement.style.setProperty('--fade-parallax-particles', `${(scrollTop * 0.12).toFixed(2)}px`);
-      });
-    };
-
-    // Escuchar scroll del editor Monaco
-    const editorDom = document.querySelector('.monaco-editor .monaco-scrollable-element');
-    if (editorDom) {
-      editorDom.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
-    return () => {
-      if (editorDom) {
-        editorDom.removeEventListener('scroll', handleScroll);
-      }
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+      // Día: 6am - 6pm, Noche: 6pm - 6am
+      const isDay = hour >= 6 && hour < 18;
+      
+      if (isDay) {
+        // Colores brillantes y cálidos para el día
+        overlay.style.background = `
+          radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.22) 35%, rgba(59, 130, 246, 0.12) 60%, transparent 100%),
+          radial-gradient(circle 550px at 85% 85%, rgba(255, 220, 80, 0.35) 0%, rgba(251, 191, 36, 0.25) 35%, rgba(245, 158, 11, 0.15) 60%, transparent 100%),
+          radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.20) 35%, rgba(124, 58, 237, 0.12) 60%, transparent 100%)
+        `;
+      } else {
+        // Colores sutiles y fríos para la noche
+        overlay.style.background = `
+          radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.18) 35%, rgba(59, 130, 246, 0.10) 60%, transparent 100%),
+          radial-gradient(circle 550px at 85% 85%, rgba(255, 220, 80, 0.30) 0%, rgba(251, 191, 36, 0.20) 35%, rgba(245, 158, 11, 0.12) 60%, transparent 100%),
+          radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.15) 35%, rgba(124, 58, 237, 0.08) 60%, transparent 100%)
+        `;
       }
     };
-  }, [isFadeMode]);
+
+    // Actualizar inmediatamente
+    updateTimeBasedColors();
+
+    // Actualizar cada hora
+    const interval = setInterval(updateTimeBasedColors, 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [isFadeMode, dayNightMode]);
+
+  // Guardar preferencia de día/noche
+  useEffect(() => {
+    saveToStorage('DAY_NIGHT_MODE', dayNightMode);
+  }, [dayNightMode]);
 
   return (
     <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
@@ -1718,6 +1726,9 @@ function App() {
         onToggleSplitView={handleToggleSplitView}
         onOpenGit={() => setShowGitPanel(true)}
         onOpenDevTools={() => setShowDevToolsMenu(true)}
+        dayNightMode={dayNightMode}
+        onToggleDayNightMode={() => setDayNightMode(dayNightMode === 'auto' ? 'disabled' : 'auto')}
+        isFadeMode={isFadeMode}
       />
 
       {/* Indicador de guardado automático */}
@@ -2228,6 +2239,17 @@ function App() {
         isError={floatingTerminalError}
         onClose={() => setShowFloatingTerminal(false)}
       />
+
+      {/* 🎨 Efectos del modo Fade */}
+      {isFadeMode && (
+        <>
+          {/* Partículas de código flotantes */}
+          <CodeParticles />
+          
+          {/* Efecto de pulso al ejecutar código */}
+          <ExecutionPulse show={executionPulse.show} isError={executionPulse.isError} />
+        </>
+      )}
     </div>
   );
 }

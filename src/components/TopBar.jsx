@@ -68,6 +68,10 @@ function TopBar({
   onOpenGit,
   // 🛠️ DevTools
   onOpenDevTools,
+  // 🌓 Día/Noche
+  dayNightMode,
+  onToggleDayNightMode,
+  isFadeMode,
 }) {
   const imageInputRef = useRef(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -885,6 +889,33 @@ function TopBar({
                     fontWeight: "600"
                   }}>
                     {practiceModeEnabled ? "ON" : "OFF"}
+                  </span>
+                </button>
+              )}
+
+              {/* Modo Día/Noche (solo en Fade) */}
+              {isFadeMode && onToggleDayNightMode && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleDayNightMode();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer flex items-center justify-between"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  <span>Día/Noche Auto</span>
+                  <span className="ml-2 text-xs" style={{ 
+                    color: dayNightMode === 'auto' ? "#fbbf24" : "#94a3b8",
+                    fontWeight: "600"
+                  }}>
+                    {dayNightMode === 'auto' ? "ON" : "OFF"}
                   </span>
                 </button>
               )}
