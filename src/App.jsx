@@ -278,6 +278,12 @@ function App() {
   const [floatingTerminalOutput, setFloatingTerminalOutput] = useState('');
   const [floatingTerminalError, setFloatingTerminalError] = useState(false);
   
+  // 🎯 NUEVO: Preview arrastrable en modo Fade
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const previewDragRef = useRef(null);
+  
   // 🎨 Efectos modo Fade
   const [dayNightMode, setDayNightMode] = useState(() => loadFromStorage('DAY_NIGHT_MODE', 'auto')); // 'auto' | 'disabled'
   const [executionPulse, setExecutionPulse] = useState({ show: false, isError: false });
@@ -409,9 +415,10 @@ function App() {
     } else {
       prevThemeRef.current = currentTheme;
       setCurrentTheme('fade');
-      // En modo Fade: ocultar sidebar y preview
+      // En modo Fade: ocultar sidebar pero mantener preview disponible
       setShowSidebar(false);
-      setShowPreview(false);
+      // Resetear posición del preview al activar fade mode
+      setPreviewPosition({ x: 0, y: 0 });
     }
   };
 
@@ -1593,21 +1600,8 @@ function App() {
           clearTimeout(swapTimerRef.current);
           swapTimerRef.current = null;
         }
-        if (!showPreview) {
-          // Editor -> Preview
-          setSwapAnim('toPreview');
-          setShowTerminal(false); // Ocultar terminal en modo Fade
-          setShowPreview(true);
-          swapTimerRef.current = setTimeout(() => setSwapAnim('none'), 650);
-        } else {
-          // Preview -> Editor
-          setSwapAnim('toEditor');
-          // mantener preview montada hasta fin de animación
-          swapTimerRef.current = setTimeout(() => {
-            setShowPreview(false);
-            setSwapAnim('none');
-          }, 650);
-        }
+        // En modo fade, toggle preview sin ocultar otros paneles
+        setShowPreview((v) => !v);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -1617,6 +1611,62 @@ function App() {
     };
   }, [isFadeMode, showTerminal, showPreview, handleExecuteCodeFloating]);
 
+
+  // 🎯 Drag handlers para preview en modo Fade
+  useEffect(() => {
+    if (!isFadeMode) return;
+
+    const handleMouseMove = (e) => {
+      if (!isDraggingPreview) return;
+      
+      // Calcular nueva posición
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      setPreviewPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingPreview) {
+        setIsDraggingPreview(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    if (isDraggingPreview) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingPreview, dragOffset, isFadeMode]);
+
+  // Handler para iniciar drag del preview
+  const handlePreviewDragStart = (e) => {
+    if (!isFadeMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = previewDragRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    // Si ya tiene posición personalizada, usar esas coordenadas
+    // Si no, el preview está centrado
+    const currentX = previewPosition.x || rect.left;
+    const currentY = previewPosition.y || rect.top;
+    
+    setIsDraggingPreview(true);
+    setDragOffset({
+      x: e.clientX - currentX,
+      y: e.clientY - currentY
+    });
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  };
 
   // 🌓 Efecto de día/noche automático
   useEffect(() => {
@@ -1969,15 +2019,15 @@ function App() {
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)',
                     overflow: 'hidden',
                     transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    transform: (showTerminal || showPreview) 
+                    transform: showTerminal 
                       ? 'translate(-50%, calc(-50% - 30px)) scale(0.92) rotateX(5deg)' 
                       : 'translate(-50%, -50%) scale(1) rotateX(0deg)',
-                    opacity: (showTerminal || showPreview) ? 0 : 1,
-                    zIndex: (showTerminal || showPreview) ? 1 : 3,
-                    filter: (showTerminal || showPreview) ? 'blur(2px) brightness(0.7)' : 'blur(0px) brightness(1)',
+                    opacity: showTerminal ? 0 : 1,
+                    zIndex: showTerminal ? 1 : 3,
+                    filter: showTerminal ? 'blur(2px) brightness(0.7)' : 'blur(0px) brightness(1)',
                     transformOrigin: 'center center',
                     perspective: '1000px',
-                    pointerEvents: (showTerminal || showPreview) ? 'none' : 'auto'
+                    pointerEvents: showTerminal ? 'none' : 'auto'
                   } : {})
                 }}
                 className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
@@ -2147,12 +2197,13 @@ function App() {
                     />
                   )}
                   <div 
+                    ref={isFadeMode ? previewDragRef : null}
                     style={{ 
-                      width: isFadeMode ? '90%' : `${previewWidth}%`,
+                      width: isFadeMode ? '850px' : `${previewWidth}%`,
                       ...(isFadeMode ? {
                         position: 'absolute',
-                        top: '50%',
-                        left: '50%',
+                        top: previewPosition.y || '50%',
+                        left: previewPosition.x || '50%',
                         maxWidth: '850px',
                         maxHeight: '550px',
                         height: '550px',
@@ -2160,26 +2211,64 @@ function App() {
                         border: '1px solid #3f3f46',
                         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
                         overflow: 'hidden',
-                        transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        transform: showPreview 
-                          ? 'translate(-50%, -50%) scale(1) rotateY(0deg)' 
-                          : 'translate(calc(-50% + 30px), -50%) scale(0.92) rotateY(-5deg)',
+                        transition: isDraggingPreview ? 'none' : 'opacity 300ms ease, filter 300ms ease',
+                        transform: (previewPosition.x !== 0 || previewPosition.y !== 0) 
+                          ? 'translate(0, 0)' 
+                          : showPreview 
+                            ? 'translate(-50%, -50%)' 
+                            : 'translate(calc(-50% + 30px), -50%)',
                         opacity: showPreview ? 1 : 0,
-                        zIndex: showPreview ? 4 : 1,
+                        zIndex: showPreview ? 40 : 1,
                         filter: showPreview ? 'blur(0px) brightness(1)' : 'blur(2px) brightness(0.7)',
                         transformOrigin: 'center center',
                         perspective: '1000px',
-                        pointerEvents: showPreview ? 'auto' : 'none'
+                        pointerEvents: showPreview ? 'auto' : 'none',
+                        cursor: isDraggingPreview ? 'grabbing' : 'default'
                       } : {})
                     }}
                     className={`flex-shrink-0 overflow-hidden ${!editorBackground.image && !isFadeMode ? 'shadow-yellow-glow' : ''}`}
                   >
-                    <Preview 
-                      content={getPreviewContent()}
-                      projectFiles={files}
-                      projectImages={images}
-                      currentTheme={currentTheme}
-                    />
+                    {/* Barra de título para arrastrar - solo en modo fade */}
+                    {isFadeMode && showPreview && (
+                      <div 
+                        onMouseDown={handlePreviewDragStart}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '32px',
+                          background: 'linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%)',
+                          borderBottom: '1px solid rgba(251, 191, 36, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'grab',
+                          zIndex: 50,
+                          backdropFilter: 'blur(10px)',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          gap: '4px',
+                          opacity: 0.5
+                        }}>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ height: isFadeMode && showPreview ? 'calc(100% - 32px)' : '100%', marginTop: isFadeMode && showPreview ? '32px' : '0' }}>
+                      <Preview 
+                        content={getPreviewContent()}
+                        projectFiles={files}
+                        projectImages={images}
+                        currentTheme={currentTheme}
+                      />
+                    </div>
                   </div>
                 </>
               )}
