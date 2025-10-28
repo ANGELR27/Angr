@@ -398,9 +398,9 @@ code {
   display: none; /* Chrome, Safari and Opera */
 }
 
-/* Fondo negro puro para modo Fade */
+/* Fondo gris oscuro para modo Fade (un poco más claro) */
 .fade-grid-bg {
-  background-color: #000000;
+  background-color: #1a1a1a;
 }
 
 /* Sombras de colores brillantes y bien definidas */
@@ -470,7 +470,7 @@ code {
     135deg,
     rgba(59, 130, 246, 0.15) 0%,
     rgba(139, 92, 246, 0.1) 50%,
-    rgba(251, 191, 36, 0.15) 100%
+    rgba(100, 116, 200, 0.12) 100%
   );
   -webkit-mask: 
     linear-gradient(#fff 0 0) content-box, 
