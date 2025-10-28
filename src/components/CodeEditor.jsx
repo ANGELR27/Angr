@@ -4,6 +4,7 @@ import {
   getHTMLSnippets,
   getCSSSnippets,
   getJSSnippets,
+  getJavaSnippets,
 } from "../utils/snippets";
 import { defineCustomThemes } from "../utils/themes";
 import {
@@ -2188,6 +2189,22 @@ function CodeEditor({
           suggestions = [...fileCompletions, ...suggestions];
         }
 
+        return { suggestions };
+      },
+    });
+
+    // ☕ Java Snippets estilo IntelliJ IDEA
+    monaco.languages.registerCompletionItemProvider("java", {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const suggestions = getJavaSnippets(monaco, range);
         return { suggestions };
       },
     });

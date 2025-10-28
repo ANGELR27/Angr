@@ -1356,11 +1356,30 @@ function App() {
                     fileName.endsWith('.bat') ? 'bat' :
                     fileName.endsWith('.ps1') ? 'powershell' : 'plaintext';
     
+    // Plantilla automática para archivos Java
+    let autoContent = initialContent;
+    if (fileName.endsWith('.java') && !initialContent) {
+      const className = fileName.replace('.java', '');
+      autoContent = `public class ${className} {
+    
+    // Constructor
+    public ${className}() {
+        
+    }
+    
+    // Método main (punto de entrada)
+    public static void main(String[] args) {
+        System.out.println("Hola desde ${className}");
+    }
+    
+}`;
+    }
+    
     const newFile = {
       name: fileName,
       type: 'file',
       language,
-      content: initialContent
+      content: autoContent
     };
 
     if (!parentPath) {
