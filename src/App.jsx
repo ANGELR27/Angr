@@ -1615,14 +1615,14 @@ function App() {
         // Colores brillantes y cálidos para el día
         overlay.style.background = `
           radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.22) 35%, rgba(59, 130, 246, 0.12) 60%, transparent 100%),
-          radial-gradient(circle 350px at 85% 15%, rgba(255, 255, 100, 0.25) 0%, rgba(255, 235, 80, 0.18) 15%, rgba(255, 215, 60, 0.13) 30%, rgba(255, 200, 50, 0.10) 45%, rgba(240, 190, 45, 0.06) 60%, rgba(230, 180, 40, 0.04) 75%, rgba(220, 170, 35, 0.02) 90%, transparent 100%),
+          radial-gradient(circle 220px at 85% 15%, rgba(255, 255, 100, 0.18) 0%, rgba(255, 240, 85, 0.14) 10%, rgba(255, 225, 70, 0.11) 20%, rgba(255, 210, 60, 0.08) 30%, rgba(250, 195, 50, 0.06) 40%, rgba(240, 180, 45, 0.05) 50%, rgba(230, 170, 40, 0.04) 60%, rgba(220, 160, 35, 0.03) 70%, rgba(210, 150, 30, 0.02) 80%, rgba(200, 140, 25, 0.01) 90%, transparent 100%),
           radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.20) 35%, rgba(124, 58, 237, 0.12) 60%, transparent 100%)
         `;
       } else {
         // Colores sutiles y fríos para la noche
         overlay.style.background = `
           radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.18) 35%, rgba(59, 130, 246, 0.10) 60%, transparent 100%),
-          radial-gradient(circle 350px at 85% 15%, rgba(255, 255, 100, 0.20) 0%, rgba(255, 235, 80, 0.15) 15%, rgba(255, 215, 60, 0.11) 30%, rgba(255, 200, 50, 0.08) 45%, rgba(240, 190, 45, 0.05) 60%, rgba(230, 180, 40, 0.03) 75%, rgba(220, 170, 35, 0.01) 90%, transparent 100%),
+          radial-gradient(circle 220px at 85% 15%, rgba(255, 255, 100, 0.15) 0%, rgba(255, 240, 85, 0.12) 10%, rgba(255, 225, 70, 0.09) 20%, rgba(255, 210, 60, 0.07) 30%, rgba(250, 195, 50, 0.05) 40%, rgba(240, 180, 45, 0.04) 50%, rgba(230, 170, 40, 0.03) 60%, rgba(220, 160, 35, 0.02) 70%, rgba(210, 150, 30, 0.01) 80%, rgba(200, 140, 25, 0.005) 90%, transparent 100%),
           radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.15) 35%, rgba(124, 58, 237, 0.08) 60%, transparent 100%)
         `;
       }
