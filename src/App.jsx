@@ -1573,9 +1573,70 @@ function App() {
     };
   }, [isFadeMode, showTerminal, showPreview, handleExecuteCodeFloating]);
 
+  // 🎨 Efecto parallax al hacer scroll en modo Fade
+  useEffect(() => {
+    if (!isFadeMode) return;
+
+    let animationFrameId;
+    let lastScrollY = 0;
+
+    const handleScroll = () => {
+      // Cancelar animación previa si existe
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      animationFrameId = requestAnimationFrame(() => {
+        const overlay = document.querySelector('.fade-grid-overlay');
+        if (!overlay) return;
+
+        // Detectar dirección del scroll del editor Monaco
+        const editorDom = document.querySelector('.monaco-editor .monaco-scrollable-element');
+        if (!editorDom) return;
+
+        const scrollTop = editorDom.scrollTop || 0;
+        const scrollDelta = scrollTop - lastScrollY;
+        lastScrollY = scrollTop;
+
+        // Aplicar parallax a diferentes capas con diferentes velocidades
+        const mainLayer = overlay;
+        const hexagonsLayer = overlay.querySelector('::before');
+        const particlesLayer = overlay.querySelector('::after');
+
+        // Capa principal - movimiento sutil
+        const mainOffset = (scrollTop * 0.05).toFixed(2);
+        mainLayer.style.transform = `translateY(${mainOffset}px)`;
+
+        // Aplicar también efecto horizontal sutil basado en la dirección
+        const horizontalOffset = (scrollDelta * 0.02).toFixed(2);
+        mainLayer.style.transform = `translate(${horizontalOffset}px, ${mainOffset}px)`;
+
+        // Actualizar CSS variables para las pseudo-elementos
+        document.documentElement.style.setProperty('--fade-parallax-main', `${mainOffset}px`);
+        document.documentElement.style.setProperty('--fade-parallax-hex', `${(scrollTop * 0.08).toFixed(2)}px`);
+        document.documentElement.style.setProperty('--fade-parallax-particles', `${(scrollTop * 0.12).toFixed(2)}px`);
+      });
+    };
+
+    // Escuchar scroll del editor Monaco
+    const editorDom = document.querySelector('.monaco-editor .monaco-scrollable-element');
+    if (editorDom) {
+      editorDom.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    return () => {
+      if (editorDom) {
+        editorDom.removeEventListener('scroll', handleScroll);
+      }
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isFadeMode]);
+
   return (
     <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
-      {/* Grid overlay para modo Fade */}
+      {/* Grid overlay para modo Fade con parallax */}
       {isFadeMode && <div className="fade-grid-overlay" />}
       {editorBackground.image && (
         <style>{`
