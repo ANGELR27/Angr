@@ -1615,14 +1615,14 @@ function App() {
         // Colores brillantes y cálidos para el día
         overlay.style.background = `
           radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.22) 35%, rgba(59, 130, 246, 0.12) 60%, transparent 100%),
-          radial-gradient(circle 550px at 85% 85%, rgba(255, 220, 80, 0.35) 0%, rgba(251, 191, 36, 0.25) 35%, rgba(245, 158, 11, 0.15) 60%, transparent 100%),
+          radial-gradient(circle 350px at 85% 85%, rgba(255, 220, 80, 0.40) 0%, rgba(251, 191, 36, 0.28) 25%, rgba(245, 158, 11, 0.15) 50%, transparent 75%),
           radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.20) 35%, rgba(124, 58, 237, 0.12) 60%, transparent 100%)
         `;
       } else {
         // Colores sutiles y fríos para la noche
         overlay.style.background = `
           radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.18) 35%, rgba(59, 130, 246, 0.10) 60%, transparent 100%),
-          radial-gradient(circle 550px at 85% 85%, rgba(255, 220, 80, 0.30) 0%, rgba(251, 191, 36, 0.20) 35%, rgba(245, 158, 11, 0.12) 60%, transparent 100%),
+          radial-gradient(circle 350px at 85% 85%, rgba(255, 220, 80, 0.35) 0%, rgba(251, 191, 36, 0.22) 25%, rgba(245, 158, 11, 0.12) 50%, transparent 75%),
           radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.15) 35%, rgba(124, 58, 237, 0.08) 60%, transparent 100%)
         `;
       }
