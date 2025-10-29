@@ -1,6 +1,7 @@
 import { X, FileCode2, Braces, Palette, FileJson } from 'lucide-react';
+import { memo, useCallback, useMemo } from 'react';
 
-function TabBar({ tabs, activeTab, onTabClick, onTabClose, getFileByPath }) {
+const TabBar = memo(function TabBar({ tabs, activeTab, onTabClick, onTabClose, getFileByPath }) {
   const getFileIcon = (fileName) => {
     if (fileName.endsWith('.html')) {
       return <FileCode2 className="w-4 h-4 text-orange-400" />;
@@ -91,6 +92,6 @@ function TabBar({ tabs, activeTab, onTabClick, onTabClose, getFileByPath }) {
       })}
     </div>
   );
-}
+});
 
 export default TabBar;

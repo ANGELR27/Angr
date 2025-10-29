@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { Wifi, WifiOff, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 
 /**
  * Componente de estado de conexión para colaboración
  * Muestra estado actual: Online, Offline, Reconectando, Sincronizado
  */
-function ConnectionStatus({ isCollaborating, connectionState, onReconnect, pendingChanges = 0 }) {
+const ConnectionStatus = memo(function ConnectionStatus({ isCollaborating, connectionState, onReconnect, pendingChanges = 0 }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -34,8 +34,8 @@ function ConnectionStatus({ isCollaborating, connectionState, onReconnect, pendi
   // No mostrar si no estamos colaborando
   if (!isCollaborating) return null;
 
-  // Determinar estado y estilo
-  const getStatusConfig = () => {
+  // Determinar estado y estilo con useMemo
+  const status = useMemo(() => {
     if (!isOnline) {
       return {
         icon: WifiOff,
@@ -92,9 +92,7 @@ function ConnectionStatus({ isCollaborating, connectionState, onReconnect, pendi
           pulseColor: 'bg-green-500',
         };
     }
-  };
-
-  const status = getStatusConfig();
+  }, [isOnline, connectionState]);
   const Icon = status.icon;
 
   return (
@@ -200,6 +198,6 @@ function ConnectionStatus({ isCollaborating, connectionState, onReconnect, pendi
       )}
     </div>
   );
-}
+});
 
 export default ConnectionStatus;

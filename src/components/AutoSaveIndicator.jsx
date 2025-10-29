@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Check, Save, AlertCircle } from 'lucide-react';
 
 /**
  * Indicador visual de guardado automático
  * Muestra el estado del guardado: guardando, guardado, o error
  */
-function AutoSaveIndicator({ status = 'idle', currentTheme }) {
+const AutoSaveIndicator = memo(function AutoSaveIndicator({ status = 'idle', currentTheme }) {
   const [visible, setVisible] = useState(false);
   const isLite = currentTheme === 'lite';
 
@@ -82,6 +82,6 @@ function AutoSaveIndicator({ status = 'idle', currentTheme }) {
       <span>{getText()}</span>
     </div>
   );
-}
+});
 
 export default AutoSaveIndicator;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { RefreshCw, ExternalLink, Smartphone, Tablet, Monitor, RotateCw, ZoomIn, ZoomOut, Maximize2, Grid3x3, X } from 'lucide-react';
 
 // Presets de viewport
@@ -11,7 +11,7 @@ const VIEWPORT_PRESETS = {
   custom: { width: 800, height: 600, label: 'Custom', icon: Monitor }
 };
 
-function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTheme }) {
+const Preview = memo(function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTheme }) {
   const iframeRef = useRef(null);
   const containerRef = useRef(null);
   const [key, setKey] = useState(0);
@@ -524,6 +524,6 @@ function Preview({ content, onConsoleLog, projectFiles, projectImages, currentTh
       </div>
     </div>
   );
-}
+});
 
 export default Preview;

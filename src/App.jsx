@@ -1,26 +1,33 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+// Componentes críticos - carga inmediata
 import FileExplorer from './components/FileExplorer'
 import CodeEditor from './components/CodeEditor'
 import Preview from './components/Preview'
 import TopBar from './components/TopBar'
 import Terminal from './components/Terminal'
-import ImageManager from './components/ImageManager'
-import ThemeSelector from './components/ThemeSelector'
-import BackgroundSelector from './components/BackgroundSelector'
-import ShortcutsHelp from './components/ShortcutsHelp'
 import AutoSaveIndicator from './components/AutoSaveIndicator'
-import SessionManager from './components/SessionManager'
-import CollaborationPanel from './components/CollaborationPanel'
 import CollaborationBanner from './components/CollaborationBanner'
 import CollaborationNotification from './components/CollaborationNotification'
-import ChatPanel from './components/ChatPanel'
-import AuthModal from './components/AuthModal'
-import SnippetManager from './components/SnippetManager'
-import GitPanel from './components/GitPanel'
-import DevToolsMenu from './components/DevToolsMenu'
-import FloatingTerminal from './components/FloatingTerminal'
-import CodeParticles from './components/CodeParticles'
 import ExecutionPulse from './components/ExecutionPulse'
+
+// Componentes secundarios - lazy loading para mejorar performance
+const ImageManager = lazy(() => import('./components/ImageManager'))
+const ThemeSelector = lazy(() => import('./components/ThemeSelector'))
+const BackgroundSelector = lazy(() => import('./components/BackgroundSelector'))
+const ShortcutsHelp = lazy(() => import('./components/ShortcutsHelp'))
+const SessionManager = lazy(() => import('./components/SessionManager'))
+const CollaborationPanel = lazy(() => import('./components/CollaborationPanel'))
+const ChatPanel = lazy(() => import('./components/ChatPanel'))
+const AuthModal = lazy(() => import('./components/AuthModal'))
+const SnippetManager = lazy(() => import('./components/SnippetManager'))
+const GitPanel = lazy(() => import('./components/GitPanel'))
+const DevToolsMenu = lazy(() => import('./components/DevToolsMenu'))
+const FloatingTerminal = lazy(() => import('./components/FloatingTerminal'))
+const CodeParticles = lazy(() => import('./components/CodeParticles'))
+
+// Componente de carga simple para Suspense
+const LoadingFallback = () => <div style={{ display: 'none' }} />;
+
 import databaseService from './services/databaseService'
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage'
 import { applyGlobalTheme } from './utils/globalThemes'
@@ -1822,95 +1829,117 @@ function App() {
         />
       ))}
       
-      <ImageManager
-        isOpen={showImageManager}
-        onClose={() => setShowImageManager(false)}
-        images={images}
-        onAddImage={handleAddImage}
-        onRemoveImage={handleRemoveImage}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <ImageManager
+          isOpen={showImageManager}
+          onClose={() => setShowImageManager(false)}
+          images={images}
+          onAddImage={handleAddImage}
+          onRemoveImage={handleRemoveImage}
+        />
+      </Suspense>
 
-      <ThemeSelector
-        isOpen={showThemeSelector}
-        onClose={() => setShowThemeSelector(false)}
-        currentTheme={currentTheme}
-        onThemeChange={setCurrentTheme}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <ThemeSelector
+          isOpen={showThemeSelector}
+          onClose={() => setShowThemeSelector(false)}
+          currentTheme={currentTheme}
+          onThemeChange={setCurrentTheme}
+        />
+      </Suspense>
 
-      <BackgroundSelector
-        isOpen={showBackgroundSelector}
-        onClose={() => setShowBackgroundSelector(false)}
-        currentBackground={editorBackground.id}
-        onBackgroundChange={handleBackgroundChange}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <BackgroundSelector
+          isOpen={showBackgroundSelector}
+          onClose={() => setShowBackgroundSelector(false)}
+          currentBackground={editorBackground.id}
+          onBackgroundChange={handleBackgroundChange}
+        />
+      </Suspense>
 
-      <ShortcutsHelp
-        isOpen={showShortcutsHelp}
-        onClose={() => setShowShortcutsHelp(false)}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <ShortcutsHelp
+          isOpen={showShortcutsHelp}
+          onClose={() => setShowShortcutsHelp(false)}
+        />
+      </Suspense>
 
-      <SnippetManager
-        isOpen={showSnippetManager}
-        onClose={() => setShowSnippetManager(false)}
-        onInsertSnippet={handleInsertSnippet}
-        currentTheme={currentTheme}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <SnippetManager
+          isOpen={showSnippetManager}
+          onClose={() => setShowSnippetManager(false)}
+          onInsertSnippet={handleInsertSnippet}
+          currentTheme={currentTheme}
+        />
+      </Suspense>
 
-      <GitPanel
-        isOpen={showGitPanel}
-        onClose={() => setShowGitPanel(false)}
-        files={files}
-        currentTheme={currentTheme}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <GitPanel
+          isOpen={showGitPanel}
+          onClose={() => setShowGitPanel(false)}
+          files={files}
+          currentTheme={currentTheme}
+        />
+      </Suspense>
 
       {/* Menú de herramientas de desarrollador */}
       {showDevToolsMenu && (
-        <DevToolsMenu onClose={() => setShowDevToolsMenu(false)} />
+        <Suspense fallback={<LoadingFallback />}>
+          <DevToolsMenu onClose={() => setShowDevToolsMenu(false)} />
+        </Suspense>
       )}
 
-      <SessionManager
-        isOpen={showSessionManager}
-        onClose={() => setShowSessionManager(false)}
-        onCreateSession={handleCreateSession}
-        onJoinSession={handleJoinSession}
-        isConfigured={isCollaborationConfigured}
-        isAuthenticated={isAuthenticated}
-        user={user}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <SessionManager
+          isOpen={showSessionManager}
+          onClose={() => setShowSessionManager(false)}
+          onCreateSession={handleCreateSession}
+          onJoinSession={handleJoinSession}
+          isConfigured={isCollaborationConfigured}
+          isAuthenticated={isAuthenticated}
+          user={user}
+        />
+      </Suspense>
 
-      <CollaborationPanel
-        isOpen={showCollaborationPanel}
-        onClose={() => setShowCollaborationPanel(false)}
-        currentUser={currentUser}
-        activeUsers={activeUsers}
-        currentSession={currentSession}
-        onChangePermissions={changeUserPermissions}
-        onLeaveSession={handleLeaveSession}
-        remoteCursors={remoteCursors}
-        typingUsers={typingUsers}
-        activeFile={activeTab}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <CollaborationPanel
+          isOpen={showCollaborationPanel}
+          onClose={() => setShowCollaborationPanel(false)}
+          currentUser={currentUser}
+          activeUsers={activeUsers}
+          currentSession={currentSession}
+          onChangePermissions={changeUserPermissions}
+          onLeaveSession={handleLeaveSession}
+          remoteCursors={remoteCursors}
+          typingUsers={typingUsers}
+          activeFile={activeTab}
+        />
+      </Suspense>
 
       {/* 🔥 NUEVO: Chat Panel */}
       {isCollaborating && (
-        <ChatPanel
-          isOpen={showChat}
-          onClose={() => setShowChat(false)}
-          messages={chatMessages}
-          currentUser={currentUser}
-          onSendMessage={handleSendChatMessage}
-          isMinimized={isChatMinimized}
-          onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
-        />
+        <Suspense fallback={<LoadingFallback />}>
+          <ChatPanel
+            isOpen={showChat}
+            onClose={() => setShowChat(false)}
+            messages={chatMessages}
+            currentUser={currentUser}
+            onSendMessage={handleSendChatMessage}
+            isMinimized={isChatMinimized}
+            onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)}
+          />
+        </Suspense>
       )}
 
       {/* 🔐 Modal de Autenticación */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthSuccess={handleAuthSuccess}
-        authMode="login"
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onAuthSuccess={handleAuthSuccess}
+          authMode="login"
+        />
+      </Suspense>
 
       {/* Modal Reset */}
       {showResetModal && (
@@ -2341,18 +2370,22 @@ function App() {
       </div>
 
       {/* 🚀 Terminal Flotante con Glassmorphism (Ctrl + Alt + S) */}
-      <FloatingTerminal
-        isVisible={showFloatingTerminal}
-        output={floatingTerminalOutput}
-        isError={floatingTerminalError}
-        onClose={() => setShowFloatingTerminal(false)}
-      />
+      <Suspense fallback={<LoadingFallback />}>
+        <FloatingTerminal
+          isVisible={showFloatingTerminal}
+          output={floatingTerminalOutput}
+          isError={floatingTerminalError}
+          onClose={() => setShowFloatingTerminal(false)}
+        />
+      </Suspense>
 
       {/* 🎨 Efectos del modo Fade */}
       {isFadeMode && (
         <>
           {/* Partículas de código flotantes */}
-          <CodeParticles />
+          <Suspense fallback={<LoadingFallback />}>
+            <CodeParticles />
+          </Suspense>
           
           {/* Efecto de pulso al ejecutar código */}
           <ExecutionPulse show={executionPulse.show} isError={executionPulse.isError} />
