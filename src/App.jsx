@@ -374,15 +374,10 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authPendingAction, setAuthPendingAction] = useState(null); // 'create' o 'join'
 
-  // Aplicar tema cuando cambia
+  // Aplicar tema cuando cambia (incluye montaje inicial)
   useEffect(() => {
     applyGlobalTheme(currentTheme);
   }, [currentTheme]);
-
-  // Aplicar tema al cargar la aplicación
-  useEffect(() => {
-    applyGlobalTheme(currentTheme);
-  }, []);
 
   // Ocultar efectos de fondo del body cuando hay imagen personalizada
   useEffect(() => {
@@ -456,7 +451,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const getFileByPath = (path) => {
+  const getFileByPath = useCallback((path) => {
     const parts = path.split('/');
     let currentLevel = files;
 
@@ -479,9 +474,9 @@ function App() {
     }
 
     return null;
-  };
+  }, [files]);
 
-  const handleFileSelect = (filePath) => {
+  const handleFileSelect = useCallback((filePath) => {
     const file = getFileByPath(filePath);
     
     if (file && file.type === 'file') {
@@ -490,18 +485,18 @@ function App() {
       }
       setActiveTab(filePath);
     }
-  };
+  }, [getFileByPath, openTabs]);
 
-  const handleTabClose = (tabPath) => {
+  const handleTabClose = useCallback((tabPath) => {
     const newTabs = openTabs.filter(tab => tab !== tabPath);
     setOpenTabs(newTabs);
     
     if (activeTab === tabPath && newTabs.length > 0) {
       setActiveTab(newTabs[newTabs.length - 1]);
     }
-  };
+  }, [openTabs, activeTab]);
 
-  const handleCodeChange = (value) => {
+  const handleCodeChange = useCallback((value) => {
     const parts = activeTab.split('/');
     
     const updateNestedFile = (obj, path, newContent) => {
@@ -526,10 +521,10 @@ function App() {
     };
     
     setFiles(updateNestedFile(files, parts, value));
-  };
+  }, [activeTab, files]);
 
   // Handler para insertar snippets en el editor
-  const handleInsertSnippet = (snippetCode) => {
+  const handleInsertSnippet = useCallback((snippetCode) => {
     const activeFile = getFileByPath(activeTab);
     if (!activeFile) return;
 
@@ -537,7 +532,7 @@ function App() {
     const currentContent = activeFile.content || '';
     const newContent = currentContent + '\n\n' + snippetCode;
     handleCodeChange(newContent);
-  };
+  }, [getFileByPath, activeTab, handleCodeChange]);
 
   // Handler para activar/desactivar Split View
   const handleToggleSplitView = () => {
@@ -1273,7 +1268,7 @@ function App() {
     }
   }, [activeTab, files, executeJavaScriptFloating]);
 
-  const handleDeleteFile = (filePath) => {
+  const handleDeleteFile = useCallback((filePath) => {
     const parts = filePath.split('/');
     
     const deleteNestedFile = (obj, path) => {
@@ -1299,9 +1294,9 @@ function App() {
     if (openTabs.includes(filePath)) {
       handleTabClose(filePath);
     }
-  };
+  }, [files, openTabs, handleTabClose]);
 
-  const handleRenameFile = (oldPath, newName) => {
+  const handleRenameFile = useCallback((oldPath, newName) => {
     const parts = oldPath.split('/');
     const parentPath = parts.slice(0, -1);
     const oldName = parts[parts.length - 1];
@@ -1341,7 +1336,7 @@ function App() {
         setActiveTab(newPath);
       }
     }
-  };
+  }, [files, openTabs, activeTab]);
 
   const handleNewFile = (fileName, parentPath = null, initialContent = '') => {
     const language = fileName.endsWith('.html') ? 'html' :
