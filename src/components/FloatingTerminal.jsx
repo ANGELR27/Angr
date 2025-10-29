@@ -1,45 +1,76 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Terminal, CheckCircle, XCircle } from 'lucide-react';
 
 /**
  * Terminal flotante minimalista con glassmorphism
  * Aparece con Ctrl+Alt+S y se oculta automáticamente después de 5 segundos
+ * Al pasar el mouse encima, se pausa el auto-cierre
  */
 const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (isVisible) {
       // Iniciar animación de entrada
       setIsAnimating(true);
       
-      // Desaparecer después de 5 segundos
-      const timer = setTimeout(() => {
-        setIsAnimating(false);
-        setTimeout(onClose, 500); // Esperar a que termine la animación
-      }, 5000);
+      // Desaparecer después de 5 segundos solo si no hay hover
+      if (!isHovered) {
+        timerRef.current = setTimeout(() => {
+          setIsAnimating(false);
+          setTimeout(onClose, 500); // Esperar a que termine la animación
+        }, 5000);
+      }
 
-      return () => clearTimeout(timer);
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+      };
     } else {
       setIsAnimating(false);
     }
-  }, [isVisible, onClose]);
+  }, [isVisible, isHovered, onClose]);
+
+  // Manejar hover: pausar/reanudar timer
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    // Reiniciar timer cuando el mouse sale
+    if (isVisible) {
+      timerRef.current = setTimeout(() => {
+        setIsAnimating(false);
+        setTimeout(onClose, 500);
+      }, 5000);
+    }
+  };
 
   if (!isVisible) return null;
 
   return (
     <div
       className={`floating-terminal ${isAnimating ? 'fade-in' : 'fade-out'}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         position: 'fixed',
         bottom: '50px',
         left: '50%',
-        transform: 'translateX(-50%)',
         width: '450px',
         maxWidth: '90vw',
         maxHeight: '300px',
         zIndex: 9999,
-        pointerEvents: 'none'
+        pointerEvents: 'auto',
+        cursor: isHovered ? 'default' : 'auto'
       }}
     >
       {/* Glassmorphism container */}
@@ -55,11 +86,13 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
             0 0 0 1px rgba(255, 255, 255, 0.05) inset,
             0 20px 60px -12px ${isError ? 'rgba(239, 68, 68, 0.35)' : 'rgba(59, 130, 246, 0.35)'},
             0 8px 24px -8px rgba(0, 0, 0, 0.5),
-            0 0 100px -20px ${isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)'}
+            0 0 100px -20px ${isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)'}${isHovered ? ',\n            0 0 50px rgba(59, 130, 246, 0.3)' : ''}
           `,
           animation: isAnimating ? 'slideUp 0.4s ease-out' : 'slideDown 0.5s ease-in',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
       >
         {/* Gradient overlay superior */}
@@ -187,7 +220,7 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
           </div>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar - pausada cuando hay hover */}
         <div
           style={{
             marginTop: '18px',
@@ -210,7 +243,7 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
               background: isError 
                 ? 'radial-gradient(ellipse at center, rgba(239, 68, 68, 0.3), transparent)'
                 : 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.3), transparent)',
-              animation: 'shrink 5s linear',
+              animation: isHovered ? 'none' : 'shrink 5s linear',
               width: '100%',
               filter: 'blur(4px)'
             }}
@@ -221,7 +254,7 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
               background: isError 
                 ? 'linear-gradient(90deg, #ef4444, #dc2626, #b91c1c)'
                 : 'linear-gradient(90deg, #3b82f6, #2563eb, #1d4ed8)',
-              animation: 'shrink 5s linear',
+              animation: isHovered ? 'none' : 'shrink 5s linear',
               width: '100%',
               boxShadow: isError 
                 ? '0 0 12px rgba(239, 68, 68, 0.6)'
@@ -245,25 +278,30 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
       </div>
 
       <style jsx>{`
+        .floating-terminal {
+          /* Estado inicial: centrado y listo para animar */
+          transform: translate(-50%, 0);
+        }
+
         @keyframes slideUp {
-          from {
+          0% {
             opacity: 0;
-            transform: translate(-50%, 20px);
+            transform: translate(-50%, 30px);
           }
-          to {
+          100% {
             opacity: 1;
             transform: translate(-50%, 0);
           }
         }
 
         @keyframes slideDown {
-          from {
+          0% {
             opacity: 1;
             transform: translate(-50%, 0);
           }
-          to {
+          100% {
             opacity: 0;
-            transform: translate(-50%, 20px);
+            transform: translate(-50%, 30px);
           }
         }
 
@@ -277,11 +315,11 @@ const FloatingTerminal = ({ isVisible, output, isError, onClose }) => {
         }
 
         .fade-in {
-          animation: slideUp 0.4s ease-out forwards;
+          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .fade-out {
-          animation: slideDown 0.5s ease-in forwards;
+          animation: slideDown 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
         }
 
         .custom-scrollbar::-webkit-scrollbar {

@@ -34,6 +34,7 @@ import { applyGlobalTheme } from './utils/globalThemes'
 import { useDebouncedSaveMultiple } from './hooks/useDebouncedSave'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useAuth } from './hooks/useAuth'
+import { useModals } from './hooks/useModals'
 import { buildPreview } from './utils/previewBuilder'
 
 // Archivos de ejemplo iniciales
@@ -252,15 +253,18 @@ function App() {
   });
   const [showSidebar, setShowSidebar] = useState(true);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [showImageManager, setShowImageManager] = useState(false);
-  const [showThemeSelector, setShowThemeSelector] = useState(false);
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [showSessionManager, setShowSessionManager] = useState(false);
-  const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
-  const [showBackgroundSelector, setShowBackgroundSelector] = useState(false);
-  const [showSnippetManager, setShowSnippetManager] = useState(false);
-  const [showGitPanel, setShowGitPanel] = useState(false);
+  // ✅ MIGRADO A useModals: showImageManager, showThemeSelector, showShortcutsHelp
+  // const [showImageManager, setShowImageManager] = useState(false);
+  // const [showThemeSelector, setShowThemeSelector] = useState(false);
+  // const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  // ✅ MIGRADO A useModals: showResetModal, showSessionManager, showCollaborationPanel,
+  //    showBackgroundSelector, showSnippetManager, showGitPanel
+  // const [showResetModal, setShowResetModal] = useState(false);
+  // const [showSessionManager, setShowSessionManager] = useState(false);
+  // const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
+  // const [showBackgroundSelector, setShowBackgroundSelector] = useState(false);
+  // const [showSnippetManager, setShowSnippetManager] = useState(false);
+  // const [showGitPanel, setShowGitPanel] = useState(false);
   const [editorBackground, setEditorBackground] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.EDITOR_BACKGROUND, { id: 'none', image: null, opacity: 0.15, blur: 0 });
   });
@@ -272,16 +276,19 @@ function App() {
   const [splitViewEnabled, setSplitViewEnabled] = useState(false);
   const [secondPanelTab, setSecondPanelTab] = useState(null);
   // 🔥 NUEVO: Estados para chat
-  const [showChat, setShowChat] = useState(false);
+  // ✅ MIGRADO A useModals: showChat
+  // const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   // ✨ NUEVO: Estado para menú de herramientas dev
-  const [showDevToolsMenu, setShowDevToolsMenu] = useState(false);
+  // ✅ MIGRADO A useModals: showDevToolsMenu
+  // const [showDevToolsMenu, setShowDevToolsMenu] = useState(false);
   // ✨ Nuevo: Animación de intercambio editor/terminal en Fade
   const [swapAnim, setSwapAnim] = useState('none'); // 'none' | 'toTerminal' | 'toEditor'
   const swapTimerRef = useRef(null);
   // 🚀 NUEVO: Terminal flotante con glassmorphism
-  const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
+  // ✅ MIGRADO A useModals: showFloatingTerminal
+  // const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
   const [floatingTerminalOutput, setFloatingTerminalOutput] = useState('');
   const [floatingTerminalError, setFloatingTerminalError] = useState(false);
   
@@ -370,6 +377,9 @@ function App() {
     getDisplayName
   } = useAuth();
 
+  // 🎛️ Hook de gestión de modales centralizado
+  const { openModal, closeModal, toggleModal, isOpen } = useModals();
+
   // Estado para AuthModal
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authPendingAction, setAuthPendingAction] = useState(null); // 'create' o 'join'
@@ -437,13 +447,13 @@ function App() {
       if ((e.metaKey && e.key.toLowerCase() === 't') || 
           (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't')) {
         e.preventDefault();
-        setShowThemeSelector(prev => !prev);
+        toggleModal('themeSelector');
       }
       
       // ? o F1: Mostrar ayuda de atajos
       if (e.key === '?' || e.key === 'F1') {
         e.preventDefault();
-        setShowShortcutsHelp(prev => !prev);
+        toggleModal('shortcuts');
       }
     };
 
@@ -833,7 +843,7 @@ function App() {
     setShowPreview(true);
     setShowTerminal(false);
 
-    setShowResetModal(false);
+    closeModal('reset');
 
     // Toast visual
     const notification = document.createElement('div');
@@ -847,7 +857,7 @@ function App() {
     setTimeout(() => notification.remove(), 2000);
   };
 
-  const handleResetAll = () => setShowResetModal(true);
+  const handleResetAll = () => openModal('reset');
 
   // Handler de fondo personalizado
   const handleBackgroundChange = (bgId, bgImage, opacity, blur = 0) => {
@@ -861,13 +871,13 @@ function App() {
   // Handlers de colaboración
   const handleCreateSession = async (sessionData) => {
     const result = await createSession(sessionData);
-    setShowCollaborationPanel(true);
+    openModal('collaborationPanel');
     return result;
   };
 
   const handleJoinSession = async (sessionId, userData) => {
     const result = await joinSession(sessionId, userData);
-    setShowCollaborationPanel(true);
+    openModal('collaborationPanel');
     
     // Limpiar el parámetro de la URL después de unirse exitosamente
     const urlParams = new URLSearchParams(window.location.search);
@@ -883,8 +893,8 @@ function App() {
 
   const handleLeaveSession = async () => {
     await leaveSession();
-    setShowCollaborationPanel(false);
-    setShowChat(false);
+    closeModal('collaborationPanel');
+    closeModal('chat');
     setChatMessages([]);
   };
 
@@ -1021,16 +1031,16 @@ function App() {
   // 🔐 Handler para abrir modal de colaboración (con verificación de autenticación)
   const handleOpenCollaboration = () => {
     if (isCollaborating) {
-      setShowCollaborationPanel(true);
+      openModal('collaborationPanel');
     } else {
       // Si no está configurado Supabase o no está autenticado, mostrar AuthModal
       if (isAuthConfigured && !isAuthenticated) {
-        console.log('🔐 Se requiere autenticación - Mostrando AuthModal');
-        setAuthPendingAction('menu');
+        // Guardar acción pendiente para después de la autenticación
+        setAuthPendingAction('create');
         setShowAuthModal(true);
       } else {
         // Si ya está autenticado o no está configurado Auth, abrir SessionManager directamente
-        setShowSessionManager(true);
+        openModal('sessionManager');
       }
     }
   };
@@ -1051,7 +1061,7 @@ function App() {
 
       // Abrir SessionManager después de autenticarse
       if (authPendingAction) {
-        setShowSessionManager(true);
+        openModal('sessionManager');
         setAuthPendingAction(null);
       }
     } catch (error) {
@@ -1099,7 +1109,7 @@ function App() {
           setShowAuthModal(true);
         } else {
           // Ya está autenticado o no requiere auth
-          setShowSessionManager(true);
+          openModal('sessionManager');
         }
       }
     }, 1000); // 1 segundo para dar tiempo a cargar auth
@@ -1156,7 +1166,7 @@ function App() {
     if (!code || code.trim() === '') {
       setFloatingTerminalOutput('⚠️ No hay código para ejecutar');
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       return;
     }
 
@@ -1208,14 +1218,14 @@ function App() {
         setFloatingTerminalOutput('✅ Código ejecutado correctamente (sin salida)');
         setFloatingTerminalError(false);
       }
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de éxito
       setExecutionPulse({ show: true, isError: false });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } catch (error) {
       setFloatingTerminalOutput(`❌ ${error.name}: ${error.message}`);
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
@@ -1229,7 +1239,7 @@ function App() {
     if (!activeFile) {
       setFloatingTerminalOutput('❌ No hay archivo abierto');
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
@@ -1246,7 +1256,7 @@ function App() {
       // Python no soportado
       setFloatingTerminalOutput(`⚠️ Python no está disponible en el navegador\n\n💡 Tip: Usa https://replit.com o instala Python localmente\n\n📝 Código:\n${code}`);
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
@@ -1254,14 +1264,14 @@ function App() {
       // Java simulado
       setFloatingTerminalOutput(`⚠️ Java requiere compilación, usa la terminal principal (Ctrl+Alt+R)`);
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } else {
       setFloatingTerminalOutput(`❌ No se puede ejecutar archivos .${fileName.split('.').pop()}\n\nSoportados: JavaScript (.js)`);
       setFloatingTerminalError(true);
-      setShowFloatingTerminal(true);
+      openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
@@ -1767,10 +1777,10 @@ function App() {
         onNewFolder={handleNewFolder}
         showTerminal={showTerminal}
         setShowTerminal={setShowTerminal}
-        onOpenImageManager={() => setShowImageManager(true)}
+        onOpenImageManager={() => openModal('imageManager')}
         onAddImageFile={handleAddImageFile}
         onResetAll={handleResetAll}
-        onOpenShortcuts={() => setShowShortcutsHelp(true)}
+        onOpenShortcuts={() => openModal('shortcuts')}
         onExport={handleExport}
         currentTheme={currentTheme}
         onToggleLite={handleToggleLite}
@@ -1783,20 +1793,20 @@ function App() {
         onOpenCollaboration={handleOpenCollaboration}
         isCollaborating={isCollaborating}
         collaborationUsers={activeUsers.length}
-        showChat={showChat}
-        onToggleChat={() => setShowChat(!showChat)}
+        showChat={isOpen('chat')}
+        onToggleChat={() => toggleModal('chat')}
         chatMessagesCount={chatMessages.length}
         isAuthenticated={isAuthenticated}
         user={user}
         onLogout={logout}
-        onOpenBackground={() => setShowBackgroundSelector(true)}
+        onOpenBackground={() => openModal('backgroundSelector')}
         practiceModeEnabled={practiceModeEnabled}
         onTogglePracticeMode={() => setPracticeModeEnabled(!practiceModeEnabled)}
-        onOpenSnippets={() => setShowSnippetManager(true)}
+        onOpenSnippets={() => openModal('snippetManager')}
         splitViewEnabled={splitViewEnabled}
         onToggleSplitView={handleToggleSplitView}
-        onOpenGit={() => setShowGitPanel(true)}
-        onOpenDevTools={() => setShowDevToolsMenu(true)}
+        onOpenGit={() => openModal('gitPanel')}
+        onOpenDevTools={() => openModal('devTools')}
         dayNightMode={dayNightMode}
         onToggleDayNightMode={() => setDayNightMode(dayNightMode === 'auto' ? 'disabled' : 'auto')}
         isFadeMode={isFadeMode}
@@ -1812,7 +1822,7 @@ function App() {
         isCollaborating={isCollaborating}
         activeUsers={activeUsers}
         currentUser={currentUser}
-        onOpenPanel={() => setShowCollaborationPanel(true)}
+        onOpenPanel={() => openModal('collaborationPanel')}
       />
 
       {/* Notificaciones de colaboración */}
@@ -1826,8 +1836,8 @@ function App() {
       
       <Suspense fallback={<LoadingFallback />}>
         <ImageManager
-          isOpen={showImageManager}
-          onClose={() => setShowImageManager(false)}
+          isOpen={isOpen('imageManager')}
+          onClose={() => closeModal('imageManager')}
           images={images}
           onAddImage={handleAddImage}
           onRemoveImage={handleRemoveImage}
@@ -1836,8 +1846,8 @@ function App() {
 
       <Suspense fallback={<LoadingFallback />}>
         <ThemeSelector
-          isOpen={showThemeSelector}
-          onClose={() => setShowThemeSelector(false)}
+          isOpen={isOpen('themeSelector')}
+          onClose={() => closeModal('themeSelector')}
           currentTheme={currentTheme}
           onThemeChange={setCurrentTheme}
         />
@@ -1845,8 +1855,8 @@ function App() {
 
       <Suspense fallback={<LoadingFallback />}>
         <BackgroundSelector
-          isOpen={showBackgroundSelector}
-          onClose={() => setShowBackgroundSelector(false)}
+          isOpen={isOpen('backgroundSelector')}
+          onClose={() => closeModal('backgroundSelector')}
           currentBackground={editorBackground.id}
           onBackgroundChange={handleBackgroundChange}
         />
@@ -1854,15 +1864,15 @@ function App() {
 
       <Suspense fallback={<LoadingFallback />}>
         <ShortcutsHelp
-          isOpen={showShortcutsHelp}
-          onClose={() => setShowShortcutsHelp(false)}
+          isOpen={isOpen('shortcuts')}
+          onClose={() => closeModal('shortcuts')}
         />
       </Suspense>
 
       <Suspense fallback={<LoadingFallback />}>
         <SnippetManager
-          isOpen={showSnippetManager}
-          onClose={() => setShowSnippetManager(false)}
+          isOpen={isOpen('snippetManager')}
+          onClose={() => closeModal('snippetManager')}
           onInsertSnippet={handleInsertSnippet}
           currentTheme={currentTheme}
         />
@@ -1870,24 +1880,24 @@ function App() {
 
       <Suspense fallback={<LoadingFallback />}>
         <GitPanel
-          isOpen={showGitPanel}
-          onClose={() => setShowGitPanel(false)}
+          isOpen={isOpen('gitPanel')}
+          onClose={() => closeModal('gitPanel')}
           files={files}
           currentTheme={currentTheme}
         />
       </Suspense>
 
       {/* Menú de herramientas de desarrollador */}
-      {showDevToolsMenu && (
+      {isOpen('devTools') && (
         <Suspense fallback={<LoadingFallback />}>
-          <DevToolsMenu onClose={() => setShowDevToolsMenu(false)} />
+          <DevToolsMenu onClose={() => closeModal('devTools')} />
         </Suspense>
       )}
 
       <Suspense fallback={<LoadingFallback />}>
         <SessionManager
-          isOpen={showSessionManager}
-          onClose={() => setShowSessionManager(false)}
+          isOpen={isOpen('sessionManager')}
+          onClose={() => closeModal('sessionManager')}
           onCreateSession={handleCreateSession}
           onJoinSession={handleJoinSession}
           isConfigured={isCollaborationConfigured}
@@ -1898,8 +1908,8 @@ function App() {
 
       <Suspense fallback={<LoadingFallback />}>
         <CollaborationPanel
-          isOpen={showCollaborationPanel}
-          onClose={() => setShowCollaborationPanel(false)}
+          isOpen={isOpen('collaborationPanel')}
+          onClose={() => closeModal('collaborationPanel')}
           currentUser={currentUser}
           activeUsers={activeUsers}
           currentSession={currentSession}
@@ -1915,8 +1925,8 @@ function App() {
       {isCollaborating && (
         <Suspense fallback={<LoadingFallback />}>
           <ChatPanel
-            isOpen={showChat}
-            onClose={() => setShowChat(false)}
+            isOpen={isOpen('chat')}
+            onClose={() => closeModal('chat')}
             messages={chatMessages}
             currentUser={currentUser}
             onSendMessage={handleSendChatMessage}
@@ -1937,8 +1947,8 @@ function App() {
       </Suspense>
 
       {/* Modal Reset */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{backgroundColor:'rgba(0,0,0,0.6)'}} onClick={()=>setShowResetModal(false)}>
+      {isOpen('reset') && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{backgroundColor:'rgba(0,0,0,0.6)'}} onClick={()=>closeModal('reset')}>
           <div className="w-[520px] rounded-lg p-5" style={{backgroundColor:'var(--theme-background-secondary)', border:'1px solid var(--theme-border)'}} onClick={(e)=>e.stopPropagation()}>
             <h3 className="text-base font-semibold mb-3" style={{color:'var(--theme-text)'}}>Resetear todo</h3>
             <p className="text-sm mb-4" style={{color:'var(--theme-text-secondary)'}}>
@@ -1950,7 +1960,7 @@ function App() {
               <span className="font-medium" style={{color:'var(--theme-primary)'}}>Se restaurarán los archivos de ejemplo.</span>
             </p>
             <div className="flex justify-end gap-2">
-              <button className="px-3 py-1.5 rounded border" style={{borderColor:'var(--theme-border)', color:'var(--theme-text)'}} onClick={()=>setShowResetModal(false)}>Cancelar</button>
+              <button className="px-3 py-1.5 rounded border" style={{borderColor:'var(--theme-border)', color:'var(--theme-text)'}} onClick={()=>closeModal('reset')}>Cancelar</button>
               <button className="px-3 py-1.5 rounded" style={{backgroundColor:'#ef4444', color:'#fff'}} onClick={performReset}>Resetear</button>
             </div>
           </div>
@@ -2351,7 +2361,7 @@ function App() {
                     onToggleSize={() => setIsTerminalMaximized(v => !v)}
                     isMaximized={isTerminalMaximized}
                     onExecuteCode={handleExecuteCode}
-                    onOpenThemes={() => setShowThemeSelector(true)}
+                    onOpenThemes={() => openModal('themeSelector')}
                     backgroundActive={!!editorBackground.image}
                     currentTheme={currentTheme}
                     projectFiles={files}
@@ -2367,10 +2377,10 @@ function App() {
       {/* 🚀 Terminal Flotante con Glassmorphism (Ctrl + Alt + S) */}
       <Suspense fallback={<LoadingFallback />}>
         <FloatingTerminal
-          isVisible={showFloatingTerminal}
+          isVisible={isOpen('floatingTerminal')}
           output={floatingTerminalOutput}
           isError={floatingTerminalError}
-          onClose={() => setShowFloatingTerminal(false)}
+          onClose={() => closeModal('floatingTerminal')}
         />
       </Suspense>
 

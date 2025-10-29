@@ -10,7 +10,7 @@ const TabBar = memo(function TabBar({ tabs, activeTab, onTabClick, onTabClose, g
       return <Palette className="w-4 h-4 text-blue-400" />;
     }
     if (fileName.endsWith('.js')) {
-      return <Braces className="w-4 h-4 text-yellow-400" />;
+      return <B999999999999999999999999999999999999999999999999999999999999999999999999999999999999999races className="w-4 h-4 text-yellow-400" />;
     }
     if (fileName.endsWith('.json')) {
       return <FileJson className="w-4 h-4 text-green-400" />;
@@ -53,7 +53,8 @@ const TabBar = memo(function TabBar({ tabs, activeTab, onTabClick, onTabClose, g
 
   return (
     <div className="h-10 bg-tab-bg border-b border-border-color flex items-center overflow-x-auto relative shadow-mixed-glow">
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-yellow-500/50" style={{
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/50 via-purpl
+      500/50 to-yellow-500/50" style={{
         boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(234, 179, 8, 0.3)',
         animation: 'pulseMixedGlow 3s ease-in-out infinite'
       }}></div>
