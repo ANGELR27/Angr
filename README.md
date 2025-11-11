@@ -11,8 +11,8 @@ Un editor de código moderno tipo VS Code construido con React y Monaco Editor, 
 - **Sincronización instantánea** de cambios entre usuarios
 - **Indicadores visuales** de usuarios activos
 - **Sesiones públicas o privadas** con contraseña
-- 🚀 [Inicio Rápido (5 minutos)](./INICIO_RAPIDO_COLABORACION.md)
-- 📖 [Documentación Completa](./COLABORACION.md)
+- 🚀 [Inicio Rápido (5 minutos)](./docs/collaboration/INICIO_RAPIDO_COLABORACION.md)
+- 📖 [Documentación Completa](./docs/collaboration/COLABORACION.md)
 
 ### 🎨 **Editor Avanzado**
 - **Monaco Editor** (mismo motor que Visual Studio Code)
@@ -23,7 +23,7 @@ Un editor de código moderno tipo VS Code construido con React y Monaco Editor, 
 - **Autocerrado automático** de etiquetas, comillas y paréntesis
 - Formateo automático al pegar y escribir
 - Números de línea y resaltado de sintaxis
-- 📖 [Ver todos los lenguajes soportados](./LENGUAJES_SOPORTADOS.md)
+- 📖 [Ver todos los lenguajes soportados](./docs/features/LENGUAJES_SOPORTADOS.md)
 
 ### 📁 **Explorador de Archivos**
 - Navegación por árbol de carpetas
@@ -118,7 +118,7 @@ ngrok http 3000
 4. El enlace generado será público automáticamente
 5. ¡Compártelo con tus compañeros!
 
-📖 **Guía detallada:** [SOLUCION_SIMPLE_NGROK.md](./SOLUCION_SIMPLE_NGROK.md)
+📖 **Guía detallada:** [SOLUCION_SIMPLE_NGROK.md](./docs/collaboration/SOLUCION_SIMPLE_NGROK.md)
 
 ## 🏗️ Build para Producción
 
@@ -128,7 +128,14 @@ npm run build
 
 ## 📚 Documentación
 
-Lee la [**Guía de Uso Completa**](./GUIA_DE_USO.md) para más detalles sobre todas las características.
+- 📖 [**Índice Completo de Documentación**](./docs/README.md)
+- 📘 [Guía de Uso Completa](./docs/guides/GUIA_DE_USO.md)
+- 🚀 [Guía de Instalación Rápida](./docs/guides/GUIA_INSTALACION_RAPIDA.md)
+- 🤝 [Documentación de Colaboración](./docs/collaboration/)
+- ✨ [Características y Funcionalidades](./docs/features/)
+- 🔧 [Correcciones y Soluciones](./docs/fixes/)
+
+Toda la documentación está organizada en la carpeta `/docs` por categorías.
 
 ## 🛠️ Tecnologías
 
