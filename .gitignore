@@ -53,6 +53,10 @@ build
 .next
 out
 
+# Electron build artifacts
+dist-electron
+release
+
 # Temporary files
 tmp
 temp

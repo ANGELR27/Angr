@@ -29,5 +29,19 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false // Cambiar a false para evitar abrir localhost
+  },
+  base: './', // Importante para Electron: usar rutas relativas
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'monaco': ['@monaco-editor/react'],
+          'supabase': ['@supabase/supabase-js']
+        }
+      }
+    }
   }
 })
