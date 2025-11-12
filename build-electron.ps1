@@ -17,12 +17,27 @@ if (-not $nodeVersion) {
 Write-Host "✅ Node.js detectado: $nodeVersion" -ForegroundColor Green
 Write-Host ""
 
-# Paso 1: Instalar dependencias si es necesario
+# Paso 1: Verificar dependencias críticas
+Write-Host "🔍 Verificando dependencias..." -ForegroundColor Yellow
+
+$electronExists = Test-Path "node_modules\electron"
+$builderExists = Test-Path "node_modules\electron-builder"
+
 if (-not (Test-Path "node_modules")) {
-    Write-Host "📦 Instalando dependencias..." -ForegroundColor Yellow
-    npm install
+    Write-Host "📦 Instalando todas las dependencias..." -ForegroundColor Yellow
+    npm install --legacy-peer-deps
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Error al instalar dependencias" -ForegroundColor Red
+        Write-Host "💡 Intenta ejecutar: .\install-electron.ps1" -ForegroundColor Yellow
+        exit 1
+    }
+} elseif (-not $electronExists -or -not $builderExists) {
+    Write-Host "⚠️ Faltan dependencias de Electron" -ForegroundColor Yellow
+    Write-Host "📦 Instalando dependencias faltantes..." -ForegroundColor Yellow
+    npm install electron electron-builder concurrently wait-on --save-dev --legacy-peer-deps
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Error al instalar dependencias" -ForegroundColor Red
+        Write-Host "💡 Intenta ejecutar: .\install-electron.ps1" -ForegroundColor Yellow
         exit 1
     }
 } else {

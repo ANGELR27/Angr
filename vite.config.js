@@ -41,7 +41,15 @@ export default defineConfig({
           'monaco': ['@monaco-editor/react'],
           'supabase': ['@supabase/supabase-js']
         }
-      }
+      },
+      external: ['monaco-editor/esm/vs/editor/editor.api.js']
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
     }
+  },
+  optimizeDeps: {
+    exclude: ['y-monaco', 'yjs', 'y-websocket']
   }
 })

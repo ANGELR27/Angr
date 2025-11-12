@@ -14,7 +14,7 @@ import {
 import SearchWidget from "./SearchWidget";
 import CommandPalette from "./CommandPalette";
 import TypingIndicator from "./TypingIndicator";
-import { MonacoBinding } from "y-monaco"; // 🔥 Yjs binding
+// import { MonacoBinding } from "y-monaco"; // 🔥 Yjs binding - COMENTADO TEMPORALMENTE (problema de dependencia)
 import collaborationService from "../services/collaborationServiceV2"; // 🔥 Servicio V2
 
 function CodeEditor({
@@ -2303,14 +2303,15 @@ function CodeEditor({
 
     try {
       // Crear nuevo binding Monaco ↔ Yjs
-      yjsBindingRef.current = new MonacoBinding(
-        ytext,
-        editor.getModel(),
-        new Set([editor]),
-        collaborationService.yjsProvider?.awareness
-      );
+      // TEMPORALMENTE DESHABILITADO - y-monaco tiene problemas de compatibilidad
+      // yjsBindingRef.current = new MonacoBinding(
+      //   ytext,
+      //   editor.getModel(),
+      //   new Set([editor]),
+      //   collaborationService.yjsProvider?.awareness
+      // );
 
-      console.log('✅ Yjs binding creado exitosamente para:', activePath);
+      console.log('⚠️ Yjs binding temporalmente deshabilitado (problema de dependencia)');
     } catch (error) {
       console.error('❌ Error al crear Yjs binding:', error);
     }
@@ -2409,7 +2410,13 @@ function CodeEditor({
         onMount={handleEditorDidMount}
         options={{
           fontSize: fontSize,
-          minimap: { enabled: false },
+          minimap: {
+            enabled: true,
+            showSlider: 'mouseover',
+            renderCharacters: true,
+            maxColumn: 120,
+            side: 'right'
+          },
           scrollBeyondLastLine: true,
           wordWrap: "on",
           automaticLayout: true,

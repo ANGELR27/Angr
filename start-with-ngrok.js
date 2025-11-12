@@ -58,7 +58,7 @@ if (!ngrokInstalled) {
 
 // Iniciar ngrok
 console.log('🚀 Iniciando ngrok...');
-const ngrokProcess = spawn('ngrok', ['http', '3001', '--log=stdout'], {
+const ngrokProcess = spawn('ngrok', ['http', '3000', '--log=stdout'], {
   stdio: 'pipe',
   shell: true
 });

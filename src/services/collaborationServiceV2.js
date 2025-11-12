@@ -37,6 +37,10 @@ class CollaborationServiceV2 {
       onCursorMove: null,
       onConnectionStatusChange: null,
       onProjectState: null,
+      onChatMessage: null, // 💬 Chat en tiempo real
+      onNotification: null, // 🔔 Notificaciones
+      onActivity: null, // 📊 Actividad del equipo
+      onTypingIndicator: null, // ✍️ Indicador de escritura
     };
     
     // Estado de conexión
@@ -56,6 +60,12 @@ class CollaborationServiceV2 {
     // Heartbeat
     this.heartbeatInterval = null;
     this.heartbeatFrequency = 10000; // 10s
+    
+    // 💬 Chat y Notificaciones
+    this.chatMessages = [];
+    this.activityLog = [];
+    this.typingUsers = new Map(); // userId -> timestamp
+    this.typingTimeout = 2000; // 2 segundos
     
     // Inicializar si hay credenciales
     if (SUPABASE_URL !== 'https://tu-proyecto.supabase.co' && SUPABASE_ANON_KEY !== 'tu-anon-key-aqui') {
@@ -441,6 +451,88 @@ class CollaborationServiceV2 {
       if (this.callbacks.onAccessChanged) {
         this.callbacks.onAccessChanged({ userId, role: newRole });
       }
+    });
+
+    // =========================================
+    // 💬 BROADCAST: Mensajes de chat
+    // =========================================
+    
+    this.channel.on('broadcast', { event: 'chat-message' }, (payload) => {
+      const message = payload.payload;
+      
+      console.log('💬 Mensaje de chat recibido:', {
+        from: message.userName,
+        preview: message.message.substring(0, 30)
+      });
+      
+      // Agregar a la lista local
+      this.chatMessages.push(message);
+      
+      // Mantener solo los últimos 100 mensajes
+      if (this.chatMessages.length > 100) {
+        this.chatMessages = this.chatMessages.slice(-100);
+      }
+      
+      // Notificar al callback
+      if (this.callbacks.onChatMessage) {
+        this.callbacks.onChatMessage(message);
+      }
+      
+      // Registrar actividad
+      if (message.userId !== this.currentUser?.id) {
+        this.logActivity('chat_received', `${message.userName} envió un mensaje`);
+      }
+    });
+
+    // =========================================
+    // ✍️ BROADCAST: Indicadores de escritura
+    // =========================================
+    
+    this.channel.on('broadcast', { event: 'user-typing' }, (payload) => {
+      const { userId, userName, isTyping } = payload.payload;
+      
+      // Ignorar propios eventos
+      if (userId === this.currentUser?.id) return;
+      
+      if (isTyping) {
+        this.typingUsers.set(userId, { userName, timestamp: Date.now() });
+      } else {
+        this.typingUsers.delete(userId);
+      }
+      
+      // Notificar al callback
+      if (this.callbacks.onTypingIndicator) {
+        this.callbacks.onTypingIndicator(Array.from(this.typingUsers.values()));
+      }
+      
+      // Auto-limpiar indicador después de 2 segundos
+      setTimeout(() => {
+        const user = this.typingUsers.get(userId);
+        if (user && Date.now() - user.timestamp >= this.typingTimeout) {
+          this.typingUsers.delete(userId);
+          if (this.callbacks.onTypingIndicator) {
+            this.callbacks.onTypingIndicator(Array.from(this.typingUsers.values()));
+          }
+        }
+      }, this.typingTimeout);
+    });
+
+    // =========================================
+    // 🔔 BROADCAST: Notificaciones
+    // =========================================
+    
+    this.channel.on('broadcast', { event: 'notification' }, (payload) => {
+      const notification = payload.payload;
+      
+      console.log('🔔 Notificación recibida:', notification.title);
+      
+      // Notificar al callback
+      if (this.callbacks.onNotification) {
+        this.callbacks.onNotification(notification);
+      }
+      
+      // Registrar actividad
+      this.logActivity('notification', notification.title, notification.metadata);
     });
 
     // =========================================
@@ -889,6 +981,127 @@ class CollaborationServiceV2 {
     console.log('✅ Cambio de permisos enviado');
   }
 
+  // =========================================
+  // 💬 CHAT EN TIEMPO REAL
+  // =========================================
+  
+  /**
+   * Enviar mensaje al chat
+   */
+  async sendChatMessage(message, messageType = 'text') {
+    if (!this.channel || !this.currentUser) {
+      console.warn('⚠️ No se puede enviar mensaje - sin canal o usuario');
+      return;
+    }
+
+    const chatMessage = {
+      id: `msg-${Date.now()}-${Math.random()}`,
+      userId: this.currentUser.id,
+      userName: this.currentUser.name,
+      userColor: this.currentUser.color,
+      message,
+      messageType,
+      timestamp: Date.now(),
+      createdAt: new Date().toISOString(),
+    };
+
+    // Broadcast a todos los usuarios
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'chat-message',
+      payload: chatMessage
+    });
+
+    console.log('💬 Mensaje de chat enviado:', message.substring(0, 50));
+    
+    // Registrar actividad
+    this.logActivity('chat_message', `${this.currentUser.name} envió un mensaje`);
+  }
+
+  /**
+   * Indicar que el usuario está escribiendo
+   */
+  async broadcastTyping(isTyping = true) {
+    if (!this.channel || !this.currentUser) return;
+
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'user-typing',
+      payload: {
+        userId: this.currentUser.id,
+        userName: this.currentUser.name,
+        isTyping,
+        timestamp: Date.now(),
+      }
+    });
+  }
+
+  // =========================================
+  // 🔔 NOTIFICACIONES
+  // =========================================
+  
+  /**
+   * Enviar notificación al equipo
+   */
+  async sendNotification(type, title, message, metadata = {}) {
+    if (!this.channel) return;
+
+    const notification = {
+      id: `notif-${Date.now()}`,
+      type,
+      title,
+      message,
+      metadata,
+      timestamp: Date.now(),
+    };
+
+    await this.channel.send({
+      type: 'broadcast',
+      event: 'notification',
+      payload: notification
+    });
+
+    console.log('🔔 Notificación enviada:', title);
+  }
+
+  // =========================================
+  // 📊 ACTIVIDAD Y REGISTRO
+  // =========================================
+  
+  /**
+   * Registrar actividad
+   */
+  logActivity(activityType, description, metadata = {}) {
+    const activity = {
+      id: `act-${Date.now()}`,
+      type: activityType,
+      description,
+      userId: this.currentUser?.id,
+      userName: this.currentUser?.name,
+      timestamp: Date.now(),
+      metadata,
+    };
+
+    this.activityLog.push(activity);
+    
+    // Mantener solo las últimas 100 actividades
+    if (this.activityLog.length > 100) {
+      this.activityLog = this.activityLog.slice(-100);
+    }
+
+    // Notificar a los listeners
+    if (this.callbacks.onActivity) {
+      this.callbacks.onActivity(activity);
+    }
+  }
+
+  /**
+   * Obtener log de actividades
+   */
+  getActivityLog() {
+    return this.activityLog;
+  }
+
   async leaveSession() {
     // 🔥 Destruir Yjs provider
     if (this.yjsProvider) {
@@ -929,12 +1142,23 @@ class CollaborationServiceV2 {
       'cursorMove': 'onCursorMove',
       'connectionStatusChange': 'onConnectionStatusChange',
       'projectState': 'onProjectState',
+      'chatMessage': 'onChatMessage', // 💬 Chat
+      'notification': 'onNotification', // 🔔 Notificaciones
+      'activity': 'onActivity', // 📊 Actividad
+      'typingIndicator': 'onTypingIndicator', // ✍️ Escribiendo
     };
     
     const callbackName = eventMap[event];
     if (callbackName) {
       this.callbacks[callbackName] = callback;
     }
+  }
+
+  /**
+   * Obtener mensajes de chat
+   */
+  getChatMessages() {
+    return this.chatMessages;
   }
 }
 

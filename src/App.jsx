@@ -9,8 +9,13 @@ import AutoSaveIndicator from './components/AutoSaveIndicator'
 import CollaborationBanner from './components/CollaborationBanner'
 import CollaborationNotification from './components/CollaborationNotification'
 import ExecutionPulse from './components/ExecutionPulse'
+import Breadcrumbs from './components/Breadcrumbs'
+import KeyboardShortcutIndicator from './components/KeyboardShortcutIndicator'
+import GlobalSearch from './components/GlobalSearch'
+import CodeParticles from './components/CodeParticles'
 
-// Componentes secundarios - lazy loading para mejorar performance
+// Componentes secundarios - lazy loading optimizado para mejor performance
+// Solo componentes grandes (>5KB) que no se usan al inicio
 const ImageManager = lazy(() => import('./components/ImageManager'))
 const ThemeSelector = lazy(() => import('./components/ThemeSelector'))
 const BackgroundSelector = lazy(() => import('./components/BackgroundSelector'))
@@ -23,7 +28,6 @@ const SnippetManager = lazy(() => import('./components/SnippetManager'))
 const GitPanel = lazy(() => import('./components/GitPanel'))
 const DevToolsMenu = lazy(() => import('./components/DevToolsMenu'))
 const FloatingTerminal = lazy(() => import('./components/FloatingTerminal'))
-const CodeParticles = lazy(() => import('./components/CodeParticles'))
 
 // Componente de carga simple para Suspense
 const LoadingFallback = () => <div style={{ display: 'none' }} />;
@@ -434,13 +438,53 @@ function App() {
     }
   };
 
-  // Listener para atajos de teclado globales
+  // Estado para indicador de atajos
+  const [shortcutIndicator, setShortcutIndicator] = useState(null);
+  
+  // Estado para búsqueda global
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+
+  const showShortcut = useCallback((shortcut, action) => {
+    setShortcutIndicator({ shortcut, action });
+  }, []);
+
+  // ⚡ Listener mejorado para atajos de teclado globales
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ctrl + B: Toggle Sidebar
       if (e.ctrlKey && e.key.toLowerCase() === 'b') {
         e.preventDefault();
-        setShowSidebar(prev => !prev);
+        setShowSidebar(prev => {
+          showShortcut('Ctrl+B', prev ? 'Mostrar Sidebar' : 'Ocultar Sidebar');
+          return !prev;
+        });
+      }
+      
+      // Ctrl + J: Toggle Terminal
+      if (e.ctrlKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setShowTerminal(prev => {
+          showShortcut('Ctrl+J', prev ? 'Mostrar Terminal' : 'Ocultar Terminal');
+          return !prev;
+        });
+      }
+      
+      // Ctrl + \\: Toggle Split View
+      if (e.ctrlKey && e.key === '\\') {
+        e.preventDefault();
+        if (openTabs.length < 2) {
+          showShortcut('Ctrl+\\', 'Necesitas 2+ archivos para Split View');
+          return;
+        }
+        setSplitViewEnabled(prev => {
+          const newValue = !prev;
+          if (newValue && !secondPanelTab) {
+            const otherTab = openTabs.find(t => t !== activeTab);
+            setSecondPanelTab(otherTab);
+          }
+          showShortcut('Ctrl+\\', newValue ? 'Split View Activado' : 'Split View Desactivado');
+          return newValue;
+        });
       }
       
       // Ctrl + Shift + T: Toggle Theme Selector
@@ -448,18 +492,34 @@ function App() {
           (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't')) {
         e.preventDefault();
         toggleModal('themeSelector');
+        showShortcut('Ctrl+Shift+T', 'Selector de Temas');
+      }
+      
+      // Ctrl + Shift + F: Búsqueda Global
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+        showShortcut('Ctrl+Shift+F', 'Búsqueda Global en Archivos');
+      }
+      
+      // Ctrl + Shift + P: Command Palette
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        // TODO: Implementar command palette en siguiente mejora
+        showShortcut('Ctrl+Shift+P', 'Command Palette (Próximamente)');
       }
       
       // ? o F1: Mostrar ayuda de atajos
       if (e.key === '?' || e.key === 'F1') {
         e.preventDefault();
         toggleModal('shortcuts');
+        showShortcut('F1', 'Ayuda de Atajos');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [openTabs, activeTab, secondPanelTab, showShortcut, toggleModal]);
 
   const getFileByPath = useCallback((path) => {
     const parts = path.split('/');
@@ -2189,27 +2249,36 @@ function App() {
                   </div>
                 ) : (
                   /* Vista normal: 1 solo editor */
-                  <CodeEditor
-                    value={activeFile?.content || ''}
-                    language={activeFile?.language || 'plaintext'}
-                    onChange={handleCodeChange}
-                    projectFiles={files}
-                    projectImages={images}
-                    currentTheme={currentTheme}
-                    isImage={activeFile?.isImage || false}
-                    activePath={activeTab}
-                    onAddImageFile={handleAddImageFile}
-                    hasCustomBackground={!!editorBackground.image}
-                    onRealtimeChange={handleRealtimeChange}
-                    isCollaborating={isCollaborating}
-                    remoteCursors={remoteCursors}
-                    onCursorMove={broadcastCursorMove}
-                    currentUser={currentUser}
-                    activeFile={activeFile}
-                    typingUsers={typingUsers}
-                    onExecuteCode={handleExecuteCode}
-                    practiceModeEnabled={practiceModeEnabled}
-                  />
+                  <div className="flex flex-col h-full">
+                    <Breadcrumbs 
+                      activeFile={activeTab}
+                      files={files}
+                      onNavigate={handleFileSelect}
+                    />
+                    <div className="flex-1 overflow-hidden">
+                      <CodeEditor
+                        value={activeFile?.content || ''}
+                        language={activeFile?.language || 'plaintext'}
+                        onChange={handleCodeChange}
+                        projectFiles={files}
+                        projectImages={images}
+                        currentTheme={currentTheme}
+                        isImage={activeFile?.isImage || false}
+                        activePath={activeTab}
+                        onAddImageFile={handleAddImageFile}
+                        hasCustomBackground={!!editorBackground.image}
+                        onRealtimeChange={handleRealtimeChange}
+                        isCollaborating={isCollaborating}
+                        remoteCursors={remoteCursors}
+                        onCursorMove={broadcastCursorMove}
+                        currentUser={currentUser}
+                        activeFile={activeFile}
+                        typingUsers={typingUsers}
+                        onExecuteCode={handleExecuteCode}
+                        practiceModeEnabled={practiceModeEnabled}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
               
@@ -2388,14 +2457,32 @@ function App() {
       {isFadeMode && (
         <>
           {/* Partículas de código flotantes */}
-          <Suspense fallback={<LoadingFallback />}>
-            <CodeParticles />
-          </Suspense>
+          <CodeParticles />
           
           {/* Efecto de pulso al ejecutar código */}
           <ExecutionPulse show={executionPulse.show} isError={executionPulse.isError} />
         </>
       )}
+
+      {/* ⚡ Indicador visual de atajos de teclado */}
+      {shortcutIndicator && (
+        <KeyboardShortcutIndicator
+          shortcut={shortcutIndicator.shortcut}
+          action={shortcutIndicator.action}
+          onComplete={() => setShortcutIndicator(null)}
+        />
+      )}
+
+      {/* 🔍 Búsqueda Global en todos los archivos */}
+      <GlobalSearch
+        isOpen={showGlobalSearch}
+        onClose={() => setShowGlobalSearch(false)}
+        files={files}
+        onNavigate={(filePath, lineNumber) => {
+          handleFileSelect(filePath);
+          // TODO: Navegar a línea específica en el editor
+        }}
+      />
     </div>
   );
 }

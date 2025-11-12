@@ -31,14 +31,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
-      ],
-      "icon": "public/favicon.svg"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -63,8 +66,10 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "app-builder-bin": "^5.0.0-alpha.12",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
+    "dmg-builder": "^26.0.12",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "postcss": "^8.4.32",
