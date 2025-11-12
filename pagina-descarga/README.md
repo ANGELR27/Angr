@@ -8,7 +8,7 @@ Esta es la página web oficial de presentación y descarga para **Code Editor Pr
 pagina-descarga/
 ├── index.html          # Página principal
 ├── styles.css          # Estilos CSS
-├── favicon.svg         # Icono
+├── favicon.ico         # Icono
 └── README.md          # Este archivo
 ```
 

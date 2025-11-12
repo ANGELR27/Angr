@@ -11,6 +11,12 @@ import {
   analyzeProject,
   getHTMLAttributeSuggestions,
 } from "../utils/intellisense";
+import { setupAutoclosing } from "../utils/autoclosing";
+import { setupSyntaxValidation } from "../utils/syntaxChecking";
+import { SemanticAnalyzer, AutoImportSystem } from "../utils/semanticAnalysis";
+import { HoverProvider } from "../utils/hoverProvider";
+import { IntelligentSnippetProvider } from "../utils/intelligentSnippets";
+import { AdvancedSnippetEngine } from "../utils/advancedSnippets";
 import SearchWidget from "./SearchWidget";
 import CommandPalette from "./CommandPalette";
 import TypingIndicator from "./TypingIndicator";
@@ -55,6 +61,13 @@ function CodeEditor({
   const cursorWidgetsRef = useRef([]);
   const cursorMoveTimeoutRef = useRef(null);
   const yjsBindingRef = useRef(null); // 🔥 Yjs Monaco binding
+  
+  // 🧠 Sistemas inteligentes
+  const semanticAnalyzerRef = useRef(new SemanticAnalyzer());
+  const autoImportSystemRef = useRef(new AutoImportSystem());
+  const hoverProviderRef = useRef(new HoverProvider());
+  const intelligentSnippetProviderRef = useRef(new IntelligentSnippetProvider());
+  const advancedSnippetEngineRef = useRef(new AdvancedSnippetEngine());
 
   // Memo: listas aplanadas de archivos/carpetas
   const buildAllFilePaths = (files, basePath = "") => {
@@ -827,6 +840,134 @@ function CodeEditor({
     try {
       monaco.editor.setTheme(currentTheme || "vs-dark");
     } catch {}
+    
+    // Configurar autocompletado y autocerrado avanzado
+    setupAutoclosing(monaco, editor);
+    
+    // Configurar validación de sintaxis avanzada
+    setupSyntaxValidation(monaco, editor);
+
+    // 🧠 CONFIGURAR SISTEMAS INTELIGENTES
+    
+    // Inicializar auto-import system
+    autoImportSystemRef.current.initializeCommonModules();
+    
+    // Registrar hover provider inteligente
+    const hoverProvider = monaco.languages.registerHoverProvider('javascript', {
+      provideHover: (model, position) => {
+        const projectAnalysis = analyzeProject(projectFiles);
+        return hoverProviderRef.current.provideHover(model, position, projectAnalysis);
+      }
+    });
+    disposablesRef.current.push(hoverProvider);
+    
+    // 🚀 REGISTRAR COMPLETION PROVIDER UNIFICADO Y OPTIMIZADO
+    const unifiedCompletionProvider = monaco.languages.registerCompletionItemProvider('javascript', {
+      triggerCharacters: ['.', '(', '<', '"', "'", '/', '@', ' ', 'c', 'f', 'i', 'w', 't', 'a'],
+      provideCompletionItems: async (model, position) => {
+        // Solo actuar si el modo práctica está desactivado
+        if (practiceModeEnabled) {
+          return { suggestions: [] };
+        }
+
+        const word = model.getWordUntilPosition(position);
+        const line = model.getLineContent(position.lineNumber);
+        
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        let suggestions = [];
+
+        // 🎯 PRIORIDAD 1: SNIPPETS DE BLOQUES COMPLETOS
+        if (word.word && word.word.length >= 1) {
+          const blockSuggestions = advancedSnippetEngineRef.current.getBlockSuggestions(word.word);
+          
+          blockSuggestions.forEach((snippet, index) => {
+            suggestions.push({
+              label: {
+                label: snippet.patterns[0],
+                description: snippet.description
+              },
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: snippet.snippet,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              documentation: {
+                value: `**${snippet.description}**\n\n${snippet.detail}\n\n\`\`\`javascript\n${snippet.snippet.replace(/\$\{?\d+:?([^}]*)\}?/g, '$1').replace(/\$0/g, '')}\n\`\`\``
+              },
+              detail: snippet.detail,
+              sortText: String(index).padStart(4, '0'), // Máxima prioridad
+              range,
+              preselect: index === 0, // Preseleccionar el mejor
+              commitCharacters: ['.', '(', ' ', '\t']
+            });
+          });
+        }
+
+        // 🎯 PRIORIDAD 2: Sugerencias de archivos en strings (import, require, etc.)
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+        
+        const inString = /["'][^"']*$/.test(textUntilPosition);
+        const afterImportOrRequire = /(import|require|fetch)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
+        
+        if (inString && (afterImportOrRequire || textUntilPosition.includes("./"))) {
+          const filePaths = getCachedPaths().files;
+          const jsFiles = filePaths.filter((f) =>
+            ["js", "json", "css", "html", "ts", "jsx", "tsx"].includes(f.extension)
+          );
+
+          jsFiles.forEach((file, index) => {
+            suggestions.push({
+              label: `./${file.path}`,
+              kind: monaco.languages.CompletionItemKind.Module,
+              insertText: `./${file.path}`,
+              documentation: `📦 Módulo: ${file.name}`,
+              sortText: String(200 + index).padStart(4, '0'),
+              range
+            });
+          });
+        }
+
+        // 🎯 PRIORIDAD 3: Auto-imports (solo si no hay snippets de bloques)
+        if (suggestions.length === 0 && word.word && word.word.length > 2) {
+          const fileContent = model.getValue();
+          const fileAnalysis = semanticAnalyzerRef.current.analyzeFile(fileContent, activePath, language);
+          const autoImports = autoImportSystemRef.current.suggestImports(word.word, fileAnalysis.imports);
+          
+          autoImports.forEach((imp, index) => {
+            suggestions.push({
+              label: `${imp.symbolName} (auto-import)`,
+              kind: monaco.languages.CompletionItemKind.Module,
+              insertText: imp.symbolName,
+              detail: `Auto-import from ${imp.moduleName}`,
+              documentation: `Importará automáticamente: ${imp.importStatement}`,
+              additionalTextEdits: [{
+                range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 },
+                text: imp.importStatement + '\n'
+              }],
+              sortText: String(300 + index).padStart(4, '0')
+            });
+          });
+        }
+
+        // 🎯 PRIORIDAD 4: Snippets básicos de JS (si no hay nada más)
+        if (suggestions.length === 0) {
+          const basicSnippets = getJSSnippets(monaco, range);
+          suggestions.push(...basicSnippets);
+        }
+
+        return { suggestions };
+      }
+    });
+    disposablesRef.current.push(unifiedCompletionProvider);
 
     // ===== ATAJOS DE TECLADO ÚTILES =====
 
@@ -863,6 +1004,16 @@ function CodeEditor({
         editor.getAction("editor.action.formatDocument")?.run();
       }
     );
+    
+    // Activar autocompletado inteligente (Ctrl+Space)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
+      editor.trigger('keyboard', 'editor.action.triggerSuggest', {});
+    });
+    
+    // Activar parameter hints (Ctrl+Shift+Space)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Space, () => {
+      editor.trigger('keyboard', 'editor.action.triggerParameterHints', {});
+    });
 
     // Duplicar línea (Ctrl+D)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyD, () => {
@@ -1158,7 +1309,8 @@ function CodeEditor({
     };
 
     // HTML Snippets + Autocompletado de rutas
-    const htmlProvider = monaco.languages.registerCompletionItemProvider(
+    // HTML Provider mejorado con autocompletado de etiquetas
+const htmlProvider = monaco.languages.registerCompletionItemProvider(
       "html",
       {
         triggerCharacters: ["!", "<", ".", "#", " "],
@@ -1364,7 +1516,7 @@ function CodeEditor({
         const ids = new Set();
 
         models.forEach((m) => {
-          const lang = monaco.editor.getModelLanguage(m.uri);
+          const lang = m.getLanguageId();
           const text = m.getValue();
           if (lang === "css") {
             const re = /\.([_a-zA-Z][-_a-zA-Z0-9]*)/g;
@@ -1435,7 +1587,7 @@ function CodeEditor({
         const models = monaco.editor.getModels();
         const classes = new Set();
         models.forEach((m) => {
-          const lang = monaco.editor.getModelLanguage(m.uri);
+          const lang = m.getLanguageId();
           if (lang === "html") {
             const text = m.getValue();
             const reClass = /class\s*=\s*["']([^"']+)["']/g;
@@ -2144,54 +2296,8 @@ function CodeEditor({
       },
     });
 
-    // JavaScript Snippets + Autocompletado de rutas
-    monaco.languages.registerCompletionItemProvider("javascript", {
-      provideCompletionItems: (model, position) => {
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        });
-
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-
-        let suggestions = getJSSnippets(monaco, range);
-
-        // Detectar si estamos en un string (import, require, fetch, etc.)
-        const inString = /["'][^"']*$/.test(textUntilPosition);
-        const afterImportOrRequire =
-          /(import|require|fetch)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
-
-        if (
-          inString &&
-          (afterImportOrRequire || textUntilPosition.includes("./"))
-        ) {
-          const filePaths = getAllFilePaths(projectFiles);
-          const jsFiles = filePaths.filter((f) =>
-            ["js", "json", "css", "html"].includes(f.extension)
-          );
-
-          const fileCompletions = jsFiles.map((file) => ({
-            label: `./${file.path}`,
-            kind: monaco.languages.CompletionItemKind.Module,
-            insertText: `./${file.path}`,
-            documentation: `📦 Módulo: ${file.name}`,
-            range,
-          }));
-
-          suggestions = [...fileCompletions, ...suggestions];
-        }
-
-        return { suggestions };
-      },
-    });
+    // ELIMINADO: JavaScript Provider duplicado que causaba conflictos
+    // El autocompletado de JavaScript ahora se maneja en el provider unificado
 
     // ☕ Java Snippets estilo IntelliJ IDEA
     monaco.languages.registerCompletionItemProvider("java", {
@@ -2431,34 +2537,57 @@ function CodeEditor({
           fontFamily: "'Consolas', 'Courier New', monospace",
           fontLigatures: true,
           padding: { top: 16, bottom: 120 },
-          // 🎯 Autocompletado - desactivado en Modo Práctica
+          // 🎯 Autocompletado Súper Reforzado - desactivado solo en Modo Práctica
           suggestOnTriggerCharacters: !practiceModeEnabled,
           quickSuggestions: practiceModeEnabled
             ? false
             : {
                 other: true,
-                comments: false,
+                comments: true,
                 strings: true,
               },
-          parameterHints: { enabled: !practiceModeEnabled },
+          quickSuggestionsDelay: practiceModeEnabled ? 0 : 100, // Más rápido
+          parameterHints: { 
+            enabled: !practiceModeEnabled,
+            cycle: true // Navegar entre parameter hints
+          },
           acceptSuggestionOnCommitCharacter: !practiceModeEnabled,
           acceptSuggestionOnEnter: practiceModeEnabled ? "off" : "on",
-          tabCompletion: practiceModeEnabled ? "off" : "on",
-          wordBasedSuggestions: !practiceModeEnabled,
+          tabCompletion: practiceModeEnabled ? "off" : "onlySnippets", // Solo snippets con tab
+          wordBasedSuggestions: !practiceModeEnabled ? "allDocuments" : false, // Mejorado
           suggest: {
             showKeywords: !practiceModeEnabled,
             showSnippets: !practiceModeEnabled,
             showClasses: !practiceModeEnabled,
+            showMethods: !practiceModeEnabled,
             showFunctions: !practiceModeEnabled,
             showVariables: !practiceModeEnabled,
+            showConstants: !practiceModeEnabled,
+            showValues: !practiceModeEnabled,
+            showFields: !practiceModeEnabled,
+            showConstructors: !practiceModeEnabled,
+            showEnums: !practiceModeEnabled,
+            showFiles: !practiceModeEnabled,
+            showFolders: !practiceModeEnabled,
+            showTypeParameters: !practiceModeEnabled,
+            filterGraceful: true,
+            snippetsPreventQuickSuggestions: false,
+            showUsers: true,
+            insertMode: 'replace', // Cambiar a replace para mejor experiencia
+            localityBonus: true,
+            shareSuggestSelections: true, // Compartir selecciones entre editores
+            selectionHighlight: true,
+            wordDistance: true, // Priorizar por distancia en el documento
             showModules: !practiceModeEnabled,
             showProperties: !practiceModeEnabled,
-            showValues: !practiceModeEnabled,
             showColors: !practiceModeEnabled,
           },
-          // Autocerrado robusto
+          // Autocerrado y validación robusta
           autoClosingBrackets: "always",
           autoClosingQuotes: "always",
+          autoIndent: "full",
+          formatOnPaste: true,
+          formatOnType: true,
           autoClosingOvertype: "always",
           autoClosingDelete: "always",
           autoSurround: "languageDefined",
@@ -2467,9 +2596,6 @@ function CodeEditor({
             bracketPairs: true,
             indentation: true,
           },
-          // Formateo
-          formatOnPaste: true,
-          formatOnType: true,
           // 📁 Code Folding - Plegado de código
           folding: true,
           foldingStrategy: "auto",

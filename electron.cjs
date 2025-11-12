@@ -115,7 +115,7 @@ function createWindow() {
       webSecurity: true,
       sandbox: true
     },
-    icon: path.join(__dirname, 'public', 'favicon.svg'),
+    icon: path.join(__dirname, 'public', 'favicon.ico'),
     autoHideMenuBar: false,
     title: 'Code Editor Pro'
   });
