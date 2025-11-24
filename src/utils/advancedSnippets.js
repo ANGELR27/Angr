@@ -211,6 +211,378 @@ export class AdvancedSnippetEngine {
       suffix: '");\nconst data = await response.json();',
       priority: 88
     });
+
+    // ======= ALERTS Y DIALOGS =======
+    this.addBlockSnippet('alert', {
+      patterns: ['alert', 'alrt'],
+      snippet: 'alert("${1:message}");$0',
+      description: 'alert dialog box',
+      detail: 'alert(message)',
+      insertText: 'alert("',
+      suffix: '");',
+      priority: 95
+    });
+
+    this.addBlockSnippet('prompt', {
+      patterns: ['prompt', 'prmt'],
+      snippet: 'const ${1:result} = prompt("${2:message}", "${3:default}");$0',
+      description: 'prompt dialog box',
+      detail: 'prompt(message, default)',
+      insertText: 'const result = prompt("',
+      suffix: '", "");',
+      priority: 93
+    });
+
+    this.addBlockSnippet('confirm', {
+      patterns: ['confirm', 'conf'],
+      snippet: 'if (confirm("${1:message}")) {\n\t${2}\n}$0',
+      description: 'confirm dialog with if',
+      detail: 'if (confirm(message)) { }',
+      insertText: 'if (confirm("',
+      suffix: '")) {\n\t\n}',
+      priority: 91
+    });
+
+    // ======= TIMERS =======
+    this.addBlockSnippet('setTimeout', {
+      patterns: ['setTimeout', 'timeout', 'delay'],
+      snippet: 'setTimeout(() => {\n\t${1}\n}, ${2:1000});$0',
+      description: 'setTimeout function',
+      detail: 'setTimeout(() => {}, delay)',
+      insertText: 'setTimeout(() => {\n\t',
+      suffix: '\n}, 1000);',
+      priority: 92
+    });
+
+    this.addBlockSnippet('setInterval', {
+      patterns: ['setInterval', 'interval', 'timer'],
+      snippet: 'const ${1:intervalId} = setInterval(() => {\n\t${2}\n}, ${3:1000});\n\n// Para detenerlo: clearInterval(${1:intervalId});$0',
+      description: 'setInterval function',
+      detail: 'setInterval(() => {}, delay)',
+      insertText: 'const intervalId = setInterval(() => {\n\t',
+      suffix: '\n}, 1000);',
+      priority: 90
+    });
+
+    this.addBlockSnippet('clearTimeout', {
+      patterns: ['clearTimeout', 'cleartimeout'],
+      snippet: 'clearTimeout(${1:timeoutId});$0',
+      description: 'clear timeout',
+      detail: 'clearTimeout(timeoutId)',
+      insertText: 'clearTimeout(',
+      suffix: ');',
+      priority: 80
+    });
+
+    this.addBlockSnippet('clearInterval', {
+      patterns: ['clearInterval', 'clearinterval'],
+      snippet: 'clearInterval(${1:intervalId});$0',
+      description: 'clear interval',
+      detail: 'clearInterval(intervalId)',
+      insertText: 'clearInterval(',
+      suffix: ');',
+      priority: 80
+    });
+
+    // ======= DOM MANIPULATION =======
+    this.addBlockSnippet('getElementById', {
+      patterns: ['getElementById', 'getid', 'byid'],
+      snippet: 'const ${1:element} = document.getElementById("${2:id}");$0',
+      description: 'get element by ID',
+      detail: 'document.getElementById(id)',
+      insertText: 'const element = document.getElementById("',
+      suffix: '");',
+      priority: 88
+    });
+
+    this.addBlockSnippet('querySelector', {
+      patterns: ['querySelector', 'qs'],
+      snippet: 'const ${1:element} = document.querySelector("${2:selector}");$0',
+      description: 'query selector',
+      detail: 'document.querySelector(selector)',
+      insertText: 'const element = document.querySelector("',
+      suffix: '");',
+      priority: 88
+    });
+
+    this.addBlockSnippet('querySelectorAll', {
+      patterns: ['querySelectorAll', 'qsa'],
+      snippet: 'const ${1:elements} = document.querySelectorAll("${2:selector}");$0',
+      description: 'query selector all',
+      detail: 'document.querySelectorAll(selector)',
+      insertText: 'const elements = document.querySelectorAll("',
+      suffix: '");',
+      priority: 86
+    });
+
+    this.addBlockSnippet('createElement', {
+      patterns: ['createElement', 'create'],
+      snippet: 'const ${1:element} = document.createElement("${2:div}");\n${1}.textContent = "${3:content}";\n${4:parent}.appendChild(${1});$0',
+      description: 'create and append element',
+      detail: 'document.createElement(tag)',
+      insertText: 'const element = document.createElement("',
+      suffix: '");',
+      priority: 85
+    });
+
+    this.addBlockSnippet('addEventListener', {
+      patterns: ['addEventListener', 'listen', 'event'],
+      snippet: '${1:element}.addEventListener("${2:click}", (event) => {\n\t${3}\n});$0',
+      description: 'add event listener',
+      detail: 'element.addEventListener(event, callback)',
+      insertText: 'addEventListener("',
+      suffix: '", (event) => {\n\t\n});',
+      priority: 87
+    });
+
+    this.addBlockSnippet('removeEventListener', {
+      patterns: ['removeEventListener', 'removelisten'],
+      snippet: '${1:element}.removeEventListener("${2:click}", ${3:handler});$0',
+      description: 'remove event listener',
+      detail: 'element.removeEventListener(event, handler)',
+      insertText: 'removeEventListener("',
+      suffix: '", handler);',
+      priority: 80
+    });
+
+    // ======= ARRAY METHODS =======
+    this.addBlockSnippet('find', {
+      patterns: ['find', 'arrayFind'],
+      snippet: 'const ${1:found} = ${2:array}.find((${3:item}) => ${4:condition});$0',
+      description: 'array find method',
+      detail: 'array.find(callback)',
+      insertText: 'find((item) => ',
+      suffix: ');',
+      priority: 86
+    });
+
+    this.addBlockSnippet('some', {
+      patterns: ['some', 'arraySome'],
+      snippet: 'const ${1:hasMatch} = ${2:array}.some((${3:item}) => ${4:condition});$0',
+      description: 'array some method',
+      detail: 'array.some(callback)',
+      insertText: 'some((item) => ',
+      suffix: ');',
+      priority: 84
+    });
+
+    this.addBlockSnippet('every', {
+      patterns: ['every', 'arrayEvery'],
+      snippet: 'const ${1:allMatch} = ${2:array}.every((${3:item}) => ${4:condition});$0',
+      description: 'array every method',
+      detail: 'array.every(callback)',
+      insertText: 'every((item) => ',
+      suffix: ');',
+      priority: 84
+    });
+
+    this.addBlockSnippet('reduce', {
+      patterns: ['reduce', 'arrayReduce'],
+      snippet: 'const ${1:result} = ${2:array}.reduce((${3:acc}, ${4:item}) => {\n\t${5:return acc + item;}\n}, ${6:0});$0',
+      description: 'array reduce method',
+      detail: 'array.reduce(callback, initialValue)',
+      insertText: 'reduce((acc, item) => {\n\t',
+      suffix: '\n}, 0);',
+      priority: 84
+    });
+
+    this.addBlockSnippet('sort', {
+      patterns: ['sort', 'arraySort'],
+      snippet: 'const ${1:sorted} = ${2:array}.sort((a, b) => ${3:a - b});$0',
+      description: 'array sort method',
+      detail: 'array.sort(compareFunction)',
+      insertText: 'sort((a, b) => ',
+      suffix: ');',
+      priority: 82
+    });
+
+    // ======= OBJECT METHODS =======
+    this.addBlockSnippet('objectKeys', {
+      patterns: ['Object.keys', 'keys'],
+      snippet: 'Object.keys(${1:object}).forEach((${2:key}) => {\n\tconsole.log(${2:key}, ${1:object}[${2:key}]);\n});$0',
+      description: 'Object.keys iteration',
+      detail: 'Object.keys(object).forEach()',
+      insertText: 'Object.keys(',
+      suffix: ').forEach(key => {\n\t\n});',
+      priority: 82
+    });
+
+    this.addBlockSnippet('objectEntries', {
+      patterns: ['Object.entries', 'entries'],
+      snippet: 'Object.entries(${1:object}).forEach(([${2:key}, ${3:value}]) => {\n\tconsole.log(${2:key}, ${3:value});\n});$0',
+      description: 'Object.entries iteration',
+      detail: 'Object.entries(object).forEach()',
+      insertText: 'Object.entries(',
+      suffix: ').forEach(([key, value]) => {\n\t\n});',
+      priority: 82
+    });
+
+    this.addBlockSnippet('objectAssign', {
+      patterns: ['Object.assign', 'assign'],
+      snippet: 'const ${1:merged} = Object.assign({}, ${2:target}, ${3:source});$0',
+      description: 'Object.assign merge',
+      detail: 'Object.assign({}, target, source)',
+      insertText: 'Object.assign({}, ',
+      suffix: ');',
+      priority: 80
+    });
+
+    // ======= DATE METHODS =======
+    this.addBlockSnippet('newDate', {
+      patterns: ['new Date', 'date'],
+      snippet: 'const ${1:now} = new Date();\nconsole.log(${1:now}.toLocaleDateString());$0',
+      description: 'create new Date',
+      detail: 'new Date()',
+      insertText: 'const now = new Date();',
+      suffix: '',
+      priority: 80
+    });
+
+    this.addBlockSnippet('dateFormat', {
+      patterns: ['dateFormat', 'formatDate'],
+      snippet: 'const ${1:formatted} = new Date(${2:date}).toLocaleDateString("${3:es-ES}", {\n\tday: "numeric",\n\tmonth: "long",\n\tyear: "numeric"\n});$0',
+      description: 'format date locale',
+      detail: 'date.toLocaleDateString(locale, options)',
+      insertText: 'toLocaleDateString("es-ES", {\n\t',
+      suffix: '\n});',
+      priority: 78
+    });
+
+    // ======= MATH METHODS =======
+    this.addBlockSnippet('mathRandom', {
+      patterns: ['Math.random', 'random'],
+      snippet: 'const ${1:randomNum} = Math.floor(Math.random() * ${2:10}) + ${3:1};$0',
+      description: 'random number generator',
+      detail: 'Math.floor(Math.random() * max) + min',
+      insertText: 'Math.floor(Math.random() * ',
+      suffix: ') + 1;',
+      priority: 80
+    });
+
+    this.addBlockSnippet('mathMax', {
+      patterns: ['Math.max', 'max'],
+      snippet: 'const ${1:maximum} = Math.max(${2:...array});$0',
+      description: 'Math.max method',
+      detail: 'Math.max(...values)',
+      insertText: 'Math.max(',
+      suffix: ');',
+      priority: 78
+    });
+
+    this.addBlockSnippet('mathMin', {
+      patterns: ['Math.min', 'min'],
+      snippet: 'const ${1:minimum} = Math.min(${2:...array});$0',
+      description: 'Math.min method',
+      detail: 'Math.min(...values)',
+      insertText: 'Math.min(',
+      suffix: ');',
+      priority: 78
+    });
+
+    // ======= JSON METHODS =======
+    this.addBlockSnippet('jsonParse', {
+      patterns: ['JSON.parse', 'parse'],
+      snippet: 'try {\n\tconst ${1:data} = JSON.parse(${2:jsonString});\n\tconsole.log(${1:data});\n} catch (error) {\n\tconsole.error("Error parsing JSON:", error);\n}$0',
+      description: 'JSON.parse with error handling',
+      detail: 'JSON.parse(string) with try-catch',
+      insertText: 'JSON.parse(',
+      suffix: ');',
+      priority: 85
+    });
+
+    this.addBlockSnippet('jsonStringify', {
+      patterns: ['JSON.stringify', 'stringify'],
+      snippet: 'const ${1:jsonString} = JSON.stringify(${2:object}, null, 2);$0',
+      description: 'JSON.stringify method',
+      detail: 'JSON.stringify(object, null, 2)',
+      insertText: 'JSON.stringify(',
+      suffix: ', null, 2);',
+      priority: 85
+    });
+
+    // ======= LOCALSTORAGE =======
+    this.addBlockSnippet('localStorageSet', {
+      patterns: ['localStorage.setItem', 'setItem', 'saveData'],
+      snippet: 'localStorage.setItem("${1:key}", JSON.stringify(${2:data}));$0',
+      description: 'localStorage set item',
+      detail: 'localStorage.setItem(key, value)',
+      insertText: 'localStorage.setItem("',
+      suffix: '", JSON.stringify(data));',
+      priority: 83
+    });
+
+    this.addBlockSnippet('localStorageGet', {
+      patterns: ['localStorage.getItem', 'getItem', 'loadData'],
+      snippet: 'const ${1:data} = JSON.parse(localStorage.getItem("${2:key}") || "null");$0',
+      description: 'localStorage get item',
+      detail: 'JSON.parse(localStorage.getItem(key))',
+      insertText: 'JSON.parse(localStorage.getItem("',
+      suffix: '") || "null");',
+      priority: 83
+    });
+
+    this.addBlockSnippet('localStorageRemove', {
+      patterns: ['localStorage.removeItem', 'removeItem'],
+      snippet: 'localStorage.removeItem("${1:key}");$0',
+      description: 'localStorage remove item',
+      detail: 'localStorage.removeItem(key)',
+      insertText: 'localStorage.removeItem("',
+      suffix: '");',
+      priority: 78
+    });
+
+    // ======= URL/WINDOW =======
+    this.addBlockSnippet('windowOpen', {
+      patterns: ['window.open', 'openWindow'],
+      snippet: 'window.open("${1:url}", "${2:_blank}", "${3:width=800,height=600}");$0',
+      description: 'open new window',
+      detail: 'window.open(url, target, features)',
+      insertText: 'window.open("',
+      suffix: '", "_blank");',
+      priority: 75
+    });
+
+    this.addBlockSnippet('windowLocation', {
+      patterns: ['window.location', 'location', 'redirect'],
+      snippet: 'window.location.href = "${1:url}";$0',
+      description: 'redirect to URL',
+      detail: 'window.location.href = url',
+      insertText: 'window.location.href = "',
+      suffix: '";',
+      priority: 80
+    });
+
+    // ======= REGEX =======
+    this.addBlockSnippet('regexTest', {
+      patterns: ['regex', 'test', 'pattern'],
+      snippet: 'const ${1:pattern} = /${2:regex}/g;\nconst ${3:isMatch} = ${1:pattern}.test(${4:string});$0',
+      description: 'regex test pattern',
+      detail: '/pattern/flags.test(string)',
+      insertText: 'const pattern = /',
+      suffix: '/g;\nconst isMatch = pattern.test(string);',
+      priority: 78
+    });
+
+    this.addBlockSnippet('regexMatch', {
+      patterns: ['match', 'regexMatch'],
+      snippet: 'const ${1:matches} = ${2:string}.match(/${3:pattern}/g);$0',
+      description: 'string match regex',
+      detail: 'string.match(/pattern/flags)',
+      insertText: 'match(/',
+      suffix: '/g);',
+      priority: 76
+    });
+
+    // ======= PERFORMANCE =======
+    this.addBlockSnippet('performance', {
+      patterns: ['performance', 'time'],
+      snippet: 'const ${1:startTime} = performance.now();\n${2:// your code here}\nconst ${3:endTime} = performance.now();\nconsole.log(`Execution time: ${${3:endTime} - ${1:startTime}}ms`);$0',
+      description: 'performance timing',
+      detail: 'performance.now() timing',
+      insertText: 'const startTime = performance.now();',
+      suffix: '',
+      priority: 75
+    });
   }
 
   /**
@@ -389,5 +761,22 @@ export class AdvancedSnippetEngine {
       isInClass: /class\s+\w+\s*{[^}]*$/.test(fileContent),
       hasAsync: fileContent.includes('async') || fileContent.includes('await')
     };
+  }
+
+  /**
+   * Obtiene snippets específicos para un lenguaje
+   */
+  getLanguageSnippets(language) {
+    const languageSnippets = new Map();
+    
+    // Filtrar snippets por lenguaje
+    for (const [name, snippet] of this.blockSnippets) {
+      if (!snippet.language || snippet.language === language || 
+          (snippet.language === 'javascript' && ['javascript', 'typescript', 'jsx', 'tsx'].includes(language))) {
+        languageSnippets.set(name, snippet);
+      }
+    }
+    
+    return languageSnippets;
   }
 }

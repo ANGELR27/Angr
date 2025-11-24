@@ -1,50 +1,86 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Palette, X, Code2, Search } from 'lucide-react';
+import { Palette, X, Code2, Search, Sparkles, Zap, Moon, Sun, Flame, Droplet, Wind, Star } from 'lucide-react';
+
+const THEME_CATEGORIES = [
+  { id: 'all', name: 'Todos', icon: Star, color: '#3b82f6' },
+  { id: 'classic', name: 'Clásicos', icon: Moon, color: '#6366f1' },
+  { id: 'modern', name: 'Modernos', icon: Sparkles, color: '#8b5cf6' },
+  { id: 'neon', name: 'Neón', icon: Zap, color: '#ec4899' },
+  { id: 'nature', name: 'Naturaleza', icon: Wind, color: '#10b981' },
+  { id: 'warm', name: 'Cálidos', icon: Flame, color: '#f59e0b' },
+  { id: 'cool', name: 'Fríos', icon: Droplet, color: '#06b6d4' },
+  { id: 'light', name: 'Claros', icon: Sun, color: '#eab308' },
+];
 
 const THEMES = [
-  { id: 'vs-dark', name: 'VS Dark', description: 'Tema oscuro por defecto' },
-  { id: 'vs', name: 'VS Light', description: 'Tema claro' },
-  { id: 'hc-black', name: 'High Contrast', description: 'Alto contraste' },
-  { id: 'lite', name: 'Lite', description: 'Compacto, limpio, negro con verde' },
-  { id: 'feel', name: 'Feel', description: 'Minimalista con tipografía Comico' },
-  { id: 'fade', name: 'Fade', description: 'Minimalista centrado para código rápido' },
-  { id: 'matrix', name: 'Matrix', description: 'Estilo Matrix verde' },
-  { id: 'tokyo-night', name: 'Tokyo Night', description: 'Tokyo Night oscuro' },
-  { id: 'dracula', name: 'Dracula', description: 'Tema Dracula' },
-  { id: 'monokai', name: 'Monokai', description: 'Tema Monokai' },
-  { id: 'github-dark', name: 'GitHub Dark', description: 'GitHub oscuro' },
-  { id: 'cobalt2', name: 'Cobalt 2', description: 'Tema Cobalt azul' },
-  { id: 'nord', name: 'Nord', description: 'Tema Nord ártico' },
-  { id: 'one-dark-pro', name: 'One Dark Pro', description: 'Atom One Dark Pro' },
-  { id: 'solarized-dark', name: 'Solarized Dark', description: 'Solarized oscuro' },
-  { id: 'material-theme', name: 'Material Theme', description: 'Material Design' },
-  { id: 'ayu-dark', name: 'Ayu Dark', description: 'Ayu tema oscuro' },
-  { id: 'palenight', name: 'Palenight', description: 'Material Palenight' },
-  { id: 'gruvbox-dark', name: 'Gruvbox Dark', description: 'Gruvbox retro' },
-  { id: 'synthwave', name: 'Synthwave 84', description: 'Synthwave retro' },
-  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Neón futurista vibrante' },
-  { id: 'oceanic', name: 'Oceanic', description: 'Profundidades del océano' },
-  { id: 'sunset', name: 'Sunset', description: 'Atardecer cálido' },
-  { id: 'neon-dreams', name: 'Neon Dreams', description: 'Sueños de neón' },
-  { id: 'forest', name: 'Forest', description: 'Bosque nocturno' },
-  { id: 'cyber-dark', name: 'Cyber Dark', description: 'Oscuro con acentos cian/verde' },
-  { id: 'neon-cyan', name: 'Neon Cyan', description: 'Oscuro con cian eléctrico' },
-  { id: 'aqua-night', name: 'Aqua Night', description: 'Noche aqua/menta' },
+  // Clásicos
+  { id: 'vs-dark', name: 'VS Dark', description: 'Tema oscuro por defecto', category: 'classic', tags: ['popular', 'profesional'] },
+  { id: 'vs', name: 'VS Light', description: 'Tema claro estándar', category: 'light', tags: ['claro', 'profesional'] },
+  { id: 'hc-black', name: 'High Contrast', description: 'Alto contraste para accesibilidad', category: 'classic', tags: ['accesible', 'legible'] },
+  { id: 'monokai', name: 'Monokai', description: 'Clásico tema Monokai', category: 'classic', tags: ['popular', 'vibrante'] },
+  { id: 'dracula', name: 'Dracula', description: 'Icónico tema Dracula', category: 'classic', tags: ['popular', 'oscuro'] },
+  { id: 'github-dark', name: 'GitHub Dark', description: 'GitHub oficial oscuro', category: 'classic', tags: ['familiar', 'limpio'] },
+  { id: 'solarized-dark', name: 'Solarized Dark', description: 'Solarized oscuro clásico', category: 'classic', tags: ['equilibrado', 'suave'] },
+  
+  // Modernos
+  { id: 'lite', name: 'Lite', description: 'Compacto, limpio, negro con verde', category: 'modern', tags: ['minimalista', 'moderno'] },
+  { id: 'feel', name: 'Feel', description: 'Minimalista con tipografía elegante', category: 'modern', tags: ['minimalista', 'tipografía'] },
+  { id: 'fade', name: 'Fade', description: 'Minimalista para código rápido', category: 'modern', tags: ['minimalista', 'eficiente'] },
+  { id: 'tokyo-night', name: 'Tokyo Night', description: 'Moderno tema Tokyo Night', category: 'modern', tags: ['popular', 'noche'] },
+  { id: 'one-dark-pro', name: 'One Dark Pro', description: 'Atom One Dark profesional', category: 'modern', tags: ['popular', 'profesional'] },
+  { id: 'material-theme', name: 'Material Theme', description: 'Material Design moderno', category: 'modern', tags: ['material', 'moderno'] },
+  { id: 'ayu-dark', name: 'Ayu Dark', description: 'Ayu minimalista oscuro', category: 'modern', tags: ['minimalista', 'elegante'] },
+  { id: 'palenight', name: 'Palenight', description: 'Material Palenight suave', category: 'modern', tags: ['suave', 'material'] },
+  { id: 'gruvbox-dark', name: 'Gruvbox Dark', description: 'Retro pero moderno', category: 'modern', tags: ['retro', 'cálido'] },
+  
+  // Neón y Futuristas
+  { id: 'matrix', name: 'Matrix', description: 'Estilo Matrix verde', category: 'neon', tags: ['icónico', 'verde'] },
+  { id: 'cyberpunk', name: 'Cyberpunk', description: 'Neón futurista vibrante', category: 'neon', tags: ['futurista', 'vibrante'] },
+  { id: 'synthwave', name: 'Synthwave 84', description: 'Synthwave retro-futurista', category: 'neon', tags: ['retro', 'vibrante'] },
+  { id: 'neon-dreams', name: 'Neon Dreams', description: 'Sueños de neón púrpura', category: 'neon', tags: ['vibrante', 'púrpura'] },
+  { id: 'neon-cyan', name: 'Neon Cyan', description: 'Cian eléctrico futurista', category: 'neon', tags: ['cian', 'eléctrico'] },
+  { id: 'cyber-dark', name: 'Cyber Dark', description: 'Oscuro con acentos cian/verde', category: 'neon', tags: ['futurista', 'cian'] },
+  
+  // Naturaleza
+  { id: 'forest', name: 'Forest', description: 'Bosque nocturno tranquilo', category: 'nature', tags: ['natural', 'verde'] },
+  { id: 'nord', name: 'Nord', description: 'Tema ártico nórdico', category: 'cool', tags: ['ártico', 'suave'] },
+  { id: 'aqua-night', name: 'Aqua Night', description: 'Noche aqua/menta', category: 'nature', tags: ['aqua', 'refrescante'] },
+  
+  // Cálidos
+  { id: 'sunset', name: 'Sunset', description: 'Atardecer cálido vibrante', category: 'warm', tags: ['cálido', 'atardecer'] },
+  
+  // Fríos
+  { id: 'oceanic', name: 'Oceanic', description: 'Profundidades del océano', category: 'cool', tags: ['océano', 'azul'] },
+  { id: 'cobalt2', name: 'Cobalt 2', description: 'Cobalto azul intenso', category: 'cool', tags: ['azul', 'intenso'] },
 ];
 
 function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
   const [selectedTheme, setSelectedTheme] = useState(currentTheme);
   const [hoveredTheme, setHoveredTheme] = useState(null);
   const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return THEMES;
-    return THEMES.filter(t =>
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.id.toLowerCase().includes(q)
-    );
-  }, [query]);
+    let themes = THEMES;
+    
+    // Filtrar por categoría
+    if (activeCategory !== 'all') {
+      themes = themes.filter(t => t.category === activeCategory);
+    }
+    
+    // Filtrar por búsqueda
+    if (q) {
+      themes = themes.filter(t =>
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q) ||
+        t.tags?.some(tag => tag.toLowerCase().includes(q))
+      );
+    }
+    
+    return themes;
+  }, [query, activeCategory]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -143,69 +179,93 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
           </button>
         </div>
 
-        {/* Info */}
+        {/* Búsqueda y Filtros */}
         <div className="px-5 py-4 border-b" style={{
           backgroundColor: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)',
           borderBottomColor: 'var(--theme-border)'
         }}>
-          <div className="flex flex-col gap-2">
-            <p className="text-xs" style={{color: 'var(--theme-text-secondary)'}}>
-              <kbd className="px-2 py-1 rounded border" style={{
-                backgroundColor: 'var(--theme-background-tertiary)',
-                borderColor: 'var(--theme-border)',
-                color: 'var(--theme-primary)'
-              }}>Ctrl</kbd>
-              {' + '}
-              <kbd className="px-2 py-1 rounded border" style={{
-                backgroundColor: 'var(--theme-background-tertiary)',
-                borderColor: 'var(--theme-border)',
-                color: 'var(--theme-primary)'
-              }}>Shift</kbd>
-              {' + '}
-              <kbd className="px-2 py-1 rounded border" style={{
-                backgroundColor: 'var(--theme-background-tertiary)',
-                borderColor: 'var(--theme-border)',
-                color: 'var(--theme-primary)'
-              }}>T</kbd>
-              {' '}para abrir/cerrar
-            </p>
-            <p className="text-xs" style={{color: 'var(--theme-text-secondary)'}}>
-              O escribe <kbd className="px-2 py-1 rounded border" style={{
-                backgroundColor: 'var(--theme-background-tertiary)',
-                borderColor: 'var(--theme-border)',
-                color: 'var(--theme-accent)'
-              }}>tema</kbd> en la terminal
-            </p>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs flex items-center gap-2" style={{color: 'var(--theme-text-muted)'}}>
-                <span>Total de temas:</span>
-                <span className="px-2 py-0.5 rounded-full" style={{
+          <div className="flex flex-col gap-3">
+            {/* Barra de búsqueda */}
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{color: 'var(--theme-text-muted)'}}>
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar por nombre, descripción o etiqueta..."
+                className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg outline-none transition-all"
+                style={{
+                  backgroundColor: 'var(--theme-background-tertiary)',
+                  border: '2px solid var(--theme-border)',
+                  color: 'var(--theme-text)'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--theme-primary)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--theme-border)'}
+              />
+            </div>
+            
+            {/* Categorías */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {THEME_CATEGORIES.map(cat => {
+                const Icon = cat.icon;
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 border"
+                    style={{
+                      backgroundColor: isActive ? `${cat.color}20` : 'var(--theme-background-tertiary)',
+                      borderColor: isActive ? cat.color : 'var(--theme-border)',
+                      color: isActive ? cat.color : 'var(--theme-text-secondary)',
+                      boxShadow: isActive ? `0 0 12px ${cat.color}40` : 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = `${cat.color}10`;
+                        e.currentTarget.style.borderColor = `${cat.color}60`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'var(--theme-background-tertiary)';
+                        e.currentTarget.style.borderColor = 'var(--theme-border)';
+                      }
+                    }}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })}</div>
+            
+            {/* Stats */}
+            <div className="flex items-center gap-4 text-xs" style={{color: 'var(--theme-text-muted)'}}>
+              <div className="flex items-center gap-1.5">
+                <span>Total:</span>
+                <span className="px-2 py-0.5 rounded-full font-medium" style={{
                   backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)',
-                  color: 'var(--theme-primary)',
-                  border: '1px solid var(--theme-border)'
+                  color: 'var(--theme-primary)'
                 }}>{THEMES.length}</span>
-                <span className="ml-2">Mostrando:</span>
-                <span className="px-2 py-0.5 rounded-full" style={{
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>Mostrando:</span>
+                <span className="px-2 py-0.5 rounded-full font-medium" style={{
                   backgroundColor: 'color-mix(in srgb, var(--theme-secondary) 15%, transparent)',
-                  color: 'var(--theme-secondary)',
-                  border: '1px solid var(--theme-border)'
+                  color: 'var(--theme-secondary)'
                 }}>{filtered.length}</span>
               </div>
-              <div className="relative flex-1 max-w-xs">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2" style={{color: 'var(--theme-text-muted)'}}>
-                  <Search className="w-4 h-4" />
-                </div>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar tema..."
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-md outline-none"
-                  style={{
-                    backgroundColor: 'var(--theme-background-tertiary)',
-                    border: '1px solid var(--theme-border)',
-                    color: 'var(--theme-text)'
-                  }}
-                />
+              <div className="ml-auto text-[10px]">
+                <kbd className="px-1.5 py-0.5 rounded border" style={{
+                  backgroundColor: 'var(--theme-background-tertiary)',
+                  borderColor: 'var(--theme-border)',
+                  color: 'var(--theme-primary)'
+                }}>Ctrl+Shift+T</kbd> o escribe <kbd className="px-1.5 py-0.5 rounded border" style={{
+                  backgroundColor: 'var(--theme-background-tertiary)',
+                  borderColor: 'var(--theme-border)',
+                  color: 'var(--theme-accent)'
+                }}>tema</kbd> en terminal
               </div>
             </div>
           </div>
@@ -213,16 +273,35 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
 
         {/* Themes Grid */}
         <div className="flex-1 overflow-y-auto p-5">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3" style={{color: 'var(--theme-text-muted)'}}>
+              <Search className="w-12 h-12 opacity-40" />
+              <p className="text-sm">No se encontraron temas</p>
+              <button
+                onClick={() => { setQuery(''); setActiveCategory('all'); }}
+                className="px-4 py-2 rounded-lg text-xs border transition-all"
+                style={{
+                  backgroundColor: 'var(--theme-background-tertiary)',
+                  borderColor: 'var(--theme-border)',
+                  color: 'var(--theme-primary)'
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-3 gap-4">
             {filtered.map((theme, index) => (
               <div
                 key={theme.id}
                 onClick={() => handleThemeSelect(theme.id)}
-                className="p-5 rounded-xl cursor-pointer transition-all border-2 relative group"
+                className="p-4 rounded-xl cursor-pointer transition-all border-2 relative group"
                 style={{
                   borderColor: selectedTheme === theme.id ? 'var(--theme-primary)' : 'var(--theme-border)',
                   backgroundColor: selectedTheme === theme.id ? 'color-mix(in srgb, var(--theme-primary) 25%, transparent)' : 'var(--theme-background-tertiary)',
-                  boxShadow: selectedTheme === theme.id ? '0 0 24px var(--theme-glow)' : '0 0 0 rgba(0,0,0,0)'
+                  boxShadow: selectedTheme === theme.id ? '0 0 24px var(--theme-glow)' : '0 0 0 rgba(0,0,0,0)',
+                  transform: 'translateY(0)',
+                  transition: 'all 0.3s ease'
                 }}
                 onMouseEnter={(e) => {
                   setHoveredTheme(theme.id);
@@ -230,6 +309,8 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                     e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-primary) 60%, transparent)';
                     e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 10%, var(--theme-background-tertiary))';
                   }
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
                 }}
                 onMouseLeave={(e) => {
                   setHoveredTheme(null);
@@ -237,20 +318,47 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                     e.currentTarget.style.borderColor = 'var(--theme-border)';
                     e.currentTarget.style.backgroundColor = 'var(--theme-background-tertiary)';
                   }
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  if (selectedTheme !== theme.id) {
+                    e.currentTarget.style.boxShadow = '0 0 0 rgba(0,0,0,0)';
+                  }
                 }}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold" style={{color: 'var(--theme-text)'}}>{theme.name}</h3>
+                {/* Header con nombre y badge */}
+                <div className="flex items-start justify-between mb-2 gap-2">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold mb-1" style={{color: 'var(--theme-text)'}}>{theme.name}</h3>
+                    <p className="text-[10px] leading-relaxed" style={{color: 'var(--theme-text-muted)'}}>{theme.description}</p>
+                  </div>
                   {selectedTheme === theme.id && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{
+                    <span className="text-[10px] px-2 py-1 rounded-full font-medium shrink-0" style={{
                       backgroundColor: 'var(--theme-primary)',
-                      color: 'white'
+                      color: 'white',
+                      boxShadow: '0 0 8px var(--theme-glow)'
                     }}>
-                      Activo
+                      ✓ Activo
                     </span>
                   )}
                 </div>
-                <p className="text-xs" style={{color: 'var(--theme-text-muted)'}}>{theme.description}</p>
+                
+                {/* Tags */}
+                {theme.tags && theme.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {theme.tags.slice(0, 2).map(tag => (
+                      <span
+                        key={tag}
+                        className="text-[9px] px-1.5 py-0.5 rounded border"
+                        style={{
+                          backgroundColor: 'var(--theme-background-secondary)',
+                          borderColor: 'var(--theme-border)',
+                          color: 'var(--theme-text-muted)'
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 
                 {/* Preview color bar */}
                 <div className="mt-3 h-2.5 rounded-full overflow-hidden flex">
@@ -386,6 +494,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
               </div>
             ))}
           </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -17,6 +17,7 @@ import { SemanticAnalyzer, AutoImportSystem } from "../utils/semanticAnalysis";
 import { HoverProvider } from "../utils/hoverProvider";
 import { IntelligentSnippetProvider } from "../utils/intelligentSnippets";
 import { AdvancedSnippetEngine } from "../utils/advancedSnippets";
+import { UniversalSnippetEngine } from "../utils/universalSnippets";
 import SearchWidget from "./SearchWidget";
 import CommandPalette from "./CommandPalette";
 import TypingIndicator from "./TypingIndicator";
@@ -68,6 +69,7 @@ function CodeEditor({
   const hoverProviderRef = useRef(new HoverProvider());
   const intelligentSnippetProviderRef = useRef(new IntelligentSnippetProvider());
   const advancedSnippetEngineRef = useRef(new AdvancedSnippetEngine());
+  const universalSnippetEngineRef = useRef(new UniversalSnippetEngine());
 
   // Memo: listas aplanadas de archivos/carpetas
   const buildAllFilePaths = (files, basePath = "") => {
@@ -861,113 +863,121 @@ function CodeEditor({
     });
     disposablesRef.current.push(hoverProvider);
     
-    // 🚀 REGISTRAR COMPLETION PROVIDER UNIFICADO Y OPTIMIZADO
-    const unifiedCompletionProvider = monaco.languages.registerCompletionItemProvider('javascript', {
-      triggerCharacters: ['.', '(', '<', '"', "'", '/', '@', ' ', 'c', 'f', 'i', 'w', 't', 'a'],
-      provideCompletionItems: async (model, position) => {
-        // Solo actuar si el modo práctica está desactivado
-        if (practiceModeEnabled) {
-          return { suggestions: [] };
-        }
+    // 🚀 REGISTRAR COMPLETION PROVIDERS UNIVERSALES PARA TODOS LOS LENGUAJES
+    const supportedLanguages = universalSnippetEngineRef.current.getSupportedLanguages();
+    
+    // Registrar completion providers para cada lenguaje soportado
+    supportedLanguages.forEach(lang => {
+      const completionProvider = monaco.languages.registerCompletionItemProvider(lang, {
+        triggerCharacters: ['.', '(', '<', '"', "'", '/', '@', ' ', 'c', 'f', 'i', 'w', 't', 'a', 'p', 'd', 's', 'm', 'e', 'n', 'r', 'u', 'v', 'l'],
+        provideCompletionItems: async (model, position) => {
+          // Solo actuar si el modo práctica está desactivado
+          if (practiceModeEnabled) {
+            return { suggestions: [] };
+          }
 
-        const word = model.getWordUntilPosition(position);
-        const line = model.getLineContent(position.lineNumber);
-        
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-
-        let suggestions = [];
-
-        // 🎯 PRIORIDAD 1: SNIPPETS DE BLOQUES COMPLETOS
-        if (word.word && word.word.length >= 1) {
-          const blockSuggestions = advancedSnippetEngineRef.current.getBlockSuggestions(word.word);
+          const word = model.getWordUntilPosition(position);
+          const line = model.getLineContent(position.lineNumber);
           
-          blockSuggestions.forEach((snippet, index) => {
-            suggestions.push({
-              label: {
-                label: snippet.patterns[0],
-                description: snippet.description
-              },
-              kind: monaco.languages.CompletionItemKind.Snippet,
-              insertText: snippet.snippet,
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              documentation: {
-                value: `**${snippet.description}**\n\n${snippet.detail}\n\n\`\`\`javascript\n${snippet.snippet.replace(/\$\{?\d+:?([^}]*)\}?/g, '$1').replace(/\$0/g, '')}\n\`\`\``
-              },
-              detail: snippet.detail,
-              sortText: String(index).padStart(4, '0'), // Máxima prioridad
-              range,
-              preselect: index === 0, // Preseleccionar el mejor
-              commitCharacters: ['.', '(', ' ', '\t']
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          let suggestions = [];
+
+          // 🎯 PRIORIDAD 1: SNIPPETS UNIVERSALES ESPECÍFICOS DEL LENGUAJE
+          if (word.word && word.word.length >= 1) {
+            try {
+              const universalSuggestions = universalSnippetEngineRef.current.getUniversalSuggestions(
+                word.word, 
+                lang, 
+                range
+              );
+              suggestions.push(...universalSuggestions);
+              
+              console.log(`🎯 [${lang}] Universal snippets found:`, universalSuggestions.length);
+            } catch (error) {
+              console.warn(`⚠️ Error getting universal suggestions for ${lang}:`, error);
+            }
+          }
+
+          // 🎯 PRIORIDAD 2: Sugerencias de archivos en strings (solo para lenguajes que lo soporten)
+          if (['javascript', 'typescript', 'jsx', 'tsx', 'python', 'java'].includes(lang)) {
+            const textUntilPosition = model.getValueInRange({
+              startLineNumber: position.lineNumber,
+              startColumn: 1,
+              endLineNumber: position.lineNumber,
+              endColumn: position.column,
             });
-          });
-        }
+            
+            const inString = /["'][^"']*$/.test(textUntilPosition);
+            const afterImportOrRequire = /(import|require|fetch|from)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
+            
+            if (inString && (afterImportOrRequire || textUntilPosition.includes("./"))) {
+              const filePaths = getCachedPaths().files;
+              const relevantFiles = filePaths.filter((f) => {
+                const allowedExts = {
+                  'javascript': ['js', 'json', 'css', 'html', 'ts', 'jsx', 'tsx'],
+                  'typescript': ['ts', 'tsx', 'js', 'json', 'css'],
+                  'jsx': ['js', 'jsx', 'ts', 'tsx', 'json', 'css'],
+                  'tsx': ['ts', 'tsx', 'js', 'jsx', 'json'],
+                  'python': ['py', 'txt', 'json'],
+                  'java': ['java', 'properties', 'xml']
+                };
+                return (allowedExts[lang] || ['js']).includes(f.extension);
+              });
 
-        // 🎯 PRIORIDAD 2: Sugerencias de archivos en strings (import, require, etc.)
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        });
-        
-        const inString = /["'][^"']*$/.test(textUntilPosition);
-        const afterImportOrRequire = /(import|require|fetch)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
-        
-        if (inString && (afterImportOrRequire || textUntilPosition.includes("./"))) {
-          const filePaths = getCachedPaths().files;
-          const jsFiles = filePaths.filter((f) =>
-            ["js", "json", "css", "html", "ts", "jsx", "tsx"].includes(f.extension)
-          );
+              relevantFiles.forEach((file, index) => {
+                suggestions.push({
+                  label: `./${file.path}`,
+                  kind: monaco.languages.CompletionItemKind.Module,
+                  insertText: `./${file.path}`,
+                  documentation: `📦 ${lang === 'python' ? 'Módulo' : 'Módulo'}: ${file.name}`,
+                  sortText: String(200 + index).padStart(4, '0'),
+                  range
+                });
+              });
+            }
+          }
 
-          jsFiles.forEach((file, index) => {
-            suggestions.push({
-              label: `./${file.path}`,
-              kind: monaco.languages.CompletionItemKind.Module,
-              insertText: `./${file.path}`,
-              documentation: `📦 Módulo: ${file.name}`,
-              sortText: String(200 + index).padStart(4, '0'),
-              range
+          // 🎯 PRIORIDAD 3: Auto-imports (solo para JavaScript/TypeScript)
+          if (['javascript', 'typescript', 'jsx', 'tsx'].includes(lang) && 
+              suggestions.length === 0 && word.word && word.word.length > 2) {
+            const fileContent = model.getValue();
+            const fileAnalysis = semanticAnalyzerRef.current.analyzeFile(fileContent, activePath, lang);
+            const autoImports = autoImportSystemRef.current.suggestImports(word.word, fileAnalysis.imports);
+            
+            autoImports.forEach((imp, index) => {
+              suggestions.push({
+                label: `${imp.symbolName} (auto-import)`,
+                kind: monaco.languages.CompletionItemKind.Module,
+                insertText: imp.symbolName,
+                detail: `Auto-import from ${imp.moduleName}`,
+                documentation: `Importará automáticamente: ${imp.importStatement}`,
+                additionalTextEdits: [{
+                  range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 },
+                  text: imp.importStatement + '\n'
+                }],
+                sortText: String(300 + index).padStart(4, '0')
+              });
             });
-          });
-        }
+          }
 
-        // 🎯 PRIORIDAD 3: Auto-imports (solo si no hay snippets de bloques)
-        if (suggestions.length === 0 && word.word && word.word.length > 2) {
-          const fileContent = model.getValue();
-          const fileAnalysis = semanticAnalyzerRef.current.analyzeFile(fileContent, activePath, language);
-          const autoImports = autoImportSystemRef.current.suggestImports(word.word, fileAnalysis.imports);
-          
-          autoImports.forEach((imp, index) => {
-            suggestions.push({
-              label: `${imp.symbolName} (auto-import)`,
-              kind: monaco.languages.CompletionItemKind.Module,
-              insertText: imp.symbolName,
-              detail: `Auto-import from ${imp.moduleName}`,
-              documentation: `Importará automáticamente: ${imp.importStatement}`,
-              additionalTextEdits: [{
-                range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 },
-                text: imp.importStatement + '\n'
-              }],
-              sortText: String(300 + index).padStart(4, '0')
-            });
-          });
+          return { suggestions };
         }
-
-        // 🎯 PRIORIDAD 4: Snippets básicos de JS (si no hay nada más)
-        if (suggestions.length === 0) {
-          const basicSnippets = getJSSnippets(monaco, range);
-          suggestions.push(...basicSnippets);
-        }
-
-        return { suggestions };
-      }
+      });
+      
+      disposablesRef.current.push(completionProvider);
     });
-    disposablesRef.current.push(unifiedCompletionProvider);
+
+    console.log(`🎉 Registered completion providers for ${supportedLanguages.length} languages:`, supportedLanguages);
+    
+    // 🔍 DEBUG: Verificar que el sistema universal funciona correctamente
+    const snippetStats = universalSnippetEngineRef.current.debugLanguageSupport();
+    console.log('📊 Universal Snippet Engine Stats:', snippetStats);
 
     // ===== ATAJOS DE TECLADO ÚTILES =====
 
