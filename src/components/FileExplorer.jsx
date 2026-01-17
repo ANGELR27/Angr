@@ -597,6 +597,10 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const getFileIcon = (fileName) => {
     const baseColor = isLite ? 'var(--theme-secondary)' : '';
     const iconSize = 16; // 16px para mejor visualización
+
+    if (typeof fileName !== 'string') {
+      return <VscFile size={iconSize} style={{color: baseColor || '#9ca3af'}} />;
+    }
     
     // 🖼️ IMÁGENES
     if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp'].some(e => fileName.endsWith(e))) {
