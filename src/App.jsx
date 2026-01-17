@@ -2217,15 +2217,15 @@ function App() {
           <div
             className="absolute left-0 top-0 h-full"
             style={{ 
-              width: '20px', 
+              width: '12px', 
               cursor: 'pointer',
-              zIndex: 999,
-              backgroundColor: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)',
+              zIndex: 40,
+              backgroundColor: 'transparent',
               transition: 'background-color 200ms ease'
             }}
             onDoubleClick={() => setShowSidebar(true)}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 18%, transparent)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 8%, transparent)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             title="Doble clic para mostrar el explorador"
           />
         )}
