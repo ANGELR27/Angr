@@ -448,6 +448,22 @@ export const GLOBAL_THEME_COLORS = {
     scrollbarThumb: 'linear-gradient(135deg, rgba(45,226,230,0.55) 0%, rgba(255,79,216,0.45) 52%, rgba(124,58,237,0.42) 100%)',
     scrollbarThumbHover: 'linear-gradient(135deg, rgba(45,226,230,0.80) 0%, rgba(255,79,216,0.72) 52%, rgba(124,58,237,0.68) 100%)',
   },
+  'eclipse': {
+    primary: '#a8c0dd',
+    secondary: '#c9d4e3',
+    accent: '#d6b48a',
+    background: '#07080c',
+    backgroundSecondary: 'rgba(12, 14, 20, 0.78)',
+    backgroundTertiary: 'rgba(16, 19, 28, 0.84)',
+    surface: 'rgba(22, 26, 36, 0.70)',
+    border: 'rgba(255, 255, 255, 0.10)',
+    text: '#e8eef7',
+    textSecondary: '#c9d4e3',
+    textMuted: '#7b8698',
+    glow: 'rgba(168, 192, 221, 0.16)',
+    scrollbarThumb: 'linear-gradient(135deg, rgba(168,192,221,0.50) 0%, rgba(214,180,138,0.26) 100%)',
+    scrollbarThumbHover: 'linear-gradient(135deg, rgba(168,192,221,0.72) 0%, rgba(214,180,138,0.38) 100%)',
+  },
 };
 
 // Función para aplicar el tema globalmente

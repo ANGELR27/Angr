@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Terminal as TerminalIcon, X, Minus, Maximize2, Play } from 'lucide-react';
 import * as termCmd from '../utils/terminalCommands';
+import { runPython } from '../services/pythonRuntime';
 
 const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExecuteCode, onOpenThemes, backgroundActive = false, currentTheme, projectFiles, onFileSelect }, ref) => {
   const [history, setHistory] = useState([
@@ -21,6 +22,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
   const isLite = currentTheme === 'lite';
   const isFeel = currentTheme === 'feel';
   const isFade = currentTheme === 'fade';
+  const isEclipse = currentTheme === 'eclipse';
 
   // Resetear zoom al abrir/cerrar la terminal
   useEffect(() => {
@@ -49,7 +51,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
   }));
 
   // 🐍 Ejecutar código Python (simulado en JavaScript)
-  const executePythonCode = (code) => {
+  const executePythonCode = async (code) => {
     setHistory((prev) => [
       ...prev,
       { type: "info", text: `▸ Ejecutando código Python...` },
@@ -68,35 +70,55 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
 
     setHistory((prev) => [
       ...prev,
-      {
-        type: "warning",
-        text: `⚠ Python no está disponible en el navegador`,
-      },
-      {
-        type: "info",
-        text: `💡 Tip: Este es un editor web. Para ejecutar Python:`,
-      },
-      {
-        type: "info",
-        text: `   1. Copia el código`,
-      },
-      {
-        type: "info",
-        text: `   2. Usa https://replit.com o https://python.org`,
-      },
-      {
-        type: "info",
-        text: `   3. O instala Python localmente`,
-      },
-      {
-        type: "console",
-        text: `📝 Código Python:`,
-      },
-      {
-        type: "console",
-        text: code,
-      },
+      { type: "info", text: `⏳ Cargando runtime de Python (Pyodide)...` },
     ]);
+
+    try {
+      const result = await runPython(code);
+      const stdout = result?.stdout || '';
+      const stderr = result?.stderr || '';
+
+      if (stdout.trim()) {
+        const outLines = stdout.replace(/\r\n/g, '\n').split('\n');
+        setHistory((prev) => [
+          ...prev,
+          ...outLines
+            .filter((l) => l !== '')
+            .map((line) => ({ type: 'console', text: line }))
+        ]);
+      }
+
+      if (stderr.trim()) {
+        const errLines = stderr.replace(/\r\n/g, '\n').split('\n');
+        setHistory((prev) => [
+          ...prev,
+          ...errLines
+            .filter((l) => l !== '')
+            .map((line) => ({ type: 'error', text: line }))
+        ]);
+      }
+
+      if (!stdout.trim() && !stderr.trim()) {
+        setHistory((prev) => [
+          ...prev,
+          { type: "success", text: `✓ Código ejecutado correctamente (sin salida)` },
+        ]);
+      } else if (!stderr.trim()) {
+        setHistory((prev) => [
+          ...prev,
+          { type: "success", text: `✓ Ejecución completada` },
+        ]);
+      }
+    } catch (error) {
+      setHistory((prev) => [
+        ...prev,
+        { type: 'error', text: `❌ Error ejecutando Python: ${error?.message || 'Error desconocido'}` },
+      ]);
+
+      if (import.meta.env.DEV) {
+        console.error('Error al ejecutar Python en Terminal:', error);
+      }
+    }
   };
 
   const executeJavaScript = (code) => {
@@ -1066,7 +1088,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
     <div
       className={`flex flex-col transition-all duration-300 ease-in-out h-full`}
       style={{
-        backgroundColor: isFade ? 'var(--theme-background-secondary)' : backgroundActive ? 'transparent' : 'var(--theme-background)',
+        backgroundColor: (isFade || isEclipse) ? 'var(--theme-background-secondary)' : backgroundActive ? 'transparent' : 'var(--theme-background)',
         borderTop: '1px solid var(--theme-border)',
         boxShadow: isMaximized ? '0 -4px 20px rgba(0,0,0,0.3)' : 'none',
         ...(isMaximized ? {
@@ -1080,26 +1102,35 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       <div
         className="flex items-center justify-between relative transition-all duration-200"
         style={{
-          height: (isLite || isFade) ? '38px' : '42px',
-          backgroundColor: isFade ? 'var(--theme-background-tertiary)' : isLite ? 'var(--theme-background-secondary)' : undefined,
+          height: (isLite || isFade || isEclipse) ? '38px' : '42px',
+          backgroundColor: isFade ? 'var(--theme-background-tertiary)' : isEclipse ? 'var(--theme-background-tertiary)' : isLite ? 'var(--theme-background-secondary)' : undefined,
           borderBottom: '1px solid var(--theme-border)',
-          padding: (isLite || isFade) ? '0 12px' : '0 16px',
-          backdropFilter: isFade ? 'blur(10px)' : isLite ? 'none' : 'blur(8px)'
+          padding: (isLite || isFade || isEclipse) ? '0 12px' : '0 16px',
+          backdropFilter: isFade ? 'blur(10px)' : isEclipse ? 'blur(10px)' : isLite ? 'none' : 'blur(8px)'
         }}
       >
-        {!isLite && !isFade && (
+        {!isLite && !isFade && !isEclipse && (
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-transparent pointer-events-none"></div>
+        )}
+        {isEclipse && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(90deg, color-mix(in srgb, var(--theme-primary) 10%, transparent) 0%, color-mix(in srgb, var(--theme-accent) 8%, transparent) 55%, transparent 100%)',
+              opacity: 0.85
+            }}
+          ></div>
         )}
 
         <div className="flex items-center gap-3 relative z-10">
-          <TerminalIcon className="w-4 h-4" style={{ color: isFade ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#60a5fa' }} />
-          <span className="text-sm font-semibold tracking-wide" style={{ color: isFade ? 'var(--theme-text)' : isLite ? 'var(--theme-text)' : '#bfdbfe' }}>Terminal</span>
+          <TerminalIcon className="w-4 h-4" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#60a5fa' }} />
+          <span className="text-sm font-semibold tracking-wide" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-text)' : '#bfdbfe' }}>Terminal</span>
           {fontSize !== 14 && (
             <span 
               className="text-xs px-2 py-0.5 rounded-full font-medium transition-opacity duration-200"
               style={{
-                backgroundColor: isFade ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : isLite ? 'var(--theme-border)' : 'rgba(96, 165, 250, 0.2)',
-                color: isFade ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text-secondary)' : '#93c5fd'
+                backgroundColor: (isFade || isEclipse) ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : isLite ? 'var(--theme-border)' : 'rgba(96, 165, 250, 0.2)',
+                color: (isFade || isEclipse) ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text-secondary)' : '#93c5fd'
               }}
             >
               {fontSize}px
@@ -1112,16 +1143,25 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             onClick={onExecuteCode}
             className="flex items-center gap-1.5 rounded transition-all duration-200 hover:scale-105 active:scale-95"
             style={{
-              padding: (isLite || isFade) ? '2px 6px' : '5px 12px',
-              backgroundColor: isFade ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : isLite ? 'transparent' : 'rgba(74, 222, 128, 0.1)',
-              border: isFade ? '1px solid var(--theme-border)' : isLite ? '1px solid var(--theme-border)' : '1px solid rgba(74, 222, 128, 0.3)',
-              color: isFade ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#86efac'
+              padding: (isLite || isFade || isEclipse) ? '2px 6px' : '5px 12px',
+              backgroundColor: isFade
+                ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)'
+                : isEclipse
+                ? 'color-mix(in srgb, var(--theme-accent) 8%, transparent)'
+                : isLite
+                ? 'transparent'
+                : 'rgba(74, 222, 128, 0.1)',
+              border: (isFade || isEclipse) ? '1px solid var(--theme-border)' : isLite ? '1px solid var(--theme-border)' : '1px solid rgba(74, 222, 128, 0.3)',
+              color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#86efac'
             }}
             title="Ejecutar código JavaScript del archivo activo"
             onMouseEnter={(e) => {
               if (isFade) {
                 e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-surface) 95%, transparent)';
                 e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-border) 95%, transparent)';
+              } else if (isEclipse) {
+                e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-accent) 12%, transparent)';
+                e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-accent) 22%, var(--theme-border))';
               } else if (!isLite) {
                 e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
                 e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.5)';
@@ -1131,46 +1171,61 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               if (isFade) {
                 e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-surface) 85%, transparent)';
                 e.currentTarget.style.borderColor = 'var(--theme-border)';
+              } else if (isEclipse) {
+                e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-accent) 8%, transparent)';
+                e.currentTarget.style.borderColor = 'var(--theme-border)';
               } else if (!isLite) {
                 e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.1)';
                 e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.3)';
               }
             }}
           >
-            <Play className="w-3.5 h-3.5" style={{ color: isFade ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#4ade80' }} />
-            {!isLite && !isFade && <span className="text-xs font-medium">Ejecutar</span>}
+            <Play className="w-3.5 h-3.5" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#4ade80' }} />
+            {!isLite && !isFade && !isEclipse && <span className="text-xs font-medium">Ejecutar</span>}
           </button>
           
-          <div className="w-px h-5" style={{ background: isFade ? 'color-mix(in srgb, var(--theme-border) 75%, transparent)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.3)' }}></div>
+          <div className="w-px h-5" style={{ background: (isFade || isEclipse) ? 'color-mix(in srgb, var(--theme-border) 75%, transparent)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.3)' }}></div>
           
           <button
             onClick={onToggleSize}
             className="p-1.5 rounded transition-all duration-200 hover:scale-110 active:scale-95"
-            style={{ border: `1px solid ${isFade ? 'var(--theme-border)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.2)'}` }}
+            style={{ border: `1px solid ${isFade ? 'var(--theme-border)' : isEclipse ? 'var(--theme-border)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.2)'}` }}
             title={isMaximized ? 'Minimizar' : 'Maximizar'}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isFade ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : isLite ? 'rgba(0, 0, 0, 0.05)' : 'rgba(96, 165, 250, 0.15)';
+              e.currentTarget.style.backgroundColor = isFade
+                ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)'
+                : isEclipse
+                ? 'color-mix(in srgb, var(--theme-primary) 8%, transparent)'
+                : isLite
+                ? 'rgba(0, 0, 0, 0.05)'
+                : 'rgba(96, 165, 250, 0.15)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            {isMaximized ? <Minus className="w-4 h-4" style={{ color: isFade ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text)' : '#60a5fa' }} /> : <Maximize2 className="w-4 h-4" style={{ color: isFade ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text)' : '#60a5fa' }} />}
+            {isMaximized ? <Minus className="w-4 h-4" style={{ color: (isFade || isEclipse) ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text)' : '#60a5fa' }} /> : <Maximize2 className="w-4 h-4" style={{ color: (isFade || isEclipse) ? 'var(--theme-text-secondary)' : isLite ? 'var(--theme-text)' : '#60a5fa' }} />}
           </button>
           
           <button
             onClick={onClose}
             className="p-1.5 rounded transition-all duration-200 hover:scale-110 active:scale-95"
-            style={{ border: `1px solid ${isFade ? 'var(--theme-border)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.2)'}` }}
+            style={{ border: `1px solid ${isFade ? 'var(--theme-border)' : isEclipse ? 'var(--theme-border)' : isLite ? 'var(--theme-border)' : 'rgba(148, 163, 184, 0.2)'}` }}
             title="Cerrar"
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isFade ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : isLite ? 'rgba(220, 38, 38, 0.1)' : 'rgba(248, 113, 113, 0.15)';
+              e.currentTarget.style.backgroundColor = isFade
+                ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)'
+                : isEclipse
+                ? 'rgba(248, 113, 113, 0.10)'
+                : isLite
+                ? 'rgba(220, 38, 38, 0.1)'
+                : 'rgba(248, 113, 113, 0.15)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <X className="w-4 h-4" style={{ color: isFade ? 'var(--theme-text-secondary)' : isLite ? 'rgb(185, 28, 28)' : '#f87171' }} />
+            <X className="w-4 h-4" style={{ color: isFade ? 'var(--theme-text-secondary)' : isEclipse ? 'rgba(248, 113, 113, 0.85)' : isLite ? 'rgb(185, 28, 28)' : '#f87171' }} />
           </button>
         </div>
       </div>
@@ -1180,7 +1235,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         <style>{`
           .terminal-content {
             scrollbar-width: thin;
-            scrollbar-color: ${isFade ? 'color-mix(in srgb, var(--theme-primary) 28%, transparent) transparent' : isFeel ? 'rgba(255,255,227,0.3) transparent' : isLite ? 'rgba(0,0,0,0.2) transparent' : 'rgba(96,165,250,0.3) transparent'};
+            scrollbar-color: ${isFade ? 'color-mix(in srgb, var(--theme-primary) 28%, transparent) transparent' : isEclipse ? 'color-mix(in srgb, var(--theme-primary) 22%, transparent) transparent' : isFeel ? 'rgba(255,255,227,0.3) transparent' : isLite ? 'rgba(0,0,0,0.2) transparent' : 'rgba(96,165,250,0.3) transparent'};
           }
           .terminal-content::-webkit-scrollbar {
             width: 8px;
@@ -1189,12 +1244,12 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             background: transparent;
           }
           .terminal-content::-webkit-scrollbar-thumb {
-            background: ${isFade ? 'var(--theme-scrollbar-thumb)' : isFeel ? 'rgba(255,255,227,0.3)' : isLite ? 'rgba(0,0,0,0.2)' : 'rgba(96,165,250,0.3)'};
+            background: ${isFade ? 'var(--theme-scrollbar-thumb)' : isEclipse ? 'var(--theme-scrollbar-thumb)' : isFeel ? 'rgba(255,255,227,0.3)' : isLite ? 'rgba(0,0,0,0.2)' : 'rgba(96,165,250,0.3)'};
             border-radius: 4px;
             transition: background 0.2s;
           }
           .terminal-content::-webkit-scrollbar-thumb:hover {
-            background: ${isFade ? 'var(--theme-scrollbar-thumb-hover)' : isFeel ? 'rgba(255,255,227,0.5)' : isLite ? 'rgba(0,0,0,0.3)' : 'rgba(96,165,250,0.5)'};
+            background: ${isFade ? 'var(--theme-scrollbar-thumb-hover)' : isEclipse ? 'var(--theme-scrollbar-thumb-hover)' : isFeel ? 'rgba(255,255,227,0.5)' : isLite ? 'rgba(0,0,0,0.3)' : 'rgba(96,165,250,0.5)'};
           }
           .terminal-line {
             transition: opacity 0.15s ease-out;
@@ -1209,9 +1264,9 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             transition: all 0.2s ease;
           }
           .terminal-input::placeholder {
-            opacity: ${isFade ? '0.5' : isLite ? '0.4' : '0.3'};
+            opacity: ${isFade ? '0.5' : isEclipse ? '0.42' : isLite ? '0.4' : '0.3'};
             font-style: italic;
-            color: ${isFade ? 'var(--theme-text-muted)' : 'inherit'};
+            color: ${isFade ? 'var(--theme-text-muted)' : isEclipse ? 'var(--theme-text-muted)' : 'inherit'};
           }
           .terminal-prompt {
             font-weight: 700;
@@ -1242,6 +1297,16 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
                   case 'info': return { color: 'var(--theme-info)', fontWeight: '500' }; // Blanco hueso medio
                   case 'console': return { color: 'var(--theme-text-muted)' }; // Gris medio
                   default: return { color: 'var(--theme-text-secondary)' }; // Gris opaco
+                }
+              } else if (isEclipse) {
+                switch (item.type) {
+                  case 'command': return { color: 'var(--theme-text)', fontWeight: '600' };
+                  case 'success': return { color: '#86efac', fontWeight: '600', opacity: 0.9 };
+                  case 'error': return { color: 'rgba(248, 113, 113, 0.95)', fontWeight: '600' };
+                  case 'warning': return { color: '#facc15', fontWeight: '600', opacity: 0.9 };
+                  case 'info': return { color: 'var(--theme-text-secondary)', fontWeight: '500' };
+                  case 'console': return { color: 'var(--theme-text-muted)' };
+                  default: return { color: 'var(--theme-text-secondary)' };
                 }
               } else if (isFeel) {
                 // Colores para modo Feel (tonos crema sobre negro #10100E)
@@ -1300,7 +1365,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           <form onSubmit={handleSubmit} className="flex items-center gap-3 mt-3">
             <span 
               className="terminal-prompt"
-              style={{ color: isFade ? 'var(--theme-text)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0' }}
+              style={{ color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-accent)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0' }}
             >
               $
             </span>
@@ -1312,8 +1377,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               onKeyDown={handleKeyDown}
               className="terminal-input flex-1 bg-transparent outline-none font-medium"
               style={{ 
-                color: isFade ? 'var(--theme-text)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-text)' : '#cccccc',
-                caretColor: isFade ? 'var(--theme-primary)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0'
+                color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-text)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-text)' : '#cccccc',
+                caretColor: isFade ? 'var(--theme-primary)' : isEclipse ? 'var(--theme-secondary)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0'
               }}
               autoFocus
               spellCheck={false}
@@ -1329,6 +1394,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             height: '50px',
             background: isFade
               ? 'linear-gradient(to bottom, transparent 0%, #1f1f1f 100%)'
+              : isEclipse
+              ? 'linear-gradient(to bottom, transparent 0%, rgba(7, 8, 12, 0.92) 100%)'
               : isLite 
               ? 'linear-gradient(to bottom, transparent 0%, var(--theme-background) 100%)' 
               : 'linear-gradient(to bottom, transparent 0%, var(--theme-background) 85%)'

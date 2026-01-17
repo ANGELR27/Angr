@@ -53,10 +53,19 @@ function CodeEditor({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
+  const isEclipse = currentTheme === 'eclipse';
   const effectiveCodeFontFamily = useMemo(
     () => codeFontFamily || "'Consolas', 'Courier New', monospace",
     [codeFontFamily]
   );
+  const effectiveFontSize = useMemo(() => {
+    if (!isEclipse) return fontSize;
+    return Math.max(fontSize, 16);
+  }, [fontSize, isEclipse]);
+  const eclipseLineHeight = useMemo(() => {
+    if (!isEclipse) return undefined;
+    return Math.round(effectiveFontSize * 1.75);
+  }, [effectiveFontSize, isEclipse]);
   const disposablesRef = useRef([]);
   const projectFilesRef = useRef(projectFiles);
   const projectImagesRef = useRef(projectImages);
@@ -1169,7 +1178,7 @@ function CodeEditor({
     // NOTA: El listener de cursor ahora está en un useEffect para que se active dinámicamente
 
     // 🚀 Auto-expansión del snippet "!" para HTML5
-    editor.onDidChangeModelContent((e) => {
+    const html5SnippetDisposable = editor.onDidChangeModelContent((e) => {
       const model = editor.getModel();
       if (!model || language !== "html") return;
 
@@ -1233,6 +1242,7 @@ function CodeEditor({
         }
       }
     });
+    disposablesRef.current.push(html5SnippetDisposable);
 
     // Función auxiliar para obtener todas las rutas de archivos
     const getAllFilePaths = (files, basePath = "") => {
@@ -1514,7 +1524,7 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
     disposablesRef.current.push(cssUrlProvider);
 
     // HTML: completar valores de class="" a partir de clases detectadas en modelos abiertos (CSS/HTML)
-    monaco.languages.registerCompletionItemProvider("html", {
+    const htmlClassValueProvider = monaco.languages.registerCompletionItemProvider("html", {
       triggerCharacters: [" ", '"', "."],
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
@@ -1591,9 +1601,10 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         return { suggestions: [] };
       },
     });
+    disposablesRef.current.push(htmlClassValueProvider);
 
     // CSS: sugerir clases usadas en HTML al escribir selectores .clase
-    monaco.languages.registerCompletionItemProvider("css", {
+    const cssHtmlClassesProvider = monaco.languages.registerCompletionItemProvider("css", {
       triggerCharacters: ["."],
       provideCompletionItems: (model, position) => {
         const line = model
@@ -1636,9 +1647,10 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         return { suggestions: items };
       },
     });
+    disposablesRef.current.push(cssHtmlClassesProvider);
 
     // CSS: propiedades y valores comunes
-    monaco.languages.registerCompletionItemProvider("css", {
+    const cssPropertiesProvider = monaco.languages.registerCompletionItemProvider("css", {
       triggerCharacters: [":", "-", " "],
       provideCompletionItems: (model, position) => {
         const line = model
@@ -1781,9 +1793,10 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         return { suggestions: properties };
       },
     });
+    disposablesRef.current.push(cssPropertiesProvider);
 
     // HTML: Atributos contextuales por etiqueta
-    monaco.languages.registerCompletionItemProvider("html", {
+    const htmlAttributeProvider = monaco.languages.registerCompletionItemProvider("html", {
       triggerCharacters: [" ", ":", "-", '"', "'"],
       provideCompletionItems: (model, position) => {
         const textUntilPosition = model.getValueInRange({
@@ -2321,12 +2334,13 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         return { suggestions };
       },
     });
+    disposablesRef.current.push(htmlAttributeProvider);
 
     // ELIMINADO: JavaScript Provider duplicado que causaba conflictos
     // El autocompletado de JavaScript ahora se maneja en el provider unificado
 
     // ☕ Java Snippets estilo IntelliJ IDEA
-    monaco.languages.registerCompletionItemProvider("java", {
+    const javaProvider = monaco.languages.registerCompletionItemProvider("java", {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
         const range = {
@@ -2340,6 +2354,7 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         return { suggestions };
       },
     });
+    disposablesRef.current.push(javaProvider);
 
     // 🔥 Inicializar Yjs binding si estamos colaborando
     if (isCollaborating) {
@@ -2541,9 +2556,10 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         onChange={handleEditorChange}
         onMount={handleEditorDidMount}
         options={{
-          fontSize: fontSize,
+          fontSize: effectiveFontSize,
+          lineHeight: eclipseLineHeight,
           minimap: {
-            enabled: true,
+            enabled: !isEclipse,
             showSlider: 'mouseover',
             renderCharacters: true,
             maxColumn: 120,
@@ -2555,14 +2571,25 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
           ["semanticHighlighting.enabled"]: false,
           tabSize: 2,
           lineNumbers: "on",
+          lineNumbersMinChars: isEclipse ? 3 : 5,
+          lineDecorationsWidth: isEclipse ? 10 : 14,
           renderLineHighlight: "all",
+          renderLineHighlightOnlyWhenFocus: isEclipse,
           selectOnLineNumbers: true,
           roundedSelection: false,
           readOnly: false,
           cursorStyle: "line",
+          cursorWidth: isEclipse ? 2 : undefined,
+          cursorSurroundingLines: isEclipse ? 8 : 0,
+          cursorSurroundingLinesStyle: isEclipse ? 'all' : 'default',
           fontFamily: effectiveCodeFontFamily,
           fontLigatures: true,
-          padding: { top: 16, bottom: 120 },
+          padding: isEclipse ? { top: 22, bottom: 140 } : { top: 16, bottom: 120 },
+          scrollbar: {
+            verticalScrollbarSize: isEclipse ? 8 : 10,
+            horizontalScrollbarSize: isEclipse ? 8 : 10,
+            alwaysConsumeMouseWheel: false,
+          },
           // 🎯 Autocompletado Súper Reforzado - desactivado solo en Modo Práctica
           suggestOnTriggerCharacters: !practiceModeEnabled,
           quickSuggestions: practiceModeEnabled

@@ -41,6 +41,7 @@ import { useCollaboration } from './hooks/useCollaboration'
 import { useAuth } from './hooks/useAuth'
 import { useModals } from './hooks/useModals'
 import { buildPreview } from './utils/previewBuilder'
+import { runPython } from './services/pythonRuntime';
 
 // Archivos de ejemplo iniciales
 const initialFiles = {
@@ -483,6 +484,17 @@ function App() {
       setShowSidebar(false);
       // Resetear posición del preview al activar fade mode
       setPreviewPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handleToggleEclipse = () => {
+    if (currentTheme === 'eclipse') {
+      setCurrentTheme(prevThemeRef.current || 'vs-dark');
+      setShowSidebar(true);
+    } else {
+      prevThemeRef.current = currentTheme;
+      setCurrentTheme('eclipse');
+      setShowSidebar(true);
     }
   };
 
@@ -1343,7 +1355,7 @@ function App() {
   }, []);
 
   // 🚀 Ejecutar código en terminal flotante (Ctrl + Alt + S)
-  const handleExecuteCodeFloating = useCallback(() => {
+  const handleExecuteCodeFloating = useCallback(async () => {
     const activeFile = getFileByPath(activeTab);
     
     if (!activeFile) {
@@ -1363,13 +1375,73 @@ function App() {
       // Ejecutar JavaScript
       executeJavaScriptFloating(code);
     } else if (fileName.endsWith('.py')) {
-      // Python no soportado
-      setFloatingTerminalOutput(`⚠️ Python no está disponible en el navegador\n\n💡 Tip: Usa https://replit.com o instala Python localmente\n\n📝 Código:\n${code}`);
-      setFloatingTerminalError(true);
-      openModal('floatingTerminal');
-      // ⚡ Activar pulso de error
-      setExecutionPulse({ show: true, isError: true });
-      setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
+      try {
+        setFloatingTerminalOutput('⏳ Cargando runtime de Python (Pyodide)...');
+        setFloatingTerminalError(false);
+        openModal('floatingTerminal');
+
+        if (terminalRef.current) {
+          terminalRef.current.addLog('▸ Ejecutando código Python...', 'info');
+          if (!showTerminal) setShowTerminal(true);
+        }
+
+        const result = await runPython(code);
+        const stdout = result?.stdout || '';
+        const stderr = result?.stderr || '';
+
+        if (terminalRef.current) {
+          if (stdout.trim()) {
+            stdout
+              .replace(/\r\n/g, '\n')
+              .split('\n')
+              .filter((l) => l !== '')
+              .forEach((line) => terminalRef.current.addLog(line, 'console'));
+          }
+          if (stderr.trim()) {
+            stderr
+              .replace(/\r\n/g, '\n')
+              .split('\n')
+              .filter((l) => l !== '')
+              .forEach((line) => terminalRef.current.addLog(line, 'error'));
+          }
+          if (!stdout.trim() && !stderr.trim()) {
+            terminalRef.current.addLog('✓ Código ejecutado correctamente (sin salida)', 'success');
+          } else if (!stderr.trim()) {
+            terminalRef.current.addLog('✓ Ejecución completada', 'success');
+          }
+        }
+
+        if (stderr.trim()) {
+          setFloatingTerminalOutput(stderr.trim());
+          setFloatingTerminalError(true);
+          openModal('floatingTerminal');
+          setExecutionPulse({ show: true, isError: true });
+          setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
+        } else if (stdout.trim()) {
+          setFloatingTerminalOutput(stdout.trim());
+          setFloatingTerminalError(false);
+          openModal('floatingTerminal');
+          setExecutionPulse({ show: true, isError: false });
+          setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
+        } else {
+          setFloatingTerminalOutput('✅ Código ejecutado correctamente (sin salida)');
+          setFloatingTerminalError(false);
+          openModal('floatingTerminal');
+          setExecutionPulse({ show: true, isError: false });
+          setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
+        }
+      } catch (error) {
+        const msg = `❌ Error ejecutando Python: ${error?.message || 'Error desconocido'}`;
+        setFloatingTerminalOutput(msg);
+        setFloatingTerminalError(true);
+        openModal('floatingTerminal');
+        if (terminalRef.current) {
+          terminalRef.current.addLog(msg, 'error');
+          if (!showTerminal) setShowTerminal(true);
+        }
+        setExecutionPulse({ show: true, isError: true });
+        setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
+      }
     } else if (fileName.endsWith('.java')) {
       // Java simulado
       setFloatingTerminalOutput(`⚠️ Java requiere compilación, usa la terminal principal (Ctrl+Alt+R)`);
@@ -1379,14 +1451,14 @@ function App() {
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     } else {
-      setFloatingTerminalOutput(`❌ No se puede ejecutar archivos .${fileName.split('.').pop()}\n\nSoportados: JavaScript (.js)`);
+      setFloatingTerminalOutput(`❌ No se puede ejecutar archivos .${fileName.split('.').pop()}\n\nSoportados: JavaScript (.js), Python (.py)`);
       setFloatingTerminalError(true);
       openModal('floatingTerminal');
       // ⚡ Activar pulso de error
       setExecutionPulse({ show: true, isError: true });
       setTimeout(() => setExecutionPulse({ show: false, isError: false }), 1500);
     }
-  }, [activeTab, files, executeJavaScriptFloating]);
+  }, [activeTab, getFileByPath, executeJavaScriptFloating, openModal, showTerminal]);
 
   const handleDeleteFile = useCallback((filePath) => {
     const parts = filePath.split('/');
@@ -1666,6 +1738,7 @@ function App() {
 
   const activeFile = getFileByPath(activeTab);
   const isFadeMode = currentTheme === 'fade';
+  const isEclipseMode = currentTheme === 'eclipse';
 
   // ⌨️ Atajos: Ctrl + Alt + R (Terminal), Ctrl + Alt + P (Preview) y Ctrl + Alt + S (Terminal Flotante)
   useEffect(() => {
@@ -1834,9 +1907,10 @@ function App() {
   }, [dayNightMode]);
 
   return (
-    <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
+    <div className={`h-screen flex flex-col text-white relative overflow-hidden ${isFadeMode ? 'fade-grid-bg' : isEclipseMode ? 'eclipse-bg' : !editorBackground.image ? 'bg-editor-bg' : ''}`} style={{ backgroundColor: editorBackground.image ? 'transparent' : undefined }}>
       {/* Grid overlay para modo Fade con parallax */}
       {isFadeMode && <div className="fade-grid-overlay" />}
+      {isEclipseMode && <div className="eclipse-overlay" />}
       {editorBackground.image && (
         <style>{`
           /* Hacer transparente el fondo del editor Monaco cuando hay imagen de fondo */
@@ -1861,7 +1935,7 @@ function App() {
       )}
       
       {/* Efectos de esquinas con glow azul y amarillo - ocultos cuando hay fondo personalizado */}
-      {!editorBackground.image && (
+      {!editorBackground.image && !isEclipseMode && (
         <>
           <div className="absolute top-0 left-0 w-64 h-64 pointer-events-none z-0" style={{
             background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
@@ -1896,6 +1970,7 @@ function App() {
         onToggleLite={handleToggleLite}
         onToggleFeel={handleToggleFeel}
         onToggleFade={handleToggleFade}
+        onToggleEclipse={handleToggleEclipse}
         tabs={openTabs}
         activeTab={activeTab}
         onTabClick={setActiveTab}
@@ -2089,13 +2164,22 @@ function App() {
         </div>
       )}
       
-      <div className="flex-1 flex overflow-hidden relative z-10">
+      <div className="flex-1 flex overflow-hidden relative z-10" style={isEclipseMode ? { padding: '12px', gap: '12px' } : undefined}>
         {/* Sidebar con FileExplorer */}
         {showSidebar && (
           <>
             <div 
-              style={{ width: `${sidebarWidth}px`, minWidth: '180px', maxWidth: '400px' }}
-              className={`flex-shrink-0 relative ${!editorBackground.image ? 'shadow-blue-glow' : ''}`}
+              className={`flex-shrink-0 relative ${isEclipseMode ? 'eclipse-glass-panel' : ''} ${!editorBackground.image && !isFadeMode && !isEclipseMode ? 'shadow-blue-glow' : ''}`}
+              style={isEclipseMode ? {
+                width: `${sidebarWidth}px`,
+                minWidth: '180px',
+                maxWidth: '400px',
+                borderRadius: '14px',
+                overflow: 'hidden',
+                backgroundColor: 'var(--theme-background-secondary)',
+                border: '1px solid var(--theme-border)',
+                backdropFilter: 'blur(12px)'
+              } : { width: `${sidebarWidth}px`, minWidth: '180px', maxWidth: '400px' }}
             >
               <FileExplorer 
                 files={files} 
@@ -2146,7 +2230,7 @@ function App() {
           />
         )}
         
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden" style={isEclipseMode ? { borderRadius: '14px' } : undefined}>
           <div className={`flex-1 flex flex-col overflow-hidden main-content-area ${isFadeMode ? 'items-center justify-center' : ''}`} style={isFadeMode ? { padding: '2rem 1rem', perspective: '1200px', perspectiveOrigin: 'center center', position: 'relative' } : {}}>
             <div 
               className="flex overflow-hidden editor-preview-container"
@@ -2162,6 +2246,12 @@ function App() {
               <div 
                 style={{ 
                   width: showPreview && !isFadeMode ? `${100 - previewWidth}%` : '100%',
+                  ...(isEclipseMode ? {
+                    borderRadius: '14px',
+                    backgroundColor: 'var(--theme-background-secondary)',
+                    border: '1px solid var(--theme-border)',
+                    backdropFilter: 'blur(10px)'
+                  } : {}),
                   ...(isFadeMode ? { 
                     position: 'absolute',
                     top: '50%',
@@ -2193,7 +2283,7 @@ function App() {
                     pointerEvents: showTerminal ? 'none' : 'auto'
                   } : {})
                 }}
-                className={`flex-shrink-0 overflow-hidden relative ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
+                className={`flex-shrink-0 overflow-hidden relative ${isFadeMode ? 'fade-glass-panel' : isEclipseMode ? 'eclipse-glass-panel' : ''} ${!editorBackground.image && !isFadeMode && !isEclipseMode ? 'shadow-blue-glow' : ''}`}
               >
                 {/* Botón toggle sidebar */}
                 {!showSidebar && !isFadeMode && (
@@ -2375,6 +2465,12 @@ function App() {
                     ref={isFadeMode ? previewDragRef : null}
                     style={{ 
                       width: isFadeMode ? '850px' : `${previewWidth}%`,
+                      ...(isEclipseMode ? {
+                        borderRadius: '14px',
+                        backgroundColor: 'var(--theme-background-secondary)',
+                        border: '1px solid var(--theme-border)',
+                        backdropFilter: 'blur(10px)'
+                      } : {}),
                       ...(isFadeMode ? {
                         position: 'absolute',
                         top: previewPosition.y || '50%',
@@ -2403,7 +2499,7 @@ function App() {
                         cursor: isDraggingPreview ? 'grabbing' : 'default'
                       } : {})
                     }}
-                    className={`flex-shrink-0 overflow-hidden ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-yellow-glow' : ''}`}
+                    className={`flex-shrink-0 overflow-hidden ${isFadeMode ? 'fade-glass-panel' : isEclipseMode ? 'eclipse-glass-panel' : ''} ${!editorBackground.image && !isFadeMode && !isEclipseMode ? 'shadow-yellow-glow' : ''}`}
                   >
                     {/* Barra de título para arrastrar - solo en modo fade */}
                     {isFadeMode && showPreview && (
@@ -2471,6 +2567,12 @@ function App() {
                 <div 
                   style={{ 
                     height: isFadeMode ? '100%' : `${terminalHeight}px`,
+                    ...(isEclipseMode ? {
+                      borderRadius: '14px',
+                      backgroundColor: 'var(--theme-background-secondary)',
+                      border: '1px solid var(--theme-border)',
+                      backdropFilter: 'blur(10px)'
+                    } : {}),
                     ...(isFadeMode ? {
                       position: 'absolute',
                       top: '50%',
@@ -2497,7 +2599,7 @@ function App() {
                       pointerEvents: showTerminal ? 'auto' : 'none'
                     } : {})
                   }} 
-                  className={`flex-shrink-0 ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}
+                  className={`flex-shrink-0 ${isFadeMode ? 'fade-glass-panel' : isEclipseMode ? 'eclipse-glass-panel' : ''} ${!editorBackground.image && !isFadeMode && !isEclipseMode ? 'shadow-blue-glow-strong' : ''}`}
                 >
                   <Terminal 
                     ref={terminalRef}

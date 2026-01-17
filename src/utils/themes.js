@@ -850,4 +850,55 @@ export const defineCustomThemes = (monaco) => {
       'editorIndentGuide.background': '#141529',
     }
   });
+
+  monaco.editor.defineTheme('eclipse', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6f7b8f', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'bfd0e3', fontStyle: 'bold' },
+      { token: 'string', foreground: 'd6b48a' },
+      { token: 'number', foreground: 'a8c0dd' },
+      { token: 'function', foreground: 'c9d4e3' },
+      { token: 'variable', foreground: 'e8eef7' },
+      { token: 'type', foreground: 'a8c0dd' },
+      { token: 'operator', foreground: 'b7c4d6' },
+      { token: 'class', foreground: 'd6b48a' },
+      { token: 'delimiter', foreground: '8a95a7' },
+      // HTML
+      { token: 'tag', foreground: 'bfd0e3', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: 'bfd0e3', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: '8a95a7' },
+      { token: 'attribute.name', foreground: 'a8c0dd' },
+      { token: 'attribute.name.html', foreground: 'a8c0dd' },
+      { token: 'attribute.value', foreground: 'd6b48a' },
+      { token: 'attribute.value.html', foreground: 'd6b48a' },
+      // CSS
+      { token: 'attribute.name.css', foreground: 'bfd0e3' },
+      { token: 'attribute.value.css', foreground: 'd6b48a' },
+      { token: 'property.css', foreground: 'a8c0dd' },
+      // JavaScript
+      { token: 'identifier', foreground: 'e8eef7' },
+      { token: 'delimiter.bracket', foreground: 'b7c4d6' },
+      { token: 'delimiter.parenthesis', foreground: 'b7c4d6' },
+    ],
+    colors: {
+      'editor.background': '#07080c',
+      'editor.foreground': '#e8eef7',
+      'editorCursor.foreground': '#c9d4e3',
+      'editor.lineHighlightBackground': '#0d0f16',
+      'editorLineNumber.foreground': '#3f4a5a',
+      'editorLineNumber.activeForeground': '#d6b48a',
+      'editorGutter.background': '#07080c',
+      'editorRuler.foreground': 'rgba(201, 212, 227, 0.06)',
+      'editorWhitespace.foreground': 'rgba(201, 212, 227, 0.08)',
+      'focusBorder': '#00000000',
+      'editor.selectionBackground': '#a8c0dd22',
+      'editor.inactiveSelectionBackground': '#a8c0dd14',
+      'editor.selectionHighlightBackground': '#a8c0dd14',
+      'editor.wordHighlightBackground': '#a8c0dd14',
+      'editorIndentGuide.activeBackground': '#2a3444',
+      'editorIndentGuide.background': '#141925',
+    }
+  });
 };

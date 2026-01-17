@@ -39,6 +39,7 @@ function TopBar({
   onToggleLite,
   onToggleFeel,
   onToggleFade,
+  onToggleEclipse,
   tabs,
   activeTab,
   onTabClick,
@@ -85,6 +86,7 @@ function TopBar({
   const isLite = currentTheme === "lite";
   const isFeel = currentTheme === "feel";
   const isFade = currentTheme === "fade";
+  const isEclipse = currentTheme === "eclipse";
 
   // Cerrar menú al hacer click fuera
   useEffect(() => {
@@ -582,6 +584,37 @@ function TopBar({
                   <span>Fade</span>
                 </div>
                 {currentTheme === 'fade' && <Check className="w-4 h-4" style={{ color: '#a1a1aa' }} />}
+              </button>
+
+              {/* Eclipse Mode */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleEclipse && onToggleEclipse();
+                  setModesMenuOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
+                style={{
+                  color: 'var(--theme-text)',
+                  backgroundColor: isEclipse ? 'rgba(148, 163, 184, 0.12)' : 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isEclipse) {
+                    e.currentTarget.style.backgroundColor = 'var(--theme-surface)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isEclipse) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#94a3b8' }}></div>
+                  <span>Eclipse</span>
+                </div>
+                {isEclipse && <Check className="w-4 h-4" style={{ color: '#c2cad6' }} />}
               </button>
             </div>,
             document.body

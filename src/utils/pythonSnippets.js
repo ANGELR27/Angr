@@ -21,6 +21,142 @@ export class PythonSnippetEngine {
       priority: 100
     });
 
+    this.addSnippet('help', {
+      patterns: ['help'],
+      snippet: 'help(${1:object})$0',
+      description: 'help / documentation',
+      detail: 'help(object)',
+      priority: 70
+    });
+
+    this.addSnippet('type', {
+      patterns: ['type'],
+      snippet: 'type(${1:value})$0',
+      description: 'get type of value',
+      detail: 'type(value)',
+      priority: 72
+    });
+
+    this.addSnippet('len', {
+      patterns: ['len'],
+      snippet: 'len(${1:iterable})$0',
+      description: 'length of iterable',
+      detail: 'len(iterable)',
+      priority: 78
+    });
+
+    this.addSnippet('range', {
+      patterns: ['range'],
+      snippet: 'range(${1:stop})$0',
+      description: 'range iterator',
+      detail: 'range(stop) / range(start, stop, step)',
+      priority: 70
+    });
+
+    this.addSnippet('enumerate', {
+      patterns: ['enumerate'],
+      snippet: 'enumerate(${1:iterable})$0',
+      description: 'enumerate iterable',
+      detail: 'enumerate(iterable, start=0)',
+      priority: 70
+    });
+
+    this.addSnippet('sorted', {
+      patterns: ['sorted'],
+      snippet: 'sorted(${1:iterable})$0',
+      description: 'sorted iterable',
+      detail: 'sorted(iterable, key=None, reverse=False)',
+      priority: 70
+    });
+
+    this.addSnippet('map', {
+      patterns: ['map'],
+      snippet: 'map(${1:function}, ${2:iterable})$0',
+      description: 'map function over iterable',
+      detail: 'map(function, iterable)',
+      priority: 62
+    });
+
+    this.addSnippet('filter', {
+      patterns: ['filter'],
+      snippet: 'filter(${1:function}, ${2:iterable})$0',
+      description: 'filter iterable',
+      detail: 'filter(function, iterable)',
+      priority: 62
+    });
+
+    this.addSnippet('abs', {
+      patterns: ['abs'],
+      snippet: 'abs(${1:x})$0',
+      description: 'absolute value',
+      detail: 'abs(x)',
+      priority: 65
+    });
+
+    this.addSnippet('sum', {
+      patterns: ['sum'],
+      snippet: 'sum(${1:iterable})$0',
+      description: 'sum iterable',
+      detail: 'sum(iterable, start=0)',
+      priority: 65
+    });
+
+    this.addSnippet('min', {
+      patterns: ['min'],
+      snippet: 'min(${1:iterable})$0',
+      description: 'min of iterable',
+      detail: 'min(iterable, key=None) / min(a, b, ...)',
+      priority: 60
+    });
+
+    this.addSnippet('max', {
+      patterns: ['max'],
+      snippet: 'max(${1:iterable})$0',
+      description: 'max of iterable',
+      detail: 'max(iterable, key=None) / max(a, b, ...)',
+      priority: 60
+    });
+
+    this.addSnippet('any', {
+      patterns: ['any'],
+      snippet: 'any(${1:iterable})$0',
+      description: 'any true',
+      detail: 'any(iterable)',
+      priority: 55
+    });
+
+    this.addSnippet('all', {
+      patterns: ['all'],
+      snippet: 'all(${1:iterable})$0',
+      description: 'all true',
+      detail: 'all(iterable)',
+      priority: 55
+    });
+
+    this.addSnippet('zip', {
+      patterns: ['zip'],
+      snippet: 'zip(${1:iterable1}, ${2:iterable2})$0',
+      description: 'zip iterables',
+      detail: 'zip(*iterables)',
+      priority: 58
+    });
+
+    this.addSnippet('reversed', {
+      patterns: ['reversed'],
+      snippet: 'reversed(${1:sequence})$0',
+      description: 'reverse iterator',
+      detail: 'reversed(sequence)',
+      priority: 52
+    });
+
+    this.addSnippet('round', {
+      patterns: ['round'],
+      snippet: 'round(${1:number}, ${2:ndigits})$0',
+      description: 'round number',
+      detail: 'round(number, ndigits=None)',
+      priority: 52
+    });
+
     this.addSnippet('printf', {
       patterns: ['printf', 'prf'],
       snippet: 'print(f"${1:text} {${2:variable}}")$0',
@@ -201,6 +337,374 @@ export class PythonSnippetEngine {
       description: 'list comprehension',
       detail: '[expr for item in iterable if condition]',
       priority: 88
+    });
+
+    this.addSnippet('list', {
+      patterns: ['list'],
+      snippet: 'list(${1:iterable})$0',
+      description: 'convert to list',
+      detail: 'list(iterable)',
+      priority: 60
+    });
+
+    this.addSnippet('tuple', {
+      patterns: ['tuple'],
+      snippet: 'tuple(${1:iterable})$0',
+      description: 'convert to tuple',
+      detail: 'tuple(iterable)',
+      priority: 55
+    });
+
+    this.addSnippet('set', {
+      patterns: ['set'],
+      snippet: 'set(${1:iterable})$0',
+      description: 'convert to set',
+      detail: 'set(iterable)',
+      priority: 55
+    });
+
+    this.addSnippet('dict', {
+      patterns: ['dict'],
+      snippet: 'dict(${1:mapping})$0',
+      description: 'convert to dict',
+      detail: 'dict(mapping) / dict(key=value)',
+      priority: 55
+    });
+
+    this.addSnippet('listAppend', {
+      patterns: ['append'],
+      snippet: '${1:my_list}.append(${2:item})$0',
+      description: 'append item to list',
+      detail: 'my_list.append(item)',
+      priority: 70
+    });
+
+    this.addSnippet('listExtend', {
+      patterns: ['extend'],
+      snippet: '${1:my_list}.extend(${2:items})$0',
+      description: 'extend list',
+      detail: 'my_list.extend(items)',
+      priority: 62
+    });
+
+    this.addSnippet('listInsert', {
+      patterns: ['insert'],
+      snippet: '${1:my_list}.insert(${2:index}, ${3:item})$0',
+      description: 'insert item into list',
+      detail: 'my_list.insert(index, item)',
+      priority: 58
+    });
+
+    this.addSnippet('listPop', {
+      patterns: ['pop'],
+      snippet: '${1:my_list}.pop(${2:index})$0',
+      description: 'pop from list',
+      detail: 'my_list.pop(index=-1)',
+      priority: 55
+    });
+
+    this.addSnippet('listRemove', {
+      patterns: ['remove'],
+      snippet: '${1:my_list}.remove(${2:value})$0',
+      description: 'remove value from list',
+      detail: 'my_list.remove(value)',
+      priority: 52
+    });
+
+    this.addSnippet('listSort', {
+      patterns: ['sort'],
+      snippet: '${1:my_list}.sort()$0',
+      description: 'sort list in-place',
+      detail: 'my_list.sort(key=None, reverse=False)',
+      priority: 52
+    });
+
+    this.addSnippet('listClear', {
+      patterns: ['clear'],
+      snippet: '${1:my_list}.clear()$0',
+      description: 'clear list',
+      detail: 'my_list.clear()',
+      priority: 45
+    });
+
+    this.addSnippet('listCopy', {
+      patterns: ['copy'],
+      snippet: '${1:my_list}.copy()$0',
+      description: 'copy list',
+      detail: 'my_list.copy()',
+      priority: 45
+    });
+
+    this.addSnippet('listIndex', {
+      patterns: ['index'],
+      snippet: '${1:my_list}.index(${2:value})$0',
+      description: 'find index in list',
+      detail: 'my_list.index(value, start=0, stop=len(list))',
+      priority: 45
+    });
+
+    this.addSnippet('listCount', {
+      patterns: ['count'],
+      snippet: '${1:my_list}.count(${2:value})$0',
+      description: 'count occurrences in list',
+      detail: 'my_list.count(value)',
+      priority: 42
+    });
+
+    this.addSnippet('listReverse', {
+      patterns: ['reverse'],
+      snippet: '${1:my_list}.reverse()$0',
+      description: 'reverse list in-place',
+      detail: 'my_list.reverse()',
+      priority: 42
+    });
+
+    this.addSnippet('dictGet', {
+      patterns: ['get'],
+      snippet: '${1:my_dict}.get(${2:key}, ${3:default})$0',
+      description: 'dict get with default',
+      detail: 'my_dict.get(key, default=None)',
+      priority: 62
+    });
+
+    this.addSnippet('dictItems', {
+      patterns: ['items'],
+      snippet: '${1:my_dict}.items()$0',
+      description: 'dict items view',
+      detail: 'my_dict.items()',
+      priority: 55
+    });
+
+    this.addSnippet('dictKeys', {
+      patterns: ['keys'],
+      snippet: '${1:my_dict}.keys()$0',
+      description: 'dict keys view',
+      detail: 'my_dict.keys()',
+      priority: 55
+    });
+
+    this.addSnippet('dictValues', {
+      patterns: ['values'],
+      snippet: '${1:my_dict}.values()$0',
+      description: 'dict values view',
+      detail: 'my_dict.values()',
+      priority: 55
+    });
+
+    this.addSnippet('dictUpdate', {
+      patterns: ['update'],
+      snippet: '${1:my_dict}.update(${2:other})$0',
+      description: 'update dict',
+      detail: 'my_dict.update(other)',
+      priority: 52
+    });
+
+    this.addSnippet('dictPop', {
+      patterns: ['pop'],
+      snippet: '${1:my_dict}.pop(${2:key})$0',
+      description: 'dict pop',
+      detail: 'my_dict.pop(key, default)',
+      priority: 48
+    });
+
+    this.addSnippet('dictPopitem', {
+      patterns: ['popitem'],
+      snippet: '${1:my_dict}.popitem()$0',
+      description: 'dict popitem',
+      detail: 'my_dict.popitem()',
+      priority: 45
+    });
+
+    this.addSnippet('dictSetdefault', {
+      patterns: ['setdefault'],
+      snippet: '${1:my_dict}.setdefault(${2:key}, ${3:default})$0',
+      description: 'dict setdefault',
+      detail: 'my_dict.setdefault(key, default=None)',
+      priority: 45
+    });
+
+    this.addSnippet('dictClear', {
+      patterns: ['clear'],
+      snippet: '${1:my_dict}.clear()$0',
+      description: 'clear dict',
+      detail: 'my_dict.clear()',
+      priority: 40
+    });
+
+    this.addSnippet('dictCopy', {
+      patterns: ['copy'],
+      snippet: '${1:my_dict}.copy()$0',
+      description: 'copy dict',
+      detail: 'my_dict.copy()',
+      priority: 40
+    });
+
+    this.addSnippet('setAdd', {
+      patterns: ['add'],
+      snippet: '${1:my_set}.add(${2:item})$0',
+      description: 'add item to set',
+      detail: 'my_set.add(item)',
+      priority: 52
+    });
+
+    this.addSnippet('setDiscard', {
+      patterns: ['discard'],
+      snippet: '${1:my_set}.discard(${2:item})$0',
+      description: 'discard from set',
+      detail: 'my_set.discard(item)',
+      priority: 50
+    });
+
+    this.addSnippet('setRemove', {
+      patterns: ['remove'],
+      snippet: '${1:my_set}.remove(${2:item})$0',
+      description: 'remove from set',
+      detail: 'my_set.remove(item)',
+      priority: 50
+    });
+
+    this.addSnippet('setUnion', {
+      patterns: ['union'],
+      snippet: '${1:my_set}.union(${2:other_set})$0',
+      description: 'set union',
+      detail: 'my_set.union(other_set)',
+      priority: 45
+    });
+
+    this.addSnippet('setIntersection', {
+      patterns: ['intersection'],
+      snippet: '${1:my_set}.intersection(${2:other_set})$0',
+      description: 'set intersection',
+      detail: 'my_set.intersection(other_set)',
+      priority: 45
+    });
+
+    this.addSnippet('setDifference', {
+      patterns: ['difference'],
+      snippet: '${1:my_set}.difference(${2:other_set})$0',
+      description: 'set difference',
+      detail: 'my_set.difference(other_set)',
+      priority: 42
+    });
+
+    this.addSnippet('setIssubset', {
+      patterns: ['issubset'],
+      snippet: '${1:my_set}.issubset(${2:other_set})$0',
+      description: 'set issubset',
+      detail: 'my_set.issubset(other_set)',
+      priority: 40
+    });
+
+    this.addSnippet('setIssuperset', {
+      patterns: ['issuperset'],
+      snippet: '${1:my_set}.issuperset(${2:other_set})$0',
+      description: 'set issuperset',
+      detail: 'my_set.issuperset(other_set)',
+      priority: 40
+    });
+
+    this.addSnippet('strJoin', {
+      patterns: ['join'],
+      snippet: '${1:sep}.join(${2:items})$0',
+      description: 'string join',
+      detail: 'sep.join(items)',
+      priority: 60
+    });
+
+    this.addSnippet('strSplit', {
+      patterns: ['split'],
+      snippet: '${1:text}.split(${2:sep})$0',
+      description: 'string split',
+      detail: 'text.split(sep=None)',
+      priority: 60
+    });
+
+    this.addSnippet('strStrip', {
+      patterns: ['strip'],
+      snippet: '${1:text}.strip()$0',
+      description: 'string strip',
+      detail: 'text.strip(chars=None)',
+      priority: 55
+    });
+
+    this.addSnippet('strReplace', {
+      patterns: ['replace'],
+      snippet: '${1:text}.replace(${2:old}, ${3:new})$0',
+      description: 'string replace',
+      detail: 'text.replace(old, new, count=-1)',
+      priority: 55
+    });
+
+    this.addSnippet('strLower', {
+      patterns: ['lower'],
+      snippet: '${1:text}.lower()$0',
+      description: 'string lower',
+      detail: 'text.lower()',
+      priority: 45
+    });
+
+    this.addSnippet('strUpper', {
+      patterns: ['upper'],
+      snippet: '${1:text}.upper()$0',
+      description: 'string upper',
+      detail: 'text.upper()',
+      priority: 45
+    });
+
+    this.addSnippet('strTitle', {
+      patterns: ['title'],
+      snippet: '${1:text}.title()$0',
+      description: 'string title',
+      detail: 'text.title()',
+      priority: 40
+    });
+
+    this.addSnippet('strStartswith', {
+      patterns: ['startswith'],
+      snippet: '${1:text}.startswith(${2:prefix})$0',
+      description: 'string startswith',
+      detail: 'text.startswith(prefix)',
+      priority: 40
+    });
+
+    this.addSnippet('strEndswith', {
+      patterns: ['endswith'],
+      snippet: '${1:text}.endswith(${2:suffix})$0',
+      description: 'string endswith',
+      detail: 'text.endswith(suffix)',
+      priority: 40
+    });
+
+    this.addSnippet('strFind', {
+      patterns: ['find'],
+      snippet: '${1:text}.find(${2:sub})$0',
+      description: 'string find',
+      detail: 'text.find(sub, start=0, end=len(text))',
+      priority: 38
+    });
+
+    this.addSnippet('strCount', {
+      patterns: ['count'],
+      snippet: '${1:text}.count(${2:sub})$0',
+      description: 'string count',
+      detail: 'text.count(sub, start=0, end=len(text))',
+      priority: 38
+    });
+
+    this.addSnippet('strFormat', {
+      patterns: ['format'],
+      snippet: '${1:template}.format(${2:values})$0',
+      description: 'string format',
+      detail: 'template.format(...)',
+      priority: 50
+    });
+
+    this.addSnippet('fstring', {
+      patterns: ['f"', 'fstring'],
+      snippet: 'f"${1:text} {${2:var}}"$0',
+      description: 'f-string',
+      detail: 'f"text {var}"',
+      priority: 65
     });
 
     this.addSnippet('dictComp', {
