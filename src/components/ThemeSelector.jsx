@@ -105,7 +105,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
     const colors = {
       'lite': { bg: '#1B1718', keyword: '#D0FC01', string: '#D0FC01', comment: '#8ea06a', number: '#D0FC01' },
       'feel': { bg: '#10100E', keyword: '#FFFFE3', string: '#FFFFCC', comment: '#FFFFB3', number: '#FFFFE3' },
-      'fade': { bg: '#171717', keyword: '#60a5fa', string: '#fbbf24', comment: '#71717a', number: '#facc15' },
+      'fade': { bg: '#05060a', keyword: '#2de2e6', string: '#ff4fd8', comment: '#8a93a6', number: '#7c3aed' },
       'matrix': { bg: '#0d0208', keyword: '#00ff41', string: '#39ff14', comment: '#00ff00', number: '#00ff88' },
       'tokyo-night': { bg: '#1a1b26', keyword: '#bb9af7', string: '#9ece6a', comment: '#565f89', number: '#ff9e64' },
       'dracula': { bg: '#282a36', keyword: '#ff79c6', string: '#f1fa8c', comment: '#6272a4', number: '#bd93f9' },
@@ -372,7 +372,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                     <div className="flex-1 bg-gradient-to-r from-[#10100E] via-[#1C1C15] to-[#FFFFE3]"></div>
                   )}
                   {theme.id === 'fade' && (
-                    <div className="flex-1 bg-gradient-to-r from-[#60a5fa] via-[#171717] to-[#fbbf24]"></div>
+                    <div className="flex-1 bg-gradient-to-r from-[#2de2e6] via-[#05060a] to-[#ff4fd8]"></div>
                   )}
                   {theme.id === 'tokyo-night' && (
                     <div className="flex-1 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400"></div>

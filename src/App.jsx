@@ -19,6 +19,7 @@ import CodeParticles from './components/CodeParticles'
 const ImageManager = lazy(() => import('./components/ImageManager'))
 const ThemeSelector = lazy(() => import('./components/ThemeSelector'))
 const BackgroundSelector = lazy(() => import('./components/BackgroundSelector'))
+const TypographySelector = lazy(() => import('./components/TypographySelector'))
 const ShortcutsHelp = lazy(() => import('./components/ShortcutsHelp'))
 const SessionManager = lazy(() => import('./components/SessionManager'))
 const CollaborationPanel = lazy(() => import('./components/CollaborationPanel'))
@@ -276,6 +277,22 @@ function App() {
   const [practiceModeEnabled, setPracticeModeEnabled] = useState(() => {
     return loadFromStorage(STORAGE_KEYS.PRACTICE_MODE, false);
   });
+
+  const [appFont, setAppFont] = useState(() => {
+    const stored = loadFromStorage(STORAGE_KEYS.APP_FONT, { id: 'theme-default', value: 'var(--theme-font-family)' });
+    if (typeof stored === 'string') {
+      return { id: 'custom', value: stored };
+    }
+    return stored;
+  });
+
+  const [codeFont, setCodeFont] = useState(() => {
+    const stored = loadFromStorage(STORAGE_KEYS.CODE_FONT, { id: 'consolas', value: "'Consolas', 'Courier New', monospace" });
+    if (typeof stored === 'string') {
+      return { id: 'custom', value: stored };
+    }
+    return stored;
+  });
   // 📂 NUEVO: Estado para Split View
   const [splitViewEnabled, setSplitViewEnabled] = useState(false);
   const [secondPanelTab, setSecondPanelTab] = useState(null);
@@ -347,6 +364,8 @@ function App() {
     [STORAGE_KEYS.PREVIEW_WIDTH]: previewWidth,
     [STORAGE_KEYS.TERMINAL_HEIGHT]: terminalHeight,
     [STORAGE_KEYS.PRACTICE_MODE]: practiceModeEnabled,
+    [STORAGE_KEYS.APP_FONT]: appFont,
+    [STORAGE_KEYS.CODE_FONT]: codeFont,
   }, 1000, handleSaveStatusChange);
 
   // Hook de colaboración en tiempo real
@@ -392,6 +411,35 @@ function App() {
   useEffect(() => {
     applyGlobalTheme(currentTheme);
   }, [currentTheme]);
+
+  const ensureGoogleFontLoaded = useCallback((googleSpec) => {
+    if (!googleSpec || typeof document === 'undefined') return;
+    const id = `google-font-${googleSpec.replace(/[^a-z0-9_-]/gi, '_')}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${googleSpec}&display=swap`;
+    document.head.appendChild(link);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const family = appFont?.value || 'var(--theme-font-family)';
+    root.style.setProperty('--app-font-family', family);
+    if (appFont?.google) {
+      ensureGoogleFontLoaded(appFont.google);
+    }
+  }, [appFont, ensureGoogleFontLoaded]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const family = codeFont?.value || "'Consolas', 'Courier New', monospace";
+    root.style.setProperty('--code-font-family', family);
+    if (codeFont?.google) {
+      ensureGoogleFontLoaded(codeFont.google);
+    }
+  }, [codeFont, ensureGoogleFontLoaded]);
 
   // Ocultar efectos de fondo del body cuando hay imagen personalizada
   useEffect(() => {
@@ -902,6 +950,8 @@ function App() {
     setImages([]);
     setShowPreview(true);
     setShowTerminal(false);
+    setAppFont({ id: 'theme-default', value: 'var(--theme-font-family)' });
+    setCodeFont({ id: 'consolas', value: "'Consolas', 'Courier New', monospace" });
 
     closeModal('reset');
 
@@ -1755,16 +1805,16 @@ function App() {
       if (isDay) {
         // Colores brillantes y cálidos para el día
         overlay.style.background = `
-          radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.32) 0%, rgba(59, 130, 246, 0.22) 35%, rgba(59, 130, 246, 0.12) 60%, transparent 100%),
-          radial-gradient(circle 220px at 85% 15%, rgba(255, 255, 100, 0.18) 0%, rgba(255, 240, 85, 0.14) 10%, rgba(255, 225, 70, 0.11) 20%, rgba(255, 210, 60, 0.08) 30%, rgba(250, 195, 50, 0.06) 40%, rgba(240, 180, 45, 0.05) 50%, rgba(230, 170, 40, 0.04) 60%, rgba(220, 160, 35, 0.03) 70%, rgba(210, 150, 30, 0.02) 80%, rgba(200, 140, 25, 0.01) 90%, transparent 100%),
-          radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.20) 35%, rgba(124, 58, 237, 0.12) 60%, transparent 100%)
+          radial-gradient(circle 520px at 18% 18%, color-mix(in srgb, var(--theme-primary) 40%, transparent) 0%, transparent 62%),
+          radial-gradient(circle 420px at 82% 16%, color-mix(in srgb, var(--theme-secondary) 32%, transparent) 0%, transparent 60%),
+          radial-gradient(circle 560px at 52% 64%, color-mix(in srgb, var(--theme-accent) 30%, transparent) 0%, transparent 65%)
         `;
       } else {
         // Colores sutiles y fríos para la noche
         overlay.style.background = `
-          radial-gradient(circle 450px at 15% 20%, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.18) 35%, rgba(59, 130, 246, 0.10) 60%, transparent 100%),
-          radial-gradient(circle 220px at 85% 15%, rgba(255, 255, 100, 0.15) 0%, rgba(255, 240, 85, 0.12) 10%, rgba(255, 225, 70, 0.09) 20%, rgba(255, 210, 60, 0.07) 30%, rgba(250, 195, 50, 0.05) 40%, rgba(240, 180, 45, 0.04) 50%, rgba(230, 170, 40, 0.03) 60%, rgba(220, 160, 35, 0.02) 70%, rgba(210, 150, 30, 0.01) 80%, rgba(200, 140, 25, 0.005) 90%, transparent 100%),
-          radial-gradient(circle 400px at 50% 50%, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.15) 35%, rgba(124, 58, 237, 0.08) 60%, transparent 100%)
+          radial-gradient(circle 520px at 18% 18%, color-mix(in srgb, var(--theme-primary) 28%, transparent) 0%, transparent 62%),
+          radial-gradient(circle 420px at 82% 16%, color-mix(in srgb, var(--theme-secondary) 20%, transparent) 0%, transparent 60%),
+          radial-gradient(circle 560px at 52% 64%, color-mix(in srgb, var(--theme-accent) 18%, transparent) 0%, transparent 65%)
         `;
       }
     };
@@ -1860,6 +1910,7 @@ function App() {
         user={user}
         onLogout={logout}
         onOpenBackground={() => openModal('backgroundSelector')}
+        onOpenTypography={() => openModal('typographySelector')}
         practiceModeEnabled={practiceModeEnabled}
         onTogglePracticeMode={() => setPracticeModeEnabled(!practiceModeEnabled)}
         onOpenSnippets={() => openModal('snippetManager')}
@@ -1919,6 +1970,17 @@ function App() {
           onClose={() => closeModal('backgroundSelector')}
           currentBackground={editorBackground.id}
           onBackgroundChange={handleBackgroundChange}
+        />
+      </Suspense>
+
+      <Suspense fallback={<LoadingFallback />}>
+        <TypographySelector
+          isOpen={isOpen('typographySelector')}
+          onClose={() => closeModal('typographySelector')}
+          appFont={appFont}
+          codeFont={codeFont}
+          onChangeAppFont={setAppFont}
+          onChangeCodeFont={setCodeFont}
         />
       </Suspense>
 
@@ -2074,12 +2136,12 @@ function App() {
               width: '20px', 
               cursor: 'pointer',
               zIndex: 999,
-              backgroundColor: 'rgba(96, 165, 250, 0.05)',
+              backgroundColor: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)',
               transition: 'background-color 200ms ease'
             }}
             onDoubleClick={() => setShowSidebar(true)}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(96, 165, 250, 0.15)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(96, 165, 250, 0.05)'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 18%, transparent)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-primary) 8%, transparent)'}
             title="Doble clic para mostrar el explorador"
           />
         )}
@@ -2109,8 +2171,15 @@ function App() {
                     width: '90%',
                     height: '550px',
                     borderRadius: '16px', 
-                    border: '1px solid #3f3f46',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(96, 165, 250, 0.1)',
+                    backgroundColor: 'var(--theme-background-secondary)',
+                    backdropFilter: 'blur(14px)',
+                    border: '1px solid var(--theme-border)',
+                    boxShadow: `
+                      0 20px 60px rgba(0, 0, 0, 0.58),
+                      0 0 60px color-mix(in srgb, var(--theme-secondary) 10%, transparent),
+                      0 0 80px color-mix(in srgb, var(--theme-accent) 9%, transparent),
+                      0 0 55px color-mix(in srgb, var(--theme-primary) 7%, transparent)
+                    `,
                     overflow: 'hidden',
                     transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                     transform: showTerminal 
@@ -2124,7 +2193,7 @@ function App() {
                     pointerEvents: showTerminal ? 'none' : 'auto'
                   } : {})
                 }}
-                className={`flex-shrink-0 overflow-hidden relative ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
+                className={`flex-shrink-0 overflow-hidden relative ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow' : ''}`}
               >
                 {/* Botón toggle sidebar */}
                 {!showSidebar && !isFadeMode && (
@@ -2166,6 +2235,7 @@ function App() {
                         projectImages={images}
                         currentTheme={currentTheme}
                         isImage={activeFile?.isImage || false}
+                        codeFontFamily={codeFont?.value}
                         activePath={activeTab}
                         onAddImageFile={handleAddImageFile}
                         hasCustomBackground={!!editorBackground.image}
@@ -2232,6 +2302,7 @@ function App() {
                         projectImages={images}
                         currentTheme={currentTheme}
                         isImage={getFileByPath(secondPanelTab)?.isImage || false}
+                        codeFontFamily={codeFont?.value}
                         activePath={secondPanelTab}
                         onAddImageFile={handleAddImageFile}
                         hasCustomBackground={!!editorBackground.image}
@@ -2264,6 +2335,7 @@ function App() {
                         projectImages={images}
                         currentTheme={currentTheme}
                         isImage={activeFile?.isImage || false}
+                        codeFontFamily={codeFont?.value}
                         activePath={activeTab}
                         onAddImageFile={handleAddImageFile}
                         hasCustomBackground={!!editorBackground.image}
@@ -2311,8 +2383,10 @@ function App() {
                         maxHeight: '550px',
                         height: '550px',
                         borderRadius: '16px',
-                        border: '1px solid #3f3f46',
-                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
+                        backgroundColor: 'var(--theme-background-secondary)',
+                        backdropFilter: 'blur(14px)',
+                        border: '1px solid var(--theme-border)',
+                        boxShadow: '0 24px 80px rgba(0, 0, 0, 0.55), 0 0 110px color-mix(in srgb, var(--theme-secondary) 14%, transparent)',
                         overflow: 'hidden',
                         transition: isDraggingPreview ? 'none' : 'opacity 300ms ease, filter 300ms ease',
                         transform: (previewPosition.x !== 0 || previewPosition.y !== 0) 
@@ -2329,7 +2403,7 @@ function App() {
                         cursor: isDraggingPreview ? 'grabbing' : 'default'
                       } : {})
                     }}
-                    className={`flex-shrink-0 overflow-hidden ${!editorBackground.image && !isFadeMode ? 'shadow-yellow-glow' : ''}`}
+                    className={`flex-shrink-0 overflow-hidden ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-yellow-glow' : ''}`}
                   >
                     {/* Barra de título para arrastrar - solo en modo fade */}
                     {isFadeMode && showPreview && (
@@ -2341,8 +2415,8 @@ function App() {
                           left: 0,
                           right: 0,
                           height: '32px',
-                          background: 'linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%)',
-                          borderBottom: '1px solid rgba(251, 191, 36, 0.2)',
+                          background: 'linear-gradient(180deg, color-mix(in srgb, var(--theme-secondary) 18%, transparent) 0%, color-mix(in srgb, var(--theme-secondary) 6%, transparent) 100%)',
+                          borderBottom: '1px solid color-mix(in srgb, var(--theme-border) 85%, transparent)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -2357,10 +2431,10 @@ function App() {
                           gap: '4px',
                           opacity: 0.5
                         }}>
-                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
-                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
-                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
-                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--theme-secondary)' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--theme-secondary)' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--theme-secondary)' }}></div>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--theme-secondary)' }}></div>
                         </div>
                       </div>
                     )}
@@ -2406,9 +2480,11 @@ function App() {
                       width: '90%',
                       height: '550px',
                       borderRadius: '16px',
-                      border: '1px solid #3f3f46',
+                      backgroundColor: 'var(--theme-background-secondary)',
+                      backdropFilter: 'blur(14px)',
+                      border: '1px solid var(--theme-border)',
                       overflow: 'hidden',
-                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(251, 191, 36, 0.1)',
+                      boxShadow: '0 24px 80px rgba(0, 0, 0, 0.55), 0 0 110px color-mix(in srgb, var(--theme-accent) 14%, transparent)',
                       transition: 'all 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                       transform: showTerminal 
                         ? 'translate(-50%, -50%) scale(1) rotateX(0deg)' 
@@ -2421,7 +2497,7 @@ function App() {
                       pointerEvents: showTerminal ? 'auto' : 'none'
                     } : {})
                   }} 
-                  className={`flex-shrink-0 ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}
+                  className={`flex-shrink-0 ${isFadeMode ? 'fade-glass-panel' : ''} ${!editorBackground.image && !isFadeMode ? 'shadow-blue-glow-strong' : ''}`}
                 >
                   <Terminal 
                     ref={terminalRef}

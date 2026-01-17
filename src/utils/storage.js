@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
   SHOW_PREVIEW: 'code-editor-show-preview',
   SHOW_TERMINAL: 'code-editor-show-terminal',
   FONT_SIZE: 'code-editor-font-size',
+  APP_FONT: 'code-editor-app-font',
+  CODE_FONT: 'code-editor-code-font',
   SIDEBAR_WIDTH: 'code-editor-sidebar-width',
   PREVIEW_WIDTH: 'code-editor-preview-width',
   TERMINAL_HEIGHT: 'code-editor-terminal-height',

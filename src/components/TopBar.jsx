@@ -56,6 +56,7 @@ function TopBar({
   onLogout,
   // 🎨 Fondo personalizado
   onOpenBackground,
+  onOpenTypography,
   // 🎯 Modo Práctica
   practiceModeEnabled,
   onTogglePracticeMode,
@@ -799,6 +800,26 @@ function TopBar({
                 </button>
               )}
 
+              {onOpenTypography && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenTypography();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
+                  style={{
+                    color: "#fff",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                  }}
+                >
+                  Tipografía
+                </button>
+              )}
+
               {/* Fondo del editor - solo en modo no-lite */}
               {!isLite && onOpenBackground && (
                 <button
@@ -912,7 +933,7 @@ function TopBar({
                 >
                   <span>Día/Noche Auto</span>
                   <span className="ml-2 text-xs" style={{ 
-                    color: dayNightMode === 'auto' ? "#fbbf24" : "#94a3b8",
+                    color: dayNightMode === 'auto' ? "var(--theme-secondary)" : "var(--theme-text-muted)",
                     fontWeight: "600"
                   }}>
                     {dayNightMode === 'auto' ? "ON" : "OFF"}

@@ -102,6 +102,7 @@ export function useModals() {
 export const MODALS = {
   IMAGE_MANAGER: 'imageManager',
   THEME_SELECTOR: 'themeSelector',
+  TYPOGRAPHY_SELECTOR: 'typographySelector',
   SHORTCUTS: 'shortcuts',
   RESET: 'reset',
   SESSION_MANAGER: 'sessionManager',

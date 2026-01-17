@@ -810,44 +810,44 @@ export const defineCustomThemes = (monaco) => {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '71717a', fontStyle: 'italic' },
-      { token: 'keyword', foreground: '60a5fa', fontStyle: 'bold' }, // Azul
-      { token: 'string', foreground: 'fbbf24' }, // Amarillo
-      { token: 'number', foreground: 'facc15' }, // Amarillo claro
-      { token: 'function', foreground: '60a5fa' }, // Azul
-      { token: 'variable', foreground: 'e4e4e7' },
-      { token: 'type', foreground: '3b82f6' }, // Azul más oscuro
-      { token: 'operator', foreground: '93c5fd' }, // Azul claro
-      { token: 'class', foreground: '60a5fa' }, // Azul
+      { token: 'comment', foreground: '8a93a6', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '2de2e6', fontStyle: 'bold' },
+      { token: 'string', foreground: 'ff4fd8' },
+      { token: 'number', foreground: '7c3aed' },
+      { token: 'function', foreground: '2de2e6' },
+      { token: 'variable', foreground: 'e7e9ee' },
+      { token: 'type', foreground: '7c3aed' },
+      { token: 'operator', foreground: 'a78bfa' },
+      { token: 'class', foreground: '2de2e6' },
       // HTML
-      { token: 'tag', foreground: '60a5fa', fontStyle: 'bold' }, // Azul
-      { token: 'tag.html', foreground: '60a5fa', fontStyle: 'bold' }, // Azul
-      { token: 'delimiter.html', foreground: '93c5fd' }, // Azul claro
-      { token: 'attribute.name', foreground: 'fbbf24' }, // Amarillo
-      { token: 'attribute.name.html', foreground: 'fbbf24' }, // Amarillo
-      { token: 'attribute.value', foreground: 'facc15' }, // Amarillo claro
-      { token: 'attribute.value.html', foreground: 'facc15' }, // Amarillo claro
+      { token: 'tag', foreground: '2de2e6', fontStyle: 'bold' },
+      { token: 'tag.html', foreground: '2de2e6', fontStyle: 'bold' },
+      { token: 'delimiter.html', foreground: 'c9d0dc' },
+      { token: 'attribute.name', foreground: 'ff4fd8' },
+      { token: 'attribute.name.html', foreground: 'ff4fd8' },
+      { token: 'attribute.value', foreground: '7c3aed' },
+      { token: 'attribute.value.html', foreground: '7c3aed' },
       // CSS
-      { token: 'attribute.name.css', foreground: '60a5fa' }, // Azul
-      { token: 'attribute.value.css', foreground: 'fbbf24' }, // Amarillo
-      { token: 'property.css', foreground: '60a5fa' }, // Azul
+      { token: 'attribute.name.css', foreground: '2de2e6' },
+      { token: 'attribute.value.css', foreground: 'ff4fd8' },
+      { token: 'property.css', foreground: '2de2e6' },
       // JavaScript
-      { token: 'identifier', foreground: 'e4e4e7' },
-      { token: 'delimiter.bracket', foreground: '93c5fd' }, // Azul claro
-      { token: 'delimiter.parenthesis', foreground: '93c5fd' }, // Azul claro
+      { token: 'identifier', foreground: 'e7e9ee' },
+      { token: 'delimiter.bracket', foreground: 'c9d0dc' },
+      { token: 'delimiter.parenthesis', foreground: 'c9d0dc' },
     ],
     colors: {
-      'editor.background': '#171717',
-      'editor.foreground': '#e4e4e7',
-      'editorCursor.foreground': '#60a5fa',
-      'editor.lineHighlightBackground': '#1f1f1f',
-      'editorLineNumber.foreground': '#52525b',
-      'editor.selectionBackground': '#60a5fa33',
-      'editor.inactiveSelectionBackground': '#60a5fa1A',
-      'editor.selectionHighlightBackground': '#60a5fa1A',
-      'editor.wordHighlightBackground': '#60a5fa1A',
-      'editorIndentGuide.activeBackground': '#60a5fa',
-      'editorIndentGuide.background': '#262626',
+      'editor.background': '#05060a',
+      'editor.foreground': '#e7e9ee',
+      'editorCursor.foreground': '#2de2e6',
+      'editor.lineHighlightBackground': '#0b0c14',
+      'editorLineNumber.foreground': '#5b6475',
+      'editor.selectionBackground': '#2de2e633',
+      'editor.inactiveSelectionBackground': '#2de2e61A',
+      'editor.selectionHighlightBackground': '#2de2e61A',
+      'editor.wordHighlightBackground': '#2de2e61A',
+      'editorIndentGuide.activeBackground': '#2de2e6',
+      'editorIndentGuide.background': '#141529',
     }
   });
 };

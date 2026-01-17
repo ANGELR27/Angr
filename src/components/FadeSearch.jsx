@@ -65,26 +65,27 @@ const FadeSearch = ({ files, onFileSelect, onClose }) => {
 
   return (
     <div 
-      className="flex flex-col h-full border-r"
+      className="flex flex-col border-r fade-glass-panel"
       style={{
         width: '350px',
-        backgroundColor: '#1a1a1a',
-        borderColor: '#2a2a2a'
+        backgroundColor: 'var(--theme-background-secondary)',
+        borderColor: 'var(--theme-border)',
+        backdropFilter: 'blur(12px)'
       }}
     >
       {/* Header */}
       <div 
         className="flex items-center justify-between p-3 border-b"
-        style={{ borderColor: '#2a2a2a' }}
+        style={{ borderColor: 'var(--theme-border)' }}
       >
-        <h3 className="text-sm font-semibold" style={{ color: '#e4e4e7' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--theme-text)' }}>
           Buscar
         </h3>
         <button
           onClick={onClose}
           className="p-1 rounded hover:bg-white/10"
         >
-          <X className="w-4 h-4" style={{ color: '#71717a' }} />
+          <X className="w-4 h-4" style={{ color: 'var(--theme-text-muted)' }} />
         </button>
       </div>
 
@@ -93,18 +94,19 @@ const FadeSearch = ({ files, onFileSelect, onClose }) => {
         <div 
           className="flex items-center gap-2 px-3 py-2 rounded"
           style={{
-            backgroundColor: '#2a2a2a',
-            border: '1px solid #3f3f46'
+            backgroundColor: 'var(--theme-background-tertiary)',
+            border: '1px solid var(--theme-border)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.25)'
           }}
         >
-          <Search className="w-4 h-4" style={{ color: '#71717a' }} />
+          <Search className="w-4 h-4" style={{ color: 'var(--theme-text-muted)' }} />
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearch}
             placeholder="Buscar en archivos..."
             className="flex-1 bg-transparent outline-none text-sm"
-            style={{ color: '#e4e4e7' }}
+            style={{ color: 'var(--theme-text)' }}
             autoFocus
           />
         </div>
@@ -121,38 +123,38 @@ const FadeSearch = ({ files, onFileSelect, onClose }) => {
                 className="w-full text-left p-2 rounded hover:bg-white/5 transition-colors mb-1"
               >
                 <div className="flex items-start gap-2">
-                  <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#60a5fa' }} />
+                  <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium truncate" style={{ color: '#e4e4e7' }}>
+                      <span className="text-xs font-medium truncate" style={{ color: 'var(--theme-text)' }}>
                         {result.name}
                       </span>
                       {result.type === 'content' && (
-                        <span className="text-xs" style={{ color: '#71717a' }}>
+                        <span className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>
                           Línea {result.line}
                         </span>
                       )}
                     </div>
-                    <div className="text-xs mt-1 truncate" style={{ color: '#a1a1aa' }}>
+                    <div className="text-xs mt-1 truncate" style={{ color: 'var(--theme-text-secondary)' }}>
                       {result.preview}
                     </div>
                   </div>
-                  <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: '#71717a' }} />
+                  <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--theme-text-muted)' }} />
                 </div>
               </button>
             ))}
           </div>
         ) : searchQuery ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-            <Search className="w-8 h-8 mb-3" style={{ color: '#3f3f46' }} />
-            <p className="text-sm" style={{ color: '#71717a' }}>
+            <Search className="w-8 h-8 mb-3" style={{ color: 'var(--theme-border)' }} />
+            <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>
               No se encontraron resultados
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-            <Search className="w-8 h-8 mb-3" style={{ color: '#3f3f46' }} />
-            <p className="text-sm" style={{ color: '#71717a' }}>
+            <Search className="w-8 h-8 mb-3" style={{ color: 'var(--theme-border)' }} />
+            <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>
               Escribe para buscar en archivos
             </p>
           </div>
@@ -164,8 +166,8 @@ const FadeSearch = ({ files, onFileSelect, onClose }) => {
         <div 
           className="p-2 border-t text-xs text-center"
           style={{ 
-            borderColor: '#2a2a2a',
-            color: '#71717a'
+            borderColor: 'var(--theme-border)',
+            color: 'var(--theme-text-muted)'
           }}
         >
           {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''}

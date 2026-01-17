@@ -32,6 +32,7 @@ function CodeEditor({
   projectImages,
   currentTheme,
   isImage,
+  codeFontFamily,
   activePath,
   onAddImageFile,
   hasCustomBackground = false,
@@ -52,6 +53,10 @@ function CodeEditor({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
+  const effectiveCodeFontFamily = useMemo(
+    () => codeFontFamily || "'Consolas', 'Courier New', monospace",
+    [codeFontFamily]
+  );
   const disposablesRef = useRef([]);
   const projectFilesRef = useRef(projectFiles);
   const projectImagesRef = useRef(projectImages);
@@ -615,6 +620,17 @@ function CodeEditor({
       }
     }
   }, [currentTheme]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateOptions({ fontFamily: effectiveCodeFontFamily });
+
+    const monaco = monacoRef.current;
+    if (monaco?.editor?.remeasureFonts) {
+      monaco.editor.remeasureFonts();
+    }
+  }, [effectiveCodeFontFamily]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -2544,7 +2560,7 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
           roundedSelection: false,
           readOnly: false,
           cursorStyle: "line",
-          fontFamily: "'Consolas', 'Courier New', monospace",
+          fontFamily: effectiveCodeFontFamily,
           fontLigatures: true,
           padding: { top: 16, bottom: 120 },
           // 🎯 Autocompletado Súper Reforzado - desactivado solo en Modo Práctica
