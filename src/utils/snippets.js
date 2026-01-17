@@ -3,7 +3,7 @@ export const getHTMLSnippets = (monaco, range) => {
   const Kind = monaco.languages.CompletionItemKind.Snippet;
   const Rule = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
   
-  return [
+  const base = [
     // 🚀 Snippet principal "!" - HTML5 completo
     { 
       label: '!', 
@@ -24,7 +24,7 @@ export const getHTMLSnippets = (monaco, range) => {
       detail: 'HTML5 Boilerplate',
       range 
     },
-    { label: 'div', kind: Kind, insertText: '<div class="${1}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con clase', range },
+    { label: 'div', kind: Kind, insertText: '<div>\n\t${1}\n</div>', insertTextRules: Rule, documentation: '📦 Div', range },
     { label: 'div.', kind: Kind, insertText: '<div class="${1:class-name}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con clase (rápido)', range },
     { label: 'div#', kind: Kind, insertText: '<div id="${1:id-name}">\n\t${2}\n</div>', insertTextRules: Rule, documentation: '📦 Div con ID', range },
     { label: 'span', kind: Kind, insertText: '<span class="${1}">${2}</span>', insertTextRules: Rule, documentation: '📝 Span', range },
@@ -72,6 +72,12 @@ export const getHTMLSnippets = (monaco, range) => {
     { label: 'details', kind: Kind, insertText: '<details>\n\t<summary>${1:Clic para expandir}</summary>\n\t${2}\n</details>', insertTextRules: Rule, documentation: '📋 Detalles colapsables', range },
     { label: 'svg', kind: Kind, insertText: '<svg width="${1:100}" height="${2:100}" viewBox="0 0 ${1:100} ${2:100}">\n\t${3}\n</svg>', insertTextRules: Rule, documentation: '🎨 SVG', range }
   ];
+
+  return base.map((item, index) => {
+    const sortText = item.sortText ?? String(index + 1).padStart(4, "0");
+    const preselect = item.preselect ?? true;
+    return { ...item, sortText, preselect };
+  });
 };
 
 export const getCSSSnippets = (monaco, range) => {

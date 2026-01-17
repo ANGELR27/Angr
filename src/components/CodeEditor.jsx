@@ -48,24 +48,22 @@ function CodeEditor({
 }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+  const languageRef = useRef(language);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSearchWidget, setShowSearchWidget] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(14);
-  const isEclipse = currentTheme === 'eclipse';
   const effectiveCodeFontFamily = useMemo(
     () => codeFontFamily || "'Consolas', 'Courier New', monospace",
     [codeFontFamily]
   );
   const effectiveFontSize = useMemo(() => {
-    if (!isEclipse) return fontSize;
     return Math.max(fontSize, 16);
-  }, [fontSize, isEclipse]);
-  const eclipseLineHeight = useMemo(() => {
-    if (!isEclipse) return undefined;
+  }, [fontSize]);
+  const premiumLineHeight = useMemo(() => {
     return Math.round(effectiveFontSize * 1.75);
-  }, [effectiveFontSize, isEclipse]);
+  }, [effectiveFontSize]);
   const disposablesRef = useRef([]);
   const projectFilesRef = useRef(projectFiles);
   const projectImagesRef = useRef(projectImages);
@@ -128,6 +126,10 @@ function CodeEditor({
   useEffect(() => {
     activePathRef.current = activePath;
   }, [activePath]);
+
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   // 🎨 Renderizar cursores remotos y etiquetas
   useEffect(() => {
@@ -2557,9 +2559,9 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
         onMount={handleEditorDidMount}
         options={{
           fontSize: effectiveFontSize,
-          lineHeight: eclipseLineHeight,
+          lineHeight: premiumLineHeight,
           minimap: {
-            enabled: !isEclipse,
+            enabled: false,
             showSlider: 'mouseover',
             renderCharacters: true,
             maxColumn: 120,
@@ -2571,23 +2573,23 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
           ["semanticHighlighting.enabled"]: false,
           tabSize: 2,
           lineNumbers: "on",
-          lineNumbersMinChars: isEclipse ? 3 : 5,
-          lineDecorationsWidth: isEclipse ? 10 : 14,
+          lineNumbersMinChars: 3,
+          lineDecorationsWidth: 10,
           renderLineHighlight: "all",
-          renderLineHighlightOnlyWhenFocus: isEclipse,
+          renderLineHighlightOnlyWhenFocus: true,
           selectOnLineNumbers: true,
           roundedSelection: false,
           readOnly: false,
           cursorStyle: "line",
-          cursorWidth: isEclipse ? 2 : undefined,
-          cursorSurroundingLines: isEclipse ? 8 : 0,
-          cursorSurroundingLinesStyle: isEclipse ? 'all' : 'default',
+          cursorWidth: 2,
+          cursorSurroundingLines: 8,
+          cursorSurroundingLinesStyle: 'all',
           fontFamily: effectiveCodeFontFamily,
           fontLigatures: true,
-          padding: isEclipse ? { top: 22, bottom: 140 } : { top: 16, bottom: 120 },
+          padding: { top: 22, bottom: 140 },
           scrollbar: {
-            verticalScrollbarSize: isEclipse ? 8 : 10,
-            horizontalScrollbarSize: isEclipse ? 8 : 10,
+            verticalScrollbarSize: 8,
+            horizontalScrollbarSize: 8,
             alwaysConsumeMouseWheel: false,
           },
           // 🎯 Autocompletado Súper Reforzado - desactivado solo en Modo Práctica
@@ -2605,9 +2607,16 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
             cycle: true // Navegar entre parameter hints
           },
           acceptSuggestionOnCommitCharacter: !practiceModeEnabled,
-          acceptSuggestionOnEnter: practiceModeEnabled ? "off" : "on",
+          // En HTML, Enter NO debe aceptar palabras del documento (ej: "device-width") por encima de snippets/tags.
+          acceptSuggestionOnEnter: practiceModeEnabled ? "off" : "smart",
           tabCompletion: practiceModeEnabled ? "off" : "onlySnippets", // Solo snippets con tab
-          wordBasedSuggestions: !practiceModeEnabled ? "allDocuments" : false, // Mejorado
+          // En HTML/CSS se desactiva wordBasedSuggestions para evitar que "abc" (palabras del documento)
+          // se preseleccione por encima de tags/snippets.
+          wordBasedSuggestions:
+            !practiceModeEnabled && !["html", "css"].includes(languageRef.current)
+              ? "allDocuments"
+              : false,
+          suggestSelection: "first",
           suggest: {
             showKeywords: !practiceModeEnabled,
             showSnippets: !practiceModeEnabled,

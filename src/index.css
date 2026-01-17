@@ -706,22 +706,24 @@ code {
   opacity: 0.10;
 }
 
-.eclipse-bg .monaco-editor .view-lines {
+.monaco-editor .view-lines {
   letter-spacing: 0.02em;
 }
 
-.eclipse-bg .monaco-editor .margin {
-  background: transparent;
-}
-
-.eclipse-bg .monaco-editor .margin .line-numbers {
+.monaco-editor .margin .line-numbers {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   opacity: 0.72;
 }
 
-.eclipse-bg .monaco-editor .margin .line-numbers.active-line-number {
+.monaco-editor .margin .line-numbers.active-line-number {
   opacity: 1;
+}
+
+.monaco-editor,
+.monaco-editor:focus,
+.monaco-editor:focus-within {
+  outline: none !important;
 }
 
 .eclipse-glass-panel {
