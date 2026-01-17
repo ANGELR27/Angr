@@ -38,6 +38,7 @@ function ImageManager({ isOpen, onClose, images, onAddImage, onRemoveImage }) {
     setDraggingImage(image);
     // Crear código HTML para la imagen
     const imgTag = `<img src="${image.data}" alt="${image.name.split('.')[0]}" width="300" />`;
+    e.dataTransfer.setData('text/angr-image-html', imgTag);
     e.dataTransfer.setData('text/plain', imgTag);
     e.dataTransfer.effectAllowed = 'copy';
   };

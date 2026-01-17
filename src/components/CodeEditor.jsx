@@ -643,19 +643,33 @@ function CodeEditor({
     }
   }, [effectiveCodeFontFamily]);
 
+  const isRelevantEditorDragEvent = (e) => {
+    const dt = e?.dataTransfer;
+    if (!dt || !dt.types) return false;
+    const types = Array.from(dt.types);
+    return (
+      types.includes("Files") ||
+      types.includes("text/source-path") ||
+      types.includes("text/angr-image-html")
+    );
+  };
+
   const handleDragOver = (e) => {
+    if (!isRelevantEditorDragEvent(e)) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(true);
   };
 
   const handleDragLeave = (e) => {
+    if (!isRelevantEditorDragEvent(e)) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(false);
   };
 
   const handleDrop = (e) => {
+    if (!isRelevantEditorDragEvent(e)) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(false);
@@ -797,8 +811,8 @@ function CodeEditor({
     }
 
     // 2) Texto arrastrado (desde gestor de imágenes u otras fuentes)
-    const text = e.dataTransfer.getData("text/plain");
-    if (text && editorRef.current) {
+    const imageHtml = e.dataTransfer.getData("text/angr-image-html");
+    if (imageHtml && editorRef.current) {
       const editor = editorRef.current;
       const position = editor.getPosition();
       editor.executeEdits("drop", [
@@ -809,16 +823,16 @@ function CodeEditor({
             endLineNumber: position.lineNumber,
             endColumn: position.column,
           },
-          text,
+          text: imageHtml,
         },
       ]);
-      const lines = text.split("\n");
+      const lines = imageHtml.split("\n");
       const lastLine = lines[lines.length - 1];
       editor.setPosition({
         lineNumber: position.lineNumber + lines.length - 1,
         column:
           lines.length === 1
-            ? position.column + text.length
+            ? position.column + imageHtml.length
             : lastLine.length + 1,
       });
       editor.focus();
@@ -903,6 +917,31 @@ function CodeEditor({
             return { suggestions: [] };
           }
 
+          let inComment = false;
+          let inString = false;
+          try {
+            const lineTokens = model.getLineTokens(position.lineNumber);
+            const tokenIndex = lineTokens.findTokenIndexAtOffset(
+              Math.max(0, position.column - 1)
+            );
+            const tokenType = lineTokens.getStandardTokenType(tokenIndex);
+            inComment = tokenType === monaco.languages.StandardTokenType.Comment;
+            inString = tokenType === monaco.languages.StandardTokenType.String;
+          } catch {
+            const textUntil = model.getValueInRange({
+              startLineNumber: position.lineNumber,
+              startColumn: 1,
+              endLineNumber: position.lineNumber,
+              endColumn: position.column,
+            });
+            inComment = /\/\/.+$/.test(textUntil) || /#.+$/.test(textUntil);
+            inString = /["'][^"']*$/.test(textUntil);
+          }
+
+          if (inComment) {
+            return { suggestions: [] };
+          }
+
           const word = model.getWordUntilPosition(position);
           const line = model.getLineContent(position.lineNumber);
           
@@ -914,6 +953,48 @@ function CodeEditor({
           };
 
           let suggestions = [];
+
+          // Dentro de strings: solo sugerir rutas cuando aplique (no snippets/auto-imports)
+          if (inString) {
+            if (['javascript', 'typescript', 'jsx', 'tsx', 'python', 'java'].includes(lang)) {
+              const textUntilPosition = model.getValueInRange({
+                startLineNumber: position.lineNumber,
+                startColumn: 1,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              });
+
+              const afterImportOrRequire = /(import|require|fetch|from)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
+
+              if (afterImportOrRequire || textUntilPosition.includes("./")) {
+                const filePaths = getCachedPaths().files;
+                const relevantFiles = filePaths.filter((f) => {
+                  const allowedExts = {
+                    'javascript': ['js', 'json', 'css', 'html', 'ts', 'jsx', 'tsx'],
+                    'typescript': ['ts', 'tsx', 'js', 'json', 'css'],
+                    'jsx': ['js', 'jsx', 'ts', 'tsx', 'json', 'css'],
+                    'tsx': ['ts', 'tsx', 'js', 'jsx', 'json'],
+                    'python': ['py', 'txt', 'json'],
+                    'java': ['java', 'properties', 'xml']
+                  };
+                  return (allowedExts[lang] || ['js']).includes(f.extension);
+                });
+
+                relevantFiles.forEach((file, index) => {
+                  suggestions.push({
+                    label: `./${file.path}`,
+                    kind: monaco.languages.CompletionItemKind.Module,
+                    insertText: `./${file.path}`,
+                    documentation: `📦 ${lang === 'python' ? 'Módulo' : 'Módulo'}: ${file.name}`,
+                    sortText: String(200 + index).padStart(4, '0'),
+                    range
+                  });
+                });
+              }
+            }
+
+            return { suggestions };
+          }
 
           // 🎯 PRIORIDAD 1: SNIPPETS UNIVERSALES ESPECÍFICOS DEL LENGUAJE
           if (word.word && word.word.length >= 1) {
@@ -928,45 +1009,6 @@ function CodeEditor({
               console.log(`🎯 [${lang}] Universal snippets found:`, universalSuggestions.length);
             } catch (error) {
               console.warn(`⚠️ Error getting universal suggestions for ${lang}:`, error);
-            }
-          }
-
-          // 🎯 PRIORIDAD 2: Sugerencias de archivos en strings (solo para lenguajes que lo soporten)
-          if (['javascript', 'typescript', 'jsx', 'tsx', 'python', 'java'].includes(lang)) {
-            const textUntilPosition = model.getValueInRange({
-              startLineNumber: position.lineNumber,
-              startColumn: 1,
-              endLineNumber: position.lineNumber,
-              endColumn: position.column,
-            });
-            
-            const inString = /["'][^"']*$/.test(textUntilPosition);
-            const afterImportOrRequire = /(import|require|fetch|from)\s*\(?\s*["'][^"']*$/.test(textUntilPosition);
-            
-            if (inString && (afterImportOrRequire || textUntilPosition.includes("./"))) {
-              const filePaths = getCachedPaths().files;
-              const relevantFiles = filePaths.filter((f) => {
-                const allowedExts = {
-                  'javascript': ['js', 'json', 'css', 'html', 'ts', 'jsx', 'tsx'],
-                  'typescript': ['ts', 'tsx', 'js', 'json', 'css'],
-                  'jsx': ['js', 'jsx', 'ts', 'tsx', 'json', 'css'],
-                  'tsx': ['ts', 'tsx', 'js', 'jsx', 'json'],
-                  'python': ['py', 'txt', 'json'],
-                  'java': ['java', 'properties', 'xml']
-                };
-                return (allowedExts[lang] || ['js']).includes(f.extension);
-              });
-
-              relevantFiles.forEach((file, index) => {
-                suggestions.push({
-                  label: `./${file.path}`,
-                  kind: monaco.languages.CompletionItemKind.Module,
-                  insertText: `./${file.path}`,
-                  documentation: `📦 ${lang === 'python' ? 'Módulo' : 'Módulo'}: ${file.name}`,
-                  sortText: String(200 + index).padStart(4, '0'),
-                  range
-                });
-              });
             }
           }
 
@@ -1348,10 +1390,13 @@ function CodeEditor({
 
     // HTML Snippets + Autocompletado de rutas
     // HTML Provider mejorado con autocompletado de etiquetas
+    const alphaTriggers = Array.from(
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    );
 const htmlProvider = monaco.languages.registerCompletionItemProvider(
       "html",
       {
-        triggerCharacters: ["!", "<", ".", "#", " "],
+        triggerCharacters: [...alphaTriggers, "!", "<", ".", "#", " "],
         provideCompletionItems: (model, position) => {
           const textUntilPosition = model.getValueInRange({
             startLineNumber: position.lineNumber,
@@ -2607,14 +2652,11 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
             cycle: true // Navegar entre parameter hints
           },
           acceptSuggestionOnCommitCharacter: !practiceModeEnabled,
-          // En HTML, Enter NO debe aceptar palabras del documento (ej: "device-width") por encima de snippets/tags.
           acceptSuggestionOnEnter: practiceModeEnabled ? "off" : "smart",
           tabCompletion: practiceModeEnabled ? "off" : "onlySnippets", // Solo snippets con tab
-          // En HTML/CSS se desactiva wordBasedSuggestions para evitar que "abc" (palabras del documento)
-          // se preseleccione por encima de tags/snippets.
           wordBasedSuggestions:
             !practiceModeEnabled && !["html", "css"].includes(languageRef.current)
-              ? "allDocuments"
+              ? "matchingDocuments"
               : false,
           suggestSelection: "first",
           suggest: {
@@ -2635,7 +2677,7 @@ const htmlProvider = monaco.languages.registerCompletionItemProvider(
             filterGraceful: true,
             snippetsPreventQuickSuggestions: false,
             showUsers: true,
-            insertMode: 'replace', // Cambiar a replace para mejor experiencia
+            insertMode: 'insert',
             localityBonus: true,
             shareSuggestSelections: true, // Compartir selecciones entre editores
             selectionHighlight: true,

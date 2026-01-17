@@ -79,7 +79,7 @@ export class UniversalSnippetEngine {
    * Obtiene sugerencias universales para cualquier lenguaje
    */
   getUniversalSuggestions(input, language, range) {
-    const languageConfig = this.languageMap[language];
+    let languageConfig = this.languageMap[language];
     
     if (!languageConfig) {
       // Fallback a JavaScript si no se encuentra el lenguaje
