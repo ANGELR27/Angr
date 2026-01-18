@@ -145,11 +145,11 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
 
   return (
     <div
-      className="absolute top-0 right-4 z-50 rounded-lg shadow-2xl border"
+      className={`fixed top-4 right-4 z-[9999] w-[380px] rounded-lg shadow-2xl border overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
       style={{
-        backgroundColor: isLite ? '#ffffff' : 'var(--theme-background-secondary)',
-        borderColor: isLite ? '#e5e7eb' : 'var(--theme-border)',
-        minWidth: '400px'
+        backgroundColor: isLite ? 'transparent' : 'var(--theme-background-secondary)',
+        borderColor: isLite ? 'transparent' : 'var(--theme-border)',
+        boxShadow: isLite ? 'none' : '0 20px 60px rgba(0,0,0,0.5)'
       }}
     >
       {/* Header */}
@@ -190,7 +190,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
               placeholder="Buscar..."
               className="w-full px-3 py-1.5 rounded text-sm border outline-none"
               style={{
-                backgroundColor: isLite ? '#f9fafb' : 'var(--theme-background-tertiary)',
+                backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-background-tertiary) 80%, transparent)' : 'var(--theme-background-tertiary)',
                 borderColor: 'var(--theme-border)',
                 color: 'var(--theme-text)'
               }}
@@ -201,7 +201,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
             disabled={!searchTerm || matchCount === 0}
             className="p-1.5 rounded transition-colors disabled:opacity-30"
             style={{
-              backgroundColor: isLite ? '#f3f4f6' : 'var(--theme-surface)',
+              backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-surface) 80%, transparent)' : 'var(--theme-surface)',
               color: 'var(--theme-text)'
             }}
             title="Anterior (Shift+Enter)"
@@ -213,7 +213,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
             disabled={!searchTerm || matchCount === 0}
             className="p-1.5 rounded transition-colors disabled:opacity-30"
             style={{
-              backgroundColor: isLite ? '#f3f4f6' : 'var(--theme-surface)',
+              backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-surface) 80%, transparent)' : 'var(--theme-surface)',
               color: 'var(--theme-text)'
             }}
             title="Siguiente (Enter)"
@@ -234,7 +234,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
                 placeholder="Reemplazar..."
                 className="w-full px-3 py-1.5 rounded text-sm border outline-none"
                 style={{
-                  backgroundColor: isLite ? '#f9fafb' : 'var(--theme-background-tertiary)',
+                  backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-background-tertiary) 80%, transparent)' : 'var(--theme-background-tertiary)',
                   borderColor: 'var(--theme-border)',
                   color: 'var(--theme-text)'
                 }}
@@ -245,7 +245,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
               disabled={!searchTerm || matchCount === 0}
               className="p-1.5 rounded transition-colors disabled:opacity-30"
               style={{
-                backgroundColor: isLite ? '#f3f4f6' : 'var(--theme-surface)',
+                backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-surface) 80%, transparent)' : 'var(--theme-surface)',
                 color: 'var(--theme-text)'
               }}
               title="Reemplazar uno"
@@ -257,7 +257,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
               disabled={!searchTerm || matchCount === 0}
               className="p-1.5 rounded transition-colors disabled:opacity-30"
               style={{
-                backgroundColor: isLite ? '#f3f4f6' : 'var(--theme-surface)',
+                backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-surface) 80%, transparent)' : 'var(--theme-surface)',
                 color: 'var(--theme-text)'
               }}
               title="Reemplazar todo"
@@ -315,7 +315,7 @@ function SearchWidget({ isOpen, onClose, editor, currentTheme }) {
       <div className="px-3 py-2 border-t text-xs" style={{
         borderColor: 'var(--theme-border)',
         color: 'var(--theme-text-muted)',
-        backgroundColor: isLite ? '#f9fafb' : 'rgba(0,0,0,0.2)'
+        backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-background-tertiary) 85%, transparent)' : 'rgba(0,0,0,0.2)'
       }}>
         <strong>Atajos:</strong> Enter = Siguiente | Shift+Enter = Anterior | Esc = Cerrar
       </div>

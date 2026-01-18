@@ -24,6 +24,7 @@ import { validateFileName, sanitizeFileName } from "../utils/validation";
 import { getFileIcon as getProFileIcon } from "../utils/fileIcons";
 
 function TopBar({
+  className,
   showPreview,
   setShowPreview,
   onNewFile,
@@ -83,6 +84,8 @@ function TopBar({
   const menuPortalRef = useRef(null);
   const modesMenuRef = useRef(null);
   const modesMenuPortalRef = useRef(null);
+  const modesMenuPositionRef = useRef({ top: 0, left: 0 });
+  const menuPositionRef = useRef({ top: 0, left: 0 });
   const isLite = currentTheme === "lite";
   const isFeel = currentTheme === "feel";
   const isFade = currentTheme === "fade";
@@ -104,12 +107,12 @@ function TopBar({
     if (menuOpen) {
       // Pequeño delay para evitar que el click del botón cierre inmediatamente el menú
       setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('pointerdown', handleClickOutside, true);
       }, 0);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside, true);
     };
   }, [menuOpen]);
 
@@ -126,12 +129,12 @@ function TopBar({
 
     if (modesMenuOpen) {
       setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('pointerdown', handleClickOutside, true);
       }, 0);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside, true);
     };
   }, [modesMenuOpen]);
 
@@ -221,11 +224,12 @@ function TopBar({
 
   return (
     <div
-      className="border-b border-border-color flex items-center relative"
+      className={`border-b border-border-color flex items-center relative ${className || ''}`}
       style={{
         height: (isLite || isFade) ? "40px" : "48px",
         backgroundColor: isFade ? "#1f1f1f" : "var(--theme-background-tertiary)",
-        boxShadow: (isLite || isFade) ? "none" : undefined,
+        boxShadow: isLite ? "0 12px 42px rgba(0, 0, 0, 0.35)" : (isFade ? "none" : undefined),
+        backdropFilter: isLite ? "blur(14px) saturate(1.18)" : undefined,
         borderColor: isFade ? "#3f3f46" : undefined,
       }}
     >
@@ -447,15 +451,19 @@ function TopBar({
         {/* Menú de Modos */}
         <div className="relative" ref={modesMenuRef}>
           <button
-            onClick={(e) => {
-              e.preventDefault();
+            type="button"
+            onMouseDown={(e) => {
               e.stopPropagation();
               const newState = !modesMenuOpen;
               setModesMenuOpen(newState);
-              if (!modesMenuOpen) {
+              if (newState) {
                 const rect = e.currentTarget.getBoundingClientRect();
-                modesMenuRef.current.dataset.buttonRight = rect.right;
-                modesMenuRef.current.dataset.buttonBottom = rect.bottom;
+                const menuWidth = 200;
+                const left = Math.max(0, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth));
+                modesMenuPositionRef.current = {
+                  top: rect.bottom + 8,
+                  left,
+                };
               }
             }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all hover:scale-105"
@@ -478,19 +486,27 @@ function TopBar({
           {/* Dropdown de modos con Portal */}
           {modesMenuOpen && typeof document !== 'undefined' && createPortal(
             <div
-              ref={modesMenuPortalRef}
-              onClick={(e) => e.stopPropagation()}
-              className="fixed rounded-lg shadow-2xl overflow-hidden"
               style={{
-                backgroundColor: isFade ? '#1f1f1f' : 'var(--theme-background-secondary)',
-                width: '200px',
-                border: isFade ? '1px solid #3f3f46' : '1px solid var(--theme-border)',
-                zIndex: 999999,
-                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                top: `${modesMenuRef.current?.dataset.buttonBottom || 0}px`,
-                right: `${window.innerWidth - (modesMenuRef.current?.dataset.buttonRight || window.innerWidth)}px`,
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2147483647,
+                pointerEvents: 'none',
               }}
             >
+              <div
+                ref={modesMenuPortalRef}
+                onClick={(e) => e.stopPropagation()}
+                className={`absolute rounded-lg shadow-2xl overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
+                style={{
+                  backgroundColor: isLite ? 'transparent' : (isFade ? '#1f1f1f' : 'var(--theme-background-secondary)'),
+                  width: '200px',
+                  border: isLite ? 'none' : (isFade ? '1px solid #3f3f46' : '1px solid var(--theme-border)'),
+                  boxShadow: isLite ? 'none' : '0 10px 40px rgba(0, 0, 0, 0.5)',
+                  top: `${modesMenuPositionRef.current.top || 0}px`,
+                  left: `${modesMenuPositionRef.current.left || 0}px`,
+                  pointerEvents: 'auto',
+                }}
+              >
               {/* Lite Mode */}
               <button
                 onClick={(e) => {
@@ -502,7 +518,7 @@ function TopBar({
                 className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
                 style={{
                   color: 'var(--theme-text)',
-                  backgroundColor: currentTheme === 'lite' ? 'rgba(208, 252, 1, 0.1)' : 'transparent',
+                  backgroundColor: currentTheme === 'lite' ? 'color-mix(in srgb, var(--theme-secondary) 14%, transparent)' : 'transparent',
                   borderBottom: '1px solid var(--theme-border)'
                 }}
                 onMouseEnter={(e) => {
@@ -517,10 +533,10 @@ function TopBar({
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#D0FC01' }}></div>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--theme-secondary)' }}></div>
                   <span>Lite</span>
                 </div>
-                {currentTheme === 'lite' && <Check className="w-4 h-4" style={{ color: '#D0FC01' }} />}
+                {currentTheme === 'lite' && <Check className="w-4 h-4" style={{ color: 'var(--theme-secondary)' }} />}
               </button>
 
               {/* Feel Mode */}
@@ -534,7 +550,7 @@ function TopBar({
                 className="w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between group"
                 style={{
                   color: 'var(--theme-text)',
-                  backgroundColor: currentTheme === 'feel' ? 'rgba(255, 255, 227, 0.1)' : 'transparent',
+                  backgroundColor: currentTheme === 'feel' ? 'color-mix(in srgb, var(--theme-secondary) 14%, transparent)' : 'transparent',
                   borderBottom: '1px solid var(--theme-border)'
                 }}
                 onMouseEnter={(e) => {
@@ -549,10 +565,10 @@ function TopBar({
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FFFFE3' }}></div>
-                  <span style={{ fontFamily: currentTheme === 'feel' ? '"Comic Neue", "Comic Sans MS", cursive' : undefined }}>Feel</span>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--theme-secondary)' }}></div>
+                  <span>Feel</span>
                 </div>
-                {currentTheme === 'feel' && <Check className="w-4 h-4" style={{ color: '#FFFFE3' }} />}
+                {currentTheme === 'feel' && <Check className="w-4 h-4" style={{ color: 'var(--theme-secondary)' }} />}
               </button>
 
               {/* Fade Mode */}
@@ -616,6 +632,7 @@ function TopBar({
                 </div>
                 {isEclipse && <Check className="w-4 h-4" style={{ color: '#c2cad6' }} />}
               </button>
+              </div>
             </div>,
             document.body
           )}
@@ -624,17 +641,21 @@ function TopBar({
         {/* Menú de tres puntos */}
         <div className="relative" ref={menuRef}>
           <button
-            onClick={(e) => {
-              e.preventDefault();
+            type="button"
+            onMouseDown={(e) => {
               e.stopPropagation();
               console.log('Menu button clicked, current state:', menuOpen);
               const newMenuState = !menuOpen;
               setMenuOpen(newMenuState);
               // Guardar posición del botón para el menú fixed
-              if (!menuOpen) {
+              if (newMenuState) {
                 const rect = e.currentTarget.getBoundingClientRect();
-                menuRef.current.dataset.buttonRight = rect.right;
-                menuRef.current.dataset.buttonBottom = rect.bottom;
+                const menuWidth = 180;
+                const left = Math.max(0, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth));
+                menuPositionRef.current = {
+                  top: rect.bottom + 8,
+                  left,
+                };
                 console.log('Menu position:', { right: rect.right, bottom: rect.bottom });
               }
             }}
@@ -650,28 +671,31 @@ function TopBar({
             <MoreVertical className="w-4 h-4" style={{ color: "var(--theme-secondary)" }} />
           </button>
 
-          {/* Menú dropdown con position fixed usando Portal */}
+          {/* Menú dropdown con Portal */}
           {menuOpen && typeof document !== 'undefined' && (() => {
-            console.log('Rendering menu portal, position:', {
-              top: menuRef.current?.dataset.buttonBottom,
-              right: window.innerWidth - (menuRef.current?.dataset.buttonRight || window.innerWidth)
-            });
             return createPortal(
               <div
-                ref={menuPortalRef}
-                onClick={(e) => e.stopPropagation()}
-                className="fixed rounded-md shadow-lg overflow-hidden"
                 style={{
-                  backgroundColor: "#000000",
-                  width: "180px",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  zIndex: 999999,
-                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.8)",
-                  top: `${menuRef.current?.dataset.buttonBottom || 0}px`,
-                  right: `${window.innerWidth - (menuRef.current?.dataset.buttonRight || window.innerWidth)}px`,
-                  pointerEvents: 'auto',
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 2147483647,
+                  pointerEvents: 'none',
                 }}
               >
+                <div
+                  ref={menuPortalRef}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`absolute rounded-md shadow-lg overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
+                  style={{
+                    backgroundColor: isLite ? 'transparent' : "#000000",
+                    width: "180px",
+                    border: isLite ? 'none' : "1px solid rgba(255, 255, 255, 0.15)",
+                    boxShadow: isLite ? 'none' : "0 8px 32px rgba(0, 0, 0, 0.8)",
+                    top: `${menuPositionRef.current.top || 0}px`,
+                    left: `${menuPositionRef.current.left || 0}px`,
+                    pointerEvents: 'auto',
+                  }}
+                >
               {/* Preview */}
               <button
                 onClick={(e) => {
@@ -683,7 +707,7 @@ function TopBar({
                 }}
                 className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
                 style={{
-                  color: "#fff",
+                  color: isLite ? 'var(--theme-text)' : "#fff",
                   backgroundColor: "transparent",
                   border: "none",
                   outline: "none",
@@ -780,7 +804,7 @@ function TopBar({
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
                   style={{
-                    color: "#fff",
+                    color: isLite ? 'var(--theme-text)' : "#fff",
                     backgroundColor: "transparent",
                     border: "none",
                     outline: "none",
@@ -802,7 +826,7 @@ function TopBar({
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
                   style={{
-                    color: "#fff",
+                    color: isLite ? 'var(--theme-text)' : "#fff",
                     backgroundColor: "transparent",
                     border: "none",
                     outline: "none",
@@ -823,7 +847,7 @@ function TopBar({
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
                   style={{
-                    color: "#fff",
+                    color: isLite ? 'var(--theme-text)' : "#fff",
                     backgroundColor: "transparent",
                     border: "none",
                     outline: "none",
@@ -843,7 +867,7 @@ function TopBar({
                   }}
                   className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-white/10 cursor-pointer"
                   style={{
-                    color: "#fff",
+                    color: isLite ? 'var(--theme-text)' : "#fff",
                     backgroundColor: "transparent",
                     border: "none",
                     outline: "none",
@@ -1014,22 +1038,21 @@ function TopBar({
                       setMenuOpen(false);
                     }
                   }}
-                  className="w-full text-left px-3 py-2 text-xs transition-colors border-t hover:bg-red-500/20 cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-red-500/20 cursor-pointer"
                   style={{
-                    color: "#fca5a5",
+                    color: "#ef4444",
                     backgroundColor: "transparent",
-                    borderTopColor: "rgba(255, 255, 255, 0.1)",
                     border: "none",
-                    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
                     outline: "none",
                   }}
                 >
-                  Resetear
+                  Resetear Todo
                 </button>
               )}
-            </div>,
-            document.body
-          );
+                </div>
+              </div>,
+              document.body
+            );
           })()}
         </div>
       </div>

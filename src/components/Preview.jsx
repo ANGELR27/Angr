@@ -337,7 +337,7 @@ const Preview = memo(function Preview({ content, onConsoleLog, projectFiles, pro
   const isResponsiveMode = viewport !== 'desktop';
 
   return (
-    <div className="h-full flex flex-col bg-white relative">
+    <div className="h-full flex flex-col relative" style={{ backgroundColor: isLite ? 'var(--theme-background)' : 'white' }}>
       {/* Header con controles sutiles */}
       <div 
         className="h-10 border-b flex items-center justify-between px-3 relative group"
@@ -468,7 +468,9 @@ const Preview = memo(function Preview({ content, onConsoleLog, projectFiles, pro
         ref={containerRef}
         className="flex-1 overflow-auto flex items-center justify-center relative"
         style={{
-          backgroundColor: isResponsiveMode ? (isLite ? '#f3f4f6' : '#1a1a1a') : 'white'
+          backgroundColor: isLite
+            ? 'var(--theme-background)'
+            : (isResponsiveMode ? '#1a1a1a' : 'white')
         }}
       >
         {/* Grid overlay */}

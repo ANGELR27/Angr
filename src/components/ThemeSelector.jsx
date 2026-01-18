@@ -105,7 +105,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
   const getThemeColors = (themeId) => {
     const colors = {
       'lite': { bg: '#1B1718', keyword: '#D0FC01', string: '#D0FC01', comment: '#8ea06a', number: '#D0FC01' },
-      'feel': { bg: '#10100E', keyword: '#FFFFE3', string: '#FFFFCC', comment: '#FFFFB3', number: '#FFFFE3' },
+      'feel': { bg: '#181A1F', keyword: '#EAECEF', string: '#B7BDC6', comment: '#848E9C', number: '#FACE41' },
       'fade': { bg: '#05060a', keyword: '#2de2e6', string: '#ff4fd8', comment: '#8a93a6', number: '#7c3aed' },
       'eclipse': { bg: '#07080c', keyword: '#c9d4e3', string: '#d6b48a', comment: '#7b8698', number: '#a8c0dd' },
       'matrix': { bg: '#0d0208', keyword: '#00ff41', string: '#39ff14', comment: '#00ff00', number: '#00ff88' },
@@ -371,7 +371,7 @@ function ThemeSelector({ isOpen, onClose, currentTheme, onThemeChange }) {
                     <div className="flex-1 bg-gradient-to-r from-[#1B1718] via-[#343031] to-[#D0FC01]"></div>
                   )}
                   {theme.id === 'feel' && (
-                    <div className="flex-1 bg-gradient-to-r from-[#10100E] via-[#1C1C15] to-[#FFFFE3]"></div>
+                    <div className="flex-1 bg-gradient-to-r from-[#181A1F] via-[#1E2329] to-[#FACE41]"></div>
                   )}
                   {theme.id === 'fade' && (
                     <div className="flex-1 bg-gradient-to-r from-[#2de2e6] via-[#05060a] to-[#ff4fd8]"></div>

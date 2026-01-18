@@ -401,36 +401,36 @@ export const GLOBAL_THEME_COLORS = {
     scrollbarThumbHover: 'linear-gradient(135deg, rgba(45, 212, 191, 1) 0%, rgba(94, 234, 212, 1) 50%, rgba(134, 239, 172, 1) 100%)',
   },
   'lite': {
-    primary: '#1B1718',
-    secondary: '#D0FC01',
-    accent: '#D0FC01',
-    background: '#1B1718',
-    backgroundSecondary: '#211D1E',
-    backgroundTertiary: '#262223',
-    surface: '#2B2728',
-    border: '#343031',
-    text: '#EAEAEA',
-    textSecondary: '#C7C7C7',
-    textMuted: '#9A9A9A',
-    glow: 'rgba(208, 252, 1, 0.25)',
-    scrollbarThumb: 'linear-gradient(135deg, rgba(208,252,1,0.7) 0%, rgba(208,252,1,0.5) 100%)',
-    scrollbarThumbHover: 'linear-gradient(135deg, rgba(208,252,1,0.9) 0%, rgba(208,252,1,0.7) 100%)',
+    primary: '#60A5FA',
+    secondary: '#7DD3FC',
+    accent: '#C4B5FD',
+    background: '#04050B',
+    backgroundSecondary: 'rgba(6, 8, 14, 0.82)',
+    backgroundTertiary: 'rgba(10, 12, 20, 0.86)',
+    surface: 'rgba(16, 18, 30, 0.62)',
+    border: 'rgba(255, 255, 255, 0.12)',
+    text: '#EAF2FF',
+    textSecondary: 'rgba(234, 242, 255, 0.80)',
+    textMuted: 'rgba(234, 242, 255, 0.56)',
+    glow: 'rgba(125, 211, 252, 0.26)',
+    scrollbarThumb: 'linear-gradient(135deg, rgba(125, 211, 252, 0.55) 0%, rgba(196, 181, 253, 0.38) 52%, rgba(96, 165, 250, 0.38) 100%)',
+    scrollbarThumbHover: 'linear-gradient(135deg, rgba(125, 211, 252, 0.80) 0%, rgba(196, 181, 253, 0.60) 52%, rgba(96, 165, 250, 0.60) 100%)',
   },
   'feel': {
-    primary: '#FFFFE3',
-    secondary: '#FFFFE3',
-    accent: '#FFFFE3',
-    background: '#10100E',
-    backgroundSecondary: '#16160F',
-    backgroundTertiary: '#1C1C15',
-    surface: '#22221A',
-    border: '#FFFFE3',
-    text: '#FFFFE3',
-    textSecondary: '#FFFFCC',
-    textMuted: '#FFFFB3',
-    glow: 'rgba(255, 255, 227, 0.3)',
-    scrollbarThumb: 'linear-gradient(135deg, rgba(255,255,227,0.7) 0%, rgba(255,255,227,0.5) 100%)',
-    scrollbarThumbHover: 'linear-gradient(135deg, rgba(255,255,227,0.9) 0%, rgba(255,255,227,0.7) 100%)',
+    primary: '#FACE41',
+    secondary: '#FACE41',
+    accent: '#FACE41',
+    background: '#181A1F',
+    backgroundSecondary: '#1E2329',
+    backgroundTertiary: '#232A34',
+    surface: 'rgba(30, 35, 41, 0.82)',
+    border: 'rgba(255, 255, 255, 0.10)',
+    text: '#EAECEF',
+    textSecondary: '#B7BDC6',
+    textMuted: '#848E9C',
+    glow: 'rgba(250, 206, 65, 0.16)',
+    scrollbarThumb: 'linear-gradient(135deg, rgba(250,206,65,0.55) 0%, rgba(250,206,65,0.35) 100%)',
+    scrollbarThumbHover: 'linear-gradient(135deg, rgba(250,206,65,0.78) 0%, rgba(250,206,65,0.55) 100%)',
   },
   'fade': {
     primary: '#2de2e6',
@@ -471,6 +471,11 @@ export const applyGlobalTheme = (themeName) => {
   const theme = GLOBAL_THEME_COLORS[themeName] || GLOBAL_THEME_COLORS['vs-dark'];
   const root = document.documentElement;
 
+  root.dataset.theme = themeName;
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.dataset.theme = themeName;
+  }
+
   // Aplicar variables CSS
   root.style.setProperty('--theme-primary', theme.primary);
   root.style.setProperty('--theme-secondary', theme.secondary);
@@ -487,6 +492,9 @@ export const applyGlobalTheme = (themeName) => {
   root.style.setProperty('--theme-scrollbar-thumb', theme.scrollbarThumb);
   root.style.setProperty('--theme-scrollbar-thumb-hover', theme.scrollbarThumbHover);
 
+  root.style.setProperty('--theme-starfield-opacity', themeName === 'lite' ? '1' : '0');
+  root.style.setProperty('--theme-grain-opacity', themeName === 'lite' ? '1' : '0');
+
   // Aplicar fuente Comico para modo Feel
   if (themeName === 'feel') {
     // Cargar fuente Comico si no está cargada
@@ -494,10 +502,10 @@ export const applyGlobalTheme = (themeName) => {
       const link = document.createElement('link');
       link.id = 'comico-font';
       link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
       document.head.appendChild(link);
     }
-    root.style.setProperty('--theme-font-family', '"Comic Neue", "Comic Sans MS", cursive');
+    root.style.setProperty('--theme-font-family', '"Inter", system-ui, -apple-system, sans-serif');
   } else {
     root.style.setProperty('--theme-font-family', 'system-ui, -apple-system, sans-serif');
   }

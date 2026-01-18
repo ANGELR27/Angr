@@ -1090,7 +1090,12 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
       style={{
         backgroundColor: (isFade || isEclipse) ? 'var(--theme-background-secondary)' : backgroundActive ? 'transparent' : 'var(--theme-background)',
         borderTop: '1px solid var(--theme-border)',
-        boxShadow: isMaximized ? '0 -4px 20px rgba(0,0,0,0.3)' : 'none',
+        boxShadow: isMaximized
+          ? '0 -4px 20px rgba(0,0,0,0.3)'
+          : isLite
+          ? '0 -18px 60px rgba(0,0,0,0.55)'
+          : 'none',
+        backdropFilter: isLite ? 'blur(18px) saturate(1.2)' : undefined,
         ...(isMaximized ? {
           position: 'fixed',
           inset: 0,
@@ -1106,7 +1111,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           backgroundColor: isFade ? 'var(--theme-background-tertiary)' : isEclipse ? 'var(--theme-background-tertiary)' : isLite ? 'var(--theme-background-secondary)' : undefined,
           borderBottom: '1px solid var(--theme-border)',
           padding: (isLite || isFade || isEclipse) ? '0 12px' : '0 16px',
-          backdropFilter: isFade ? 'blur(10px)' : isEclipse ? 'blur(10px)' : isLite ? 'none' : 'blur(8px)'
+          backdropFilter: isFade ? 'blur(10px)' : isEclipse ? 'blur(10px)' : isLite ? 'blur(18px) saturate(1.25)' : 'blur(8px)'
         }}
       >
         {!isLite && !isFade && !isEclipse && (
@@ -1235,7 +1240,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         <style>{`
           .terminal-content {
             scrollbar-width: thin;
-            scrollbar-color: ${isFade ? 'color-mix(in srgb, var(--theme-primary) 28%, transparent) transparent' : isEclipse ? 'color-mix(in srgb, var(--theme-primary) 22%, transparent) transparent' : isFeel ? 'rgba(255,255,227,0.3) transparent' : isLite ? 'rgba(0,0,0,0.2) transparent' : 'rgba(96,165,250,0.3) transparent'};
+            scrollbar-color: ${isFade ? 'color-mix(in srgb, var(--theme-primary) 28%, transparent) transparent' : isEclipse ? 'color-mix(in srgb, var(--theme-primary) 22%, transparent) transparent' : isFeel ? 'color-mix(in srgb, var(--theme-secondary) 28%, transparent) transparent' : isLite ? 'rgba(0,0,0,0.2) transparent' : 'rgba(96,165,250,0.3) transparent'};
           }
           .terminal-content::-webkit-scrollbar {
             width: 8px;
@@ -1244,12 +1249,12 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
             background: transparent;
           }
           .terminal-content::-webkit-scrollbar-thumb {
-            background: ${isFade ? 'var(--theme-scrollbar-thumb)' : isEclipse ? 'var(--theme-scrollbar-thumb)' : isFeel ? 'rgba(255,255,227,0.3)' : isLite ? 'rgba(0,0,0,0.2)' : 'rgba(96,165,250,0.3)'};
+            background: ${isFade ? 'var(--theme-scrollbar-thumb)' : isEclipse ? 'var(--theme-scrollbar-thumb)' : isFeel ? 'color-mix(in srgb, var(--theme-secondary) 28%, transparent)' : isLite ? 'rgba(0,0,0,0.2)' : 'rgba(96,165,250,0.3)'};
             border-radius: 4px;
             transition: background 0.2s;
           }
           .terminal-content::-webkit-scrollbar-thumb:hover {
-            background: ${isFade ? 'var(--theme-scrollbar-thumb-hover)' : isEclipse ? 'var(--theme-scrollbar-thumb-hover)' : isFeel ? 'rgba(255,255,227,0.5)' : isLite ? 'rgba(0,0,0,0.3)' : 'rgba(96,165,250,0.5)'};
+            background: ${isFade ? 'var(--theme-scrollbar-thumb-hover)' : isEclipse ? 'var(--theme-scrollbar-thumb-hover)' : isFeel ? 'color-mix(in srgb, var(--theme-secondary) 45%, transparent)' : isLite ? 'rgba(0,0,0,0.3)' : 'rgba(96,165,250,0.5)'};
           }
           .terminal-line {
             transition: opacity 0.15s ease-out;
@@ -1309,15 +1314,15 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
                   default: return { color: 'var(--theme-text-secondary)' };
                 }
               } else if (isFeel) {
-                // Colores para modo Feel (tonos crema sobre negro #10100E)
+                // Colores para modo Feel
                 switch (item.type) {
-                  case 'command': return { color: '#FFFFE3', fontWeight: '600' }; // Crema brillante
-                  case 'success': return { color: '#D4FF8F', fontWeight: '600' }; // Verde lima claro
-                  case 'error': return { color: '#FF9999', fontWeight: '600' }; // Rojo coral claro
-                  case 'warning': return { color: '#FFEE99', fontWeight: '600' }; // Amarillo claro
-                  case 'info': return { color: '#FFFFCC', fontWeight: '500' }; // Crema suave
-                  case 'console': return { color: '#FFFFB3' }; // Crema medio
-                  default: return { color: '#E6E6B3' }; // Beige claro
+                  case 'command': return { color: 'var(--theme-text)', fontWeight: '600' };
+                  case 'success': return { color: '#86efac', fontWeight: '600', opacity: 0.95 };
+                  case 'error': return { color: 'rgba(248, 113, 113, 0.95)', fontWeight: '600' };
+                  case 'warning': return { color: '#FACE41', fontWeight: '600', opacity: 0.95 };
+                  case 'info': return { color: 'var(--theme-text-secondary)', fontWeight: '500' };
+                  case 'console': return { color: 'var(--theme-text-muted)' };
+                  default: return { color: 'var(--theme-text-secondary)' };
                 }
               } else if (isLite) {
                 // Colores opacos y sutiles para modo lite (fondo oscuro #1B1718)
@@ -1365,7 +1370,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           <form onSubmit={handleSubmit} className="flex items-center gap-3 mt-3">
             <span 
               className="terminal-prompt"
-              style={{ color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-accent)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0' }}
+              style={{ color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-accent)' : isFeel ? 'var(--theme-secondary)' : isLite ? 'var(--theme-secondary)' : '#a8c7a0' }}
             >
               $
             </span>
@@ -1377,8 +1382,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               onKeyDown={handleKeyDown}
               className="terminal-input flex-1 bg-transparent outline-none font-medium"
               style={{ 
-                color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-text)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-text)' : '#cccccc',
-                caretColor: isFade ? 'var(--theme-primary)' : isEclipse ? 'var(--theme-secondary)' : isFeel ? '#FFFFE3' : isLite ? 'var(--theme-secondary)' : '#a8c7a0'
+                color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-text)' : isFeel ? 'var(--theme-text)' : isLite ? 'var(--theme-text)' : '#cccccc',
+                caretColor: isFade ? 'var(--theme-primary)' : isEclipse ? 'var(--theme-secondary)' : isFeel ? 'var(--theme-secondary)' : isLite ? 'var(--theme-secondary)' : '#a8c7a0'
               }}
               autoFocus
               spellCheck={false}

@@ -101,13 +101,17 @@ function CommandPalette({ isOpen, onClose, editor, onExecuteCommand, currentThem
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 backdrop-blur-sm"
+      style={{ backgroundColor: isLite ? 'rgba(11, 18, 32, 0.55)' : 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-2xl rounded-lg shadow-2xl border overflow-hidden"
+        className={`w-full max-w-2xl rounded-lg shadow-2xl border overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
         style={{
-          backgroundColor: isLite ? '#ffffff' : 'var(--theme-background-secondary)',
-          borderColor: isLite ? '#e5e7eb' : 'var(--theme-border)',
-          boxShadow: isLite ? '0 20px 60px rgba(0,0,0,0.3)' : '0 20px 60px rgba(0,0,0,0.6)'
+          backgroundColor: isLite ? 'transparent' : 'var(--theme-background-secondary)',
+          borderColor: isLite ? 'transparent' : 'var(--theme-border)',
+          boxShadow: isLite ? 'none' : '0 20px 60px rgba(0,0,0,0.6)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -144,7 +148,7 @@ function CommandPalette({ isOpen, onClose, editor, onExecuteCommand, currentThem
                 className="flex items-center justify-between px-4 py-3 cursor-pointer transition-colors border-b"
                 style={{
                   backgroundColor: index === selectedIndex 
-                    ? (isLite ? '#f3f4f6' : 'rgba(59, 130, 246, 0.15)')
+                    ? (isLite ? 'color-mix(in srgb, var(--theme-secondary) 12%, transparent)' : 'rgba(59, 130, 246, 0.15)')
                     : 'transparent',
                   borderColor: 'var(--theme-border)'
                 }}
@@ -160,7 +164,7 @@ function CommandPalette({ isOpen, onClose, editor, onExecuteCommand, currentThem
                   <span 
                     className="text-xs px-2 py-1 rounded font-mono"
                     style={{
-                      backgroundColor: isLite ? '#e5e7eb' : 'rgba(255,255,255,0.1)',
+                      backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-border) 65%, transparent)' : 'rgba(255,255,255,0.1)',
                       color: 'var(--theme-text-secondary)'
                     }}
                   >
@@ -175,7 +179,7 @@ function CommandPalette({ isOpen, onClose, editor, onExecuteCommand, currentThem
         {/* Footer con ayuda */}
         <div className="px-4 py-2 border-t text-xs flex items-center justify-between" style={{
           borderColor: 'var(--theme-border)',
-          backgroundColor: isLite ? '#f9fafb' : 'rgba(0,0,0,0.2)',
+          backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-background-tertiary) 85%, transparent)' : 'rgba(0,0,0,0.2)',
           color: 'var(--theme-text-muted)'
         }}>
           <span>↑↓ Navegar | ⏎ Ejecutar | Esc Cerrar</span>

@@ -273,17 +273,18 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+      style={{ backgroundColor: isLite ? 'rgba(11, 18, 32, 0.55)' : 'rgba(0, 0, 0, 0.7)' }}
       onClick={onClose}
     >
       <div
-        className="relative rounded-lg shadow-2xl overflow-hidden"
+        className={`relative rounded-lg shadow-2xl overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
         style={{
-          backgroundColor: isLite ? '#FFFFFF' : '#1e1e1e',
+          backgroundColor: isLite ? 'transparent' : '#1e1e1e',
           width: '90%',
           maxWidth: '900px',
           maxHeight: '85vh',
-          border: `1px solid ${isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.3)'}`
+          border: isLite ? 'none' : '1px solid rgba(139, 92, 246, 0.3)',
+          boxShadow: isLite ? 'none' : undefined
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -291,13 +292,13 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
         <div
           className="flex items-center justify-between p-4 border-b"
           style={{
-            backgroundColor: isLite ? '#f9fafb' : '#252526',
-            borderColor: isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.2)'
+            backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#252526',
+            borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.2)'
           }}
         >
           <div className="flex items-center gap-2">
-            <GitBranch className="w-5 h-5" style={{ color: isLite ? '#8b5cf6' : '#c084fc' }} />
-            <h2 className="text-lg font-bold" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+            <GitBranch className="w-5 h-5" style={{ color: isLite ? 'var(--theme-accent)' : '#c084fc' }} />
+            <h2 className="text-lg font-bold" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
               Control de Versiones
             </h2>
           </div>
@@ -311,14 +312,14 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
 
         <div className="flex h-full" style={{ maxHeight: 'calc(85vh - 70px)' }}>
           {/* Panel izquierdo: Cambios pendientes */}
-          <div className="w-1/2 p-4 border-r overflow-y-auto" style={{ borderColor: isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.2)' }}>
-            <h3 className="text-md font-bold mb-3 flex items-center gap-2" style={{ color: isLite ? '#374151' : '#e0e0e0' }}>
+          <div className="w-1/2 p-4 border-r overflow-y-auto" style={{ borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.2)' }}>
+            <h3 className="text-md font-bold mb-3 flex items-center gap-2" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
               <FileText className="w-4 h-4" />
               Cambios Pendientes ({changes.length})
             </h3>
 
             {changes.length === 0 ? (
-              <div className="text-center py-8" style={{ color: isLite ? '#9ca3af' : '#6b7280' }}>
+              <div className="text-center py-8" style={{ color: isLite ? 'var(--theme-text-muted)' : '#6b7280' }}>
                 <p className="text-sm">No hay cambios pendientes</p>
                 <p className="text-xs mt-1">Edita algunos archivos para ver cambios aquí</p>
               </div>
@@ -330,16 +331,16 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                       key={idx}
                       className="p-2 rounded border"
                       style={{
-                        backgroundColor: isLite ? '#f9fafb' : '#2d2d30',
+                        backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#2d2d30',
                         borderColor: getStatusColor(change.status) + '50'
                       }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <span className="text-sm font-medium" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+                          <span className="text-sm font-medium" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
                             {change.name}
                           </span>
-                          <p className="text-xs mt-1" style={{ color: isLite ? '#6b7280' : '#9ca3af' }}>
+                          <p className="text-xs mt-1" style={{ color: isLite ? 'var(--theme-text-secondary)' : '#9ca3af' }}>
                             {change.path}
                           </p>
                         </div>
@@ -350,7 +351,7 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                               className="p-1.5 rounded hover:bg-blue-500/20 transition-colors"
                               title="Ver diferencias"
                             >
-                              <Eye className="w-4 h-4" style={{ color: isLite ? '#3b82f6' : '#60a5fa' }} />
+                              <Eye className="w-4 h-4" style={{ color: isLite ? 'var(--theme-secondary)' : '#60a5fa' }} />
                             </button>
                           )}
                           <span
@@ -381,9 +382,9 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                     }}
                     className="w-full mb-2 p-2 rounded border text-sm"
                     style={{
-                      backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                      borderColor: isLite ? '#d1d5db' : '#3e3e42',
-                      color: isLite ? '#111827' : '#e0e0e0'
+                      backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                      borderColor: isLite ? 'var(--theme-border)' : '#3e3e42',
+                      color: isLite ? 'var(--theme-text)' : '#e0e0e0'
                     }}
                   />
                   <button
@@ -396,7 +397,7 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                     }}
                     className="w-full py-2 px-4 rounded font-medium hover:opacity-80 transition-opacity text-sm"
                     style={{
-                      backgroundColor: '#8b5cf6',
+                      backgroundColor: isLite ? 'var(--theme-accent)' : '#8b5cf6',
                       color: '#ffffff'
                     }}
                   >
@@ -410,7 +411,7 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
           {/* Panel derecho: Historial */}
           <div className="w-1/2 p-4 overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-md font-bold flex items-center gap-2" style={{ color: isLite ? '#374151' : '#e0e0e0' }}>
+              <h3 className="text-md font-bold flex items-center gap-2" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
                 <Clock className="w-4 h-4" />
                 Historial ({fileHistory.length})
               </h3>
@@ -419,8 +420,8 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                   onClick={() => setShowStats(!showStats)}
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity"
                   style={{
-                    backgroundColor: showStats ? (isLite ? '#8b5cf6' : '#7c3aed') : (isLite ? '#e5e7eb' : '#3e3e42'),
-                    color: showStats ? '#ffffff' : (isLite ? '#374151' : '#e0e0e0')
+                    backgroundColor: showStats ? (isLite ? 'var(--theme-accent)' : '#7c3aed') : (isLite ? 'var(--theme-background-tertiary)' : '#3e3e42'),
+                    color: showStats ? '#ffffff' : (isLite ? 'var(--theme-text-secondary)' : '#e0e0e0')
                   }}
                   title="Estadísticas del proyecto"
                 >
@@ -431,8 +432,8 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                   onClick={handleExportProject}
                   className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity"
                   style={{
-                    backgroundColor: isLite ? '#e5e7eb' : '#3e3e42',
-                    color: isLite ? '#374151' : '#e0e0e0'
+                    backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#3e3e42',
+                    color: isLite ? 'var(--theme-text-secondary)' : '#e0e0e0'
                   }}
                   title="Exportar proyecto"
                 >
@@ -445,17 +446,17 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
             {/* Estadísticas del Proyecto */}
             {showStats && (
               <div className="mb-4 p-3 rounded border" style={{
-                backgroundColor: isLite ? '#f0fdf4' : '#1f3d1f',
-                borderColor: isLite ? '#86efac' : 'rgba(34, 197, 94, 0.3)'
+                backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-secondary) 10%, var(--theme-background-secondary))' : '#1f3d1f',
+                borderColor: isLite ? 'color-mix(in srgb, var(--theme-secondary) 28%, var(--theme-border))' : 'rgba(34, 197, 94, 0.3)'
               }}>
-                <h4 className="text-sm font-bold mb-2" style={{ color: isLite ? '#166534' : '#86efac' }}>
+                <h4 className="text-sm font-bold mb-2" style={{ color: isLite ? 'var(--theme-text)' : '#86efac' }}>
                   📊 Estadísticas del Proyecto
                 </h4>
                 {(() => {
                   const stats = getProjectStats();
                   return (
                     <>
-                      <div className="text-xs space-y-1" style={{ color: isLite ? '#166534' : '#d1fae5' }}>
+                      <div className="text-xs space-y-1" style={{ color: isLite ? 'var(--theme-text-secondary)' : '#d1fae5' }}>
                         <p>📄 Total archivos: {stats.totalFiles}</p>
                         <p>📝 Total líneas: {stats.totalLines.toLocaleString()}</p>
                         <p>📌 Total commits: {stats.totalCommits}</p>
@@ -473,7 +474,7 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
             )}
 
             {fileHistory.length === 0 ? (
-              <div className="text-center py-8" style={{ color: isLite ? '#9ca3af' : '#6b7280' }}>
+              <div className="text-center py-8" style={{ color: isLite ? 'var(--theme-text-muted)' : '#6b7280' }}>
                 <p className="text-sm">No hay commits guardados</p>
                 <p className="text-xs mt-1">Haz tu primer commit para iniciar el historial</p>
               </div>
@@ -484,25 +485,25 @@ function GitPanel({ isOpen, onClose, files, currentTheme, onRestoreFile }) {
                     key={commit.id}
                     className="p-3 rounded border"
                     style={{
-                      backgroundColor: isLite ? '#f9fafb' : '#2d2d30',
-                      borderColor: isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.2)'
+                      backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#2d2d30',
+                      borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.2)'
                     }}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <p className="text-sm font-medium flex-1" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+                      <p className="text-sm font-medium flex-1" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
                         {commit.message}
                       </p>
                       <span
                         className="text-xs px-2 py-0.5 rounded ml-2"
                         style={{
-                          backgroundColor: isLite ? '#ddd6fe' : 'rgba(139, 92, 246, 0.2)',
-                          color: isLite ? '#7c3aed' : '#c084fc'
+                          backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-accent) 16%, transparent)' : 'rgba(139, 92, 246, 0.2)',
+                          color: isLite ? 'var(--theme-accent)' : '#c084fc'
                         }}
                       >
                         {commit.filesCount} archivos
                       </span>
                     </div>
-                    <p className="text-xs" style={{ color: isLite ? '#6b7280' : '#9ca3af' }}>
+                    <p className="text-xs" style={{ color: isLite ? 'var(--theme-text-muted)' : '#9ca3af' }}>
                       {formatDate(commit.timestamp)}
                     </p>
                   </div>

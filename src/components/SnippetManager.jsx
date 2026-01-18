@@ -60,17 +60,18 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+      style={{ backgroundColor: isLite ? 'rgba(11, 18, 32, 0.55)' : 'rgba(0, 0, 0, 0.7)' }}
       onClick={onClose}
     >
       <div
-        className="relative rounded-lg shadow-2xl overflow-hidden"
+        className={`relative rounded-lg shadow-2xl overflow-hidden ${isLite ? 'lite-glass-strong' : ''}`}
         style={{
-          backgroundColor: isLite ? '#FFFFFF' : '#1e1e1e',
+          backgroundColor: isLite ? 'transparent' : '#1e1e1e',
           width: '90%',
           maxWidth: '800px',
           maxHeight: '80vh',
-          border: `1px solid ${isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.3)'}`
+          border: isLite ? 'none' : '1px solid rgba(139, 92, 246, 0.3)',
+          boxShadow: isLite ? 'none' : undefined
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -78,11 +79,11 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
         <div
           className="flex items-center justify-between p-4 border-b"
           style={{
-            backgroundColor: isLite ? '#f9fafb' : '#252526',
-            borderColor: isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.2)'
+            backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#252526',
+            borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.2)'
           }}
         >
-          <h2 className="text-lg font-bold" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+          <h2 className="text-lg font-bold" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
             📝 Mis Snippets Personalizados
           </h2>
           <button
@@ -101,8 +102,8 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
               onClick={() => setIsCreating(true)}
               className="w-full mb-4 p-3 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
               style={{
-                borderColor: isLite ? '#8b5cf6' : 'rgba(139, 92, 246, 0.5)',
-                color: isLite ? '#8b5cf6' : '#c084fc'
+                borderColor: isLite ? 'color-mix(in srgb, var(--theme-accent) 55%, var(--theme-border))' : 'rgba(139, 92, 246, 0.5)',
+                color: isLite ? 'var(--theme-accent)' : '#c084fc'
               }}
             >
               <Plus className="w-5 h-5" />
@@ -115,11 +116,11 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
             <div
               className="mb-4 p-4 rounded-lg border"
               style={{
-                backgroundColor: isLite ? '#f3f4f6' : '#2d2d30',
-                borderColor: isLite ? '#d1d5db' : 'rgba(139, 92, 246, 0.3)'
+                backgroundColor: isLite ? 'var(--theme-surface)' : '#2d2d30',
+                borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.3)'
               }}
             >
-              <h3 className="text-md font-bold mb-3" style={{ color: isLite ? '#374151' : '#e0e0e0' }}>
+              <h3 className="text-md font-bold mb-3" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
                 Nuevo Snippet
               </h3>
               
@@ -130,9 +131,9 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 onChange={(e) => setNewSnippet({ ...newSnippet, name: e.target.value })}
                 className="w-full mb-2 p-2 rounded border"
                 style={{
-                  backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                  borderColor: isLite ? '#d1d5db' : '#3e3e42',
-                  color: isLite ? '#111827' : '#e0e0e0'
+                  backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                  borderColor: isLite ? 'var(--theme-border)' : '#3e3e42',
+                  color: isLite ? 'var(--theme-text)' : '#e0e0e0'
                 }}
               />
 
@@ -143,9 +144,9 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 onChange={(e) => setNewSnippet({ ...newSnippet, description: e.target.value })}
                 className="w-full mb-2 p-2 rounded border"
                 style={{
-                  backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                  borderColor: isLite ? '#d1d5db' : '#3e3e42',
-                  color: isLite ? '#111827' : '#e0e0e0'
+                  backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                  borderColor: isLite ? 'var(--theme-border)' : '#3e3e42',
+                  color: isLite ? 'var(--theme-text)' : '#e0e0e0'
                 }}
               />
 
@@ -154,9 +155,9 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 onChange={(e) => setNewSnippet({ ...newSnippet, language: e.target.value })}
                 className="w-full mb-2 p-2 rounded border"
                 style={{
-                  backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                  borderColor: isLite ? '#d1d5db' : '#3e3e42',
-                  color: isLite ? '#111827' : '#e0e0e0'
+                  backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                  borderColor: isLite ? 'var(--theme-border)' : '#3e3e42',
+                  color: isLite ? 'var(--theme-text)' : '#e0e0e0'
                 }}
               >
                 <option value="javascript">JavaScript</option>
@@ -174,9 +175,9 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 className="w-full mb-3 p-2 rounded border font-mono text-sm"
                 rows="6"
                 style={{
-                  backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                  borderColor: isLite ? '#d1d5db' : '#3e3e42',
-                  color: isLite ? '#111827' : '#e0e0e0'
+                  backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                  borderColor: isLite ? 'var(--theme-border)' : '#3e3e42',
+                  color: isLite ? 'var(--theme-text)' : '#e0e0e0'
                 }}
               />
 
@@ -185,7 +186,7 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                   onClick={handleCreateSnippet}
                   className="flex-1 py-2 px-4 rounded font-medium hover:opacity-80 transition-opacity"
                   style={{
-                    backgroundColor: '#8b5cf6',
+                    backgroundColor: isLite ? 'var(--theme-accent)' : '#8b5cf6',
                     color: '#ffffff'
                   }}
                 >
@@ -198,8 +199,8 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                   }}
                   className="py-2 px-4 rounded font-medium hover:opacity-80 transition-opacity"
                   style={{
-                    backgroundColor: isLite ? '#e5e7eb' : '#3e3e42',
-                    color: isLite ? '#374151' : '#e0e0e0'
+                    backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#3e3e42',
+                    color: isLite ? 'var(--theme-text-secondary)' : '#e0e0e0'
                   }}
                 >
                   Cancelar
@@ -210,7 +211,7 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
 
           {/* Lista de snippets */}
           {snippets.length === 0 && !isCreating && (
-            <div className="text-center py-8" style={{ color: isLite ? '#9ca3af' : '#6b7280' }}>
+            <div className="text-center py-8" style={{ color: isLite ? 'var(--theme-text-muted)' : '#6b7280' }}>
               <p className="text-lg mb-2">No tienes snippets guardados</p>
               <p className="text-sm">Crea tu primer snippet para usarlo en cualquier proyecto</p>
             </div>
@@ -222,25 +223,25 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 key={snippet.id}
                 className="p-4 rounded-lg border"
                 style={{
-                  backgroundColor: isLite ? '#f9fafb' : '#2d2d30',
-                  borderColor: isLite ? '#e5e7eb' : 'rgba(139, 92, 246, 0.2)'
+                  backgroundColor: isLite ? 'var(--theme-background-tertiary)' : '#2d2d30',
+                  borderColor: isLite ? 'var(--theme-border)' : 'rgba(139, 92, 246, 0.2)'
                 }}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <h4 className="font-bold text-md" style={{ color: isLite ? '#111827' : '#e0e0e0' }}>
+                    <h4 className="font-bold text-md" style={{ color: isLite ? 'var(--theme-text)' : '#e0e0e0' }}>
                       {snippet.name}
                     </h4>
                     {snippet.description && (
-                      <p className="text-sm mt-1" style={{ color: isLite ? '#6b7280' : '#9ca3af' }}>
+                      <p className="text-sm mt-1" style={{ color: isLite ? 'var(--theme-text-secondary)' : '#9ca3af' }}>
                         {snippet.description}
                       </p>
                     )}
                     <span
                       className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium"
                       style={{
-                        backgroundColor: isLite ? '#ddd6fe' : 'rgba(139, 92, 246, 0.2)',
-                        color: isLite ? '#7c3aed' : '#c084fc'
+                        backgroundColor: isLite ? 'color-mix(in srgb, var(--theme-accent) 16%, transparent)' : 'rgba(139, 92, 246, 0.2)',
+                        color: isLite ? 'var(--theme-accent)' : '#c084fc'
                       }}
                     >
                       {snippet.language}
@@ -270,9 +271,9 @@ function SnippetManager({ isOpen, onClose, onInsertSnippet, currentTheme }) {
                 <pre
                   className="mt-2 p-2 rounded text-xs overflow-x-auto"
                   style={{
-                    backgroundColor: isLite ? '#ffffff' : '#1e1e1e',
-                    color: isLite ? '#111827' : '#d4d4d4',
-                    border: `1px solid ${isLite ? '#e5e7eb' : '#3e3e42'}`
+                    backgroundColor: isLite ? 'var(--theme-background-secondary)' : '#1e1e1e',
+                    color: isLite ? 'var(--theme-text)' : '#d4d4d4',
+                    border: `1px solid ${isLite ? 'var(--theme-border)' : '#3e3e42'}`
                   }}
                 >
                   <code>{snippet.code}</code>
