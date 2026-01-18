@@ -1108,14 +1108,31 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         className="flex items-center justify-between relative transition-all duration-200"
         style={{
           height: (isLite || isFade || isEclipse) ? '38px' : '42px',
-          backgroundColor: isFade ? 'var(--theme-background-tertiary)' : isEclipse ? 'var(--theme-background-tertiary)' : isLite ? 'var(--theme-background-secondary)' : undefined,
+          backgroundColor: isFade
+            ? 'var(--theme-background-tertiary)'
+            : isEclipse
+            ? 'var(--theme-background-tertiary)'
+            : isFeel
+            ? 'var(--theme-background-tertiary)'
+            : isLite
+            ? 'var(--theme-background-secondary)'
+            : undefined,
           borderBottom: '1px solid var(--theme-border)',
           padding: (isLite || isFade || isEclipse) ? '0 12px' : '0 16px',
           backdropFilter: isFade ? 'blur(10px)' : isEclipse ? 'blur(10px)' : isLite ? 'blur(18px) saturate(1.25)' : 'blur(8px)'
         }}
       >
-        {!isLite && !isFade && !isEclipse && (
+        {!isLite && !isFade && !isEclipse && !isFeel && (
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-transparent pointer-events-none"></div>
+        )}
+        {isFeel && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(90deg, color-mix(in srgb, var(--theme-secondary) 14%, transparent) 0%, color-mix(in srgb, var(--theme-secondary) 6%, transparent) 55%, transparent 100%)',
+              opacity: 0.9
+            }}
+          ></div>
         )}
         {isEclipse && (
           <div
@@ -1128,8 +1145,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
         )}
 
         <div className="flex items-center gap-3 relative z-10">
-          <TerminalIcon className="w-4 h-4" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#60a5fa' }} />
-          <span className="text-sm font-semibold tracking-wide" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-text)' : '#bfdbfe' }}>Terminal</span>
+          <TerminalIcon className="w-4 h-4" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : 'var(--theme-secondary)' }} />
+          <span className="text-sm font-semibold tracking-wide" style={{ color: 'var(--theme-text)' }}>Terminal</span>
           {fontSize !== 14 && (
             <span 
               className="text-xs px-2 py-0.5 rounded-full font-medium transition-opacity duration-200"
@@ -1153,11 +1170,19 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
                 ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)'
                 : isEclipse
                 ? 'color-mix(in srgb, var(--theme-accent) 8%, transparent)'
+                : isFeel
+                ? 'color-mix(in srgb, var(--theme-secondary) 12%, transparent)'
                 : isLite
                 ? 'transparent'
                 : 'rgba(74, 222, 128, 0.1)',
-              border: (isFade || isEclipse) ? '1px solid var(--theme-border)' : isLite ? '1px solid var(--theme-border)' : '1px solid rgba(74, 222, 128, 0.3)',
-              color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#86efac'
+              border: (isFade || isEclipse)
+                ? '1px solid var(--theme-border)'
+                : isFeel
+                ? '1px solid color-mix(in srgb, var(--theme-secondary) 35%, var(--theme-border))'
+                : isLite
+                ? '1px solid var(--theme-border)'
+                : '1px solid rgba(74, 222, 128, 0.3)',
+              color: (isFade || isEclipse) ? 'var(--theme-text)' : isFeel ? 'var(--theme-secondary)' : isLite ? 'var(--theme-secondary)' : '#86efac'
             }}
             title="Ejecutar código JavaScript del archivo activo"
             onMouseEnter={(e) => {
@@ -1167,6 +1192,9 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               } else if (isEclipse) {
                 e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-accent) 12%, transparent)';
                 e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-accent) 22%, var(--theme-border))';
+              } else if (isFeel) {
+                e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-secondary) 18%, transparent)';
+                e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-secondary) 55%, var(--theme-border))';
               } else if (!isLite) {
                 e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
                 e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.5)';
@@ -1179,13 +1207,16 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               } else if (isEclipse) {
                 e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-accent) 8%, transparent)';
                 e.currentTarget.style.borderColor = 'var(--theme-border)';
+              } else if (isFeel) {
+                e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--theme-secondary) 12%, transparent)';
+                e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--theme-secondary) 35%, var(--theme-border))';
               } else if (!isLite) {
                 e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.1)';
                 e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.3)';
               }
             }}
           >
-            <Play className="w-3.5 h-3.5" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : isLite ? 'var(--theme-secondary)' : '#4ade80' }} />
+            <Play className="w-3.5 h-3.5" style={{ color: (isFade || isEclipse) ? 'var(--theme-text)' : (isLite || isFeel) ? 'var(--theme-secondary)' : '#4ade80' }} />
             {!isLite && !isFade && !isEclipse && <span className="text-xs font-medium">Ejecutar</span>}
           </button>
           
@@ -1306,9 +1337,9 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               } else if (isEclipse) {
                 switch (item.type) {
                   case 'command': return { color: 'var(--theme-text)', fontWeight: '600' };
-                  case 'success': return { color: '#86efac', fontWeight: '600', opacity: 0.9 };
-                  case 'error': return { color: 'rgba(248, 113, 113, 0.95)', fontWeight: '600' };
-                  case 'warning': return { color: '#facc15', fontWeight: '600', opacity: 0.9 };
+                  case 'success': return { color: 'var(--theme-success)', fontWeight: '600', opacity: 0.9 };
+                  case 'error': return { color: 'var(--theme-error)', fontWeight: '600' };
+                  case 'warning': return { color: 'var(--theme-warning)', fontWeight: '600', opacity: 0.9 };
                   case 'info': return { color: 'var(--theme-text-secondary)', fontWeight: '500' };
                   case 'console': return { color: 'var(--theme-text-muted)' };
                   default: return { color: 'var(--theme-text-secondary)' };
@@ -1317,34 +1348,34 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
                 // Colores para modo Feel
                 switch (item.type) {
                   case 'command': return { color: 'var(--theme-text)', fontWeight: '600' };
-                  case 'success': return { color: '#86efac', fontWeight: '600', opacity: 0.95 };
-                  case 'error': return { color: 'rgba(248, 113, 113, 0.95)', fontWeight: '600' };
-                  case 'warning': return { color: '#FACE41', fontWeight: '600', opacity: 0.95 };
-                  case 'info': return { color: 'var(--theme-text-secondary)', fontWeight: '500' };
+                  case 'success': return { color: 'var(--theme-success)', fontWeight: '600', opacity: 0.95 };
+                  case 'error': return { color: 'var(--theme-error)', fontWeight: '600' };
+                  case 'warning': return { color: 'var(--theme-warning)', fontWeight: '600', opacity: 0.95 };
+                  case 'info': return { color: 'var(--theme-info)', fontWeight: '500' };
                   case 'console': return { color: 'var(--theme-text-muted)' };
                   default: return { color: 'var(--theme-text-secondary)' };
                 }
               } else if (isLite) {
                 // Colores opacos y sutiles para modo lite (fondo oscuro #1B1718)
                 switch (item.type) {
-                  case 'command': return { color: '#b8d966', fontWeight: '600' }; // Verde lima opaco
-                  case 'success': return { color: '#a8cc52', fontWeight: '600' }; // Verde claro opaco
-                  case 'error': return { color: '#d66565', fontWeight: '600' }; // Rojo coral opaco
-                  case 'warning': return { color: '#d4b847', fontWeight: '600' }; // Amarillo dorado opaco
-                  case 'info': return { color: '#9a7bc8', fontWeight: '500' }; // Morado opaco
-                  case 'console': return { color: '#c4c4c4' }; // Gris claro
-                  default: return { color: '#a0a0a0' }; // Gris medio
+                  case 'command': return { color: 'var(--theme-secondary)', fontWeight: '600' };
+                  case 'success': return { color: 'var(--theme-success)', fontWeight: '600' };
+                  case 'error': return { color: 'var(--theme-error)', fontWeight: '600' };
+                  case 'warning': return { color: 'var(--theme-warning)', fontWeight: '600' };
+                  case 'info': return { color: 'var(--theme-info)', fontWeight: '500' };
+                  case 'console': return { color: 'var(--theme-text-secondary)' };
+                  default: return { color: 'var(--theme-text-muted)' };
                 }
               } else {
                 // Colores suaves y agradables para modo dark
                 switch (item.type) {
-                  case 'command': return { color: '#7fb3d5' }; // Azul suave
-                  case 'success': return { color: '#90c695' }; // Verde suave y natural
-                  case 'error': return { color: '#e9967a' }; // Rojo salmón suave
-                  case 'warning': return { color: '#e6c387' }; // Amarillo dorado suave
-                  case 'info': return { color: '#89b4d4' }; // Azul grisáceo suave
-                  case 'console': return { color: '#b8b8b8' }; // Gris medio
-                  default: return { color: '#a8a8a8' }; // Gris claro
+                  case 'command': return { color: 'var(--theme-secondary)', fontWeight: '600' };
+                  case 'success': return { color: 'var(--theme-success)', fontWeight: '600' };
+                  case 'error': return { color: 'var(--theme-error)', fontWeight: '600' };
+                  case 'warning': return { color: 'var(--theme-warning)', fontWeight: '600' };
+                  case 'info': return { color: 'var(--theme-info)', fontWeight: '500' };
+                  case 'console': return { color: 'var(--theme-text-muted)' };
+                  default: return { color: 'var(--theme-text-secondary)' };
                 }
               }
             };
@@ -1370,7 +1401,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           <form onSubmit={handleSubmit} className="flex items-center gap-3 mt-3">
             <span 
               className="terminal-prompt"
-              style={{ color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-accent)' : isFeel ? 'var(--theme-secondary)' : isLite ? 'var(--theme-secondary)' : '#a8c7a0' }}
+              style={{ color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-accent)' : 'var(--theme-secondary)' }}
             >
               $
             </span>
@@ -1382,8 +1413,8 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
               onKeyDown={handleKeyDown}
               className="terminal-input flex-1 bg-transparent outline-none font-medium"
               style={{ 
-                color: isFade ? 'var(--theme-text)' : isEclipse ? 'var(--theme-text)' : isFeel ? 'var(--theme-text)' : isLite ? 'var(--theme-text)' : '#cccccc',
-                caretColor: isFade ? 'var(--theme-primary)' : isEclipse ? 'var(--theme-secondary)' : isFeel ? 'var(--theme-secondary)' : isLite ? 'var(--theme-secondary)' : '#a8c7a0'
+                color: 'var(--theme-text)',
+                caretColor: isFade ? 'var(--theme-primary)' : 'var(--theme-secondary)'
               }}
               autoFocus
               spellCheck={false}
@@ -1398,7 +1429,7 @@ const Terminal = forwardRef(({ isOpen, onClose, onToggleSize, isMaximized, onExe
           style={{
             height: '50px',
             background: isFade
-              ? 'linear-gradient(to bottom, transparent 0%, #1f1f1f 100%)'
+              ? 'linear-gradient(to bottom, transparent 0%, var(--theme-background) 100%)'
               : isEclipse
               ? 'linear-gradient(to bottom, transparent 0%, rgba(7, 8, 12, 0.92) 100%)'
               : isLite 

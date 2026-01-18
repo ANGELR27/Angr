@@ -492,6 +492,16 @@ export const applyGlobalTheme = (themeName) => {
   root.style.setProperty('--theme-scrollbar-thumb', theme.scrollbarThumb);
   root.style.setProperty('--theme-scrollbar-thumb-hover', theme.scrollbarThumbHover);
 
+  const successColor = themeName === 'feel' ? theme.secondary : '#22c55e';
+  const warningColor = themeName === 'feel' ? theme.secondary : '#f59e0b';
+  const errorColor = themeName === 'feel' ? '#f87171' : '#ef4444';
+  const infoColor = theme.textSecondary;
+
+  root.style.setProperty('--theme-success', successColor);
+  root.style.setProperty('--theme-warning', warningColor);
+  root.style.setProperty('--theme-error', errorColor);
+  root.style.setProperty('--theme-info', infoColor);
+
   root.style.setProperty('--theme-starfield-opacity', themeName === 'lite' ? '1' : '0');
   root.style.setProperty('--theme-grain-opacity', themeName === 'lite' ? '1' : '0');
 
