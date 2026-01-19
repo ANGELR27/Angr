@@ -42,6 +42,7 @@ import { useAuth } from './hooks/useAuth'
 import { useModals } from './hooks/useModals'
 import { buildPreview } from './utils/previewBuilder'
 import { runPython } from './services/pythonRuntime';
+import { deleteItemFromTree, extractItemFromTree, generateUniqueName, insertItemInTree, updateItemInTree } from './utils/fileTree';
 
 // Archivos de ejemplo iniciales
 const initialFiles = {
@@ -239,10 +240,39 @@ if __name__ == "__main__":
   }
 };
 
+const TRASH_KEY = '__TRASH__';
+
+function ensureTrashFolder(tree) {
+  if (tree && tree[TRASH_KEY] && tree[TRASH_KEY].type === 'folder') return tree;
+  return {
+    ...(tree || {}),
+    [TRASH_KEY]: {
+      name: 'Papelera',
+      type: 'folder',
+      children: (tree && tree[TRASH_KEY] && tree[TRASH_KEY].children) ? tree[TRASH_KEY].children : {}
+    }
+  };
+}
+
+ function findFirstFilePath(tree, basePath = '') {
+   if (!tree) return '';
+   for (const [key, item] of Object.entries(tree)) {
+     if (key === TRASH_KEY) continue;
+     const currentPath = basePath ? `${basePath}/${key}` : key;
+     if (item?.type === 'file') return currentPath;
+     if (item?.type === 'folder' && item?.children) {
+       const found = findFirstFilePath(item.children, currentPath);
+       if (found) return found;
+     }
+   }
+   return '';
+ }
+
 function App() {
   // Cargar estado inicial desde localStorage
   const [files, setFiles] = useState(() => {
-    return loadFromStorage(STORAGE_KEYS.FILES, initialFiles);
+    const loaded = loadFromStorage(STORAGE_KEYS.FILES, initialFiles);
+    return ensureTrashFolder(loaded);
   });
 
   const [openTabs, setOpenTabs] = useState(() => {
@@ -1461,32 +1491,116 @@ function App() {
   }, [activeTab, getFileByPath, executeJavaScriptFloating, openModal, showTerminal]);
 
   const handleDeleteFile = useCallback((filePath) => {
-    const parts = filePath.split('/');
-    
-    const deleteNestedFile = (obj, path) => {
-      if (path.length === 1) {
-        const newObj = { ...obj };
-        delete newObj[path[0]];
-        return newObj;
+    if (!filePath) return;
+
+    const treeWithTrash = ensureTrashFolder(files);
+    const { newTree, extractedItem } = extractItemFromTree(treeWithTrash, filePath);
+    if (!extractedItem) return;
+
+    const trashChildren = newTree?.[TRASH_KEY]?.children || {};
+    const uniqueName = generateUniqueName(trashChildren, extractedItem.name);
+    const itemToTrash = {
+      ...extractedItem,
+      name: uniqueName,
+      __deleted: {
+        originalPath: filePath,
+        originalName: extractedItem.name,
+        deletedAt: Date.now()
       }
-      
-      const [first, ...rest] = path;
-      return {
-        ...obj,
-        [first]: {
-          ...obj[first],
-          children: deleteNestedFile(obj[first].children, rest)
-        }
-      };
     };
-    
-    setFiles(deleteNestedFile(files, parts));
-    
-    // Cerrar la pestaña si el archivo eliminado está abierto
-    if (openTabs.includes(filePath)) {
-      handleTabClose(filePath);
+
+    const updated = insertItemInTree(newTree, TRASH_KEY, uniqueName, itemToTrash);
+    setFiles(updated);
+
+    const prefix = `${filePath}/`;
+    const nextTabs = openTabs.filter(t => t !== filePath && !t.startsWith(prefix));
+    if (nextTabs.length !== openTabs.length) {
+      setOpenTabs(nextTabs);
+      if (activeTab === filePath || activeTab.startsWith(prefix)) {
+        setActiveTab(nextTabs[nextTabs.length - 1] || findFirstFilePath(updated) || '');
+      }
     }
-  }, [files, openTabs, handleTabClose]);
+  }, [files, openTabs, activeTab]);
+
+  const handleDeletePermanently = useCallback((pathInTrash) => {
+    if (!pathInTrash) return;
+
+    const updated = deleteItemFromTree(files, pathInTrash);
+    setFiles(updated);
+
+    const prefix = `${pathInTrash}/`;
+    const nextTabs = openTabs.filter(t => t !== pathInTrash && !t.startsWith(prefix));
+    if (nextTabs.length !== openTabs.length) {
+      setOpenTabs(nextTabs);
+      if (activeTab === pathInTrash || activeTab.startsWith(prefix)) {
+        setActiveTab(nextTabs[nextTabs.length - 1] || findFirstFilePath(updated) || '');
+      }
+    }
+  }, [files, openTabs, activeTab]);
+
+  const handleEmptyTrash = useCallback(() => {
+    const treeWithTrash = ensureTrashFolder(files);
+    const updated = updateItemInTree(treeWithTrash, TRASH_KEY, { children: {} });
+    setFiles(updated);
+
+    const prefix = `${TRASH_KEY}/`;
+    const nextTabs = openTabs.filter(t => !t.startsWith(prefix));
+    if (nextTabs.length !== openTabs.length) {
+      setOpenTabs(nextTabs);
+      if (activeTab && activeTab.startsWith(prefix)) {
+        setActiveTab(nextTabs[nextTabs.length - 1] || findFirstFilePath(updated) || '');
+      }
+    }
+  }, [files, openTabs, activeTab]);
+
+  const handleRestoreFromTrash = useCallback((pathInTrash) => {
+    if (!pathInTrash) return;
+
+    const treeWithTrash = ensureTrashFolder(files);
+    const { newTree, extractedItem } = extractItemFromTree(treeWithTrash, pathInTrash);
+    if (!extractedItem) return;
+
+    const originalPath = extractedItem.__deleted?.originalPath;
+    const originalName = extractedItem.__deleted?.originalName || extractedItem.name;
+
+    let parentPath = null;
+    if (typeof originalPath === 'string' && originalPath.includes('/')) {
+      parentPath = originalPath.split('/').slice(0, -1).join('/') || null;
+    }
+
+    let targetParent = parentPath;
+    if (targetParent) {
+      const parentParts = targetParent.split('/');
+      let current = newTree;
+      let ok = true;
+      for (const part of parentParts) {
+        const entry = current?.[part];
+        if (!entry || entry.type !== 'folder') { ok = false; break; }
+        current = entry.children;
+      }
+      if (!ok) targetParent = null;
+    }
+
+    const destinationChildren = targetParent ? (() => {
+      const parts = targetParent.split('/');
+      let current = newTree;
+      for (const part of parts) current = current?.[part]?.children;
+      return current || {};
+    })() : newTree;
+
+    const finalName = generateUniqueName(destinationChildren, originalName);
+    const restoredItem = { ...extractedItem, name: finalName };
+    delete restoredItem.__deleted;
+
+    const updated = insertItemInTree(newTree, targetParent, finalName, restoredItem);
+    setFiles(updated);
+
+    const newPath = targetParent ? `${targetParent}/${finalName}` : finalName;
+    if (openTabs.includes(pathInTrash)) {
+      setOpenTabs(openTabs.map(t => (t === pathInTrash ? newPath : t)));
+      if (activeTab === pathInTrash) setActiveTab(newPath);
+    }
+  }, [files, openTabs, activeTab]);
 
   const handleRenameFile = useCallback((oldPath, newName) => {
     const parts = oldPath.split('/');
@@ -2186,6 +2300,9 @@ function App() {
                 onFileSelect={handleFileSelect}
                 activeFile={activeTab}
                 onDeleteFile={handleDeleteFile}
+                onRestoreFromTrash={handleRestoreFromTrash}
+                onDeletePermanently={handleDeletePermanently}
+                onEmptyTrash={handleEmptyTrash}
                 onAddImageFile={handleAddImageFile}
                 onRenameFile={handleRenameFile}
                 onMoveItem={handleMoveItem}

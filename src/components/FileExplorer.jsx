@@ -12,7 +12,7 @@ import {
 } from 'react-icons/si';
 import { VscTerminalBash, VscJson, VscFile } from 'react-icons/vsc';
 
-function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme, onToggleSidebar }) {
+function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onRestoreFromTrash, onDeletePermanently, onEmptyTrash, onAddImageFile, onRenameFile, onMoveItem, onCreateFile, onCreateFolder, currentTheme, onToggleSidebar }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set(['components', 'examples']));
   const [contextMenu, setContextMenu] = useState(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -24,10 +24,16 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const [isDraggingInternalToRoot, setIsDraggingInternalToRoot] = useState(false);
   const isLite = currentTheme === 'lite';
   const isFeel = currentTheme === 'feel';
+
+  const TRASH_KEY = '__TRASH__';
+  const trashChildren = files?.[TRASH_KEY]?.type === 'folder' ? (files?.[TRASH_KEY]?.children || {}) : {};
+  const trashCount = Object.keys(trashChildren).length;
+  const [trashExpanded, setTrashExpanded] = useState(false);
   
   // Referencias para inputs de archivo
   const folderInputRef = useRef(null);
   const filesInputRef = useRef(null);
+  const contextMenuRef = useRef(null);
 
   // Helpers de árbol
   const getChildrenOfPath = (tree, path) => {
@@ -81,7 +87,11 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
 
   const handleDeleteClick = () => {
     if (contextMenu) {
-      setModal({ open: true, type: 'delete', path: contextMenu.path, value: '' });
+      if (contextMenu.type === 'trash-root') {
+        setModal({ open: true, type: 'empty-trash', path: null, value: '' });
+      } else {
+        setModal({ open: true, type: 'delete', path: contextMenu.path, value: '' });
+      }
       setContextMenu(null);
     }
   };
@@ -109,6 +119,47 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const closeContextMenu = () => {
     setContextMenu(null);
   };
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const onPointerDown = (e) => {
+      if (!contextMenuRef.current) return;
+      if (contextMenuRef.current.contains(e.target)) return;
+      setContextMenu(null);
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKeyDown);
+
+    const raf = requestAnimationFrame(() => {
+      const el = contextMenuRef.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const padding = 10;
+      const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
+      const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
+      const desiredX = contextMenu.x;
+      const desiredY = contextMenu.y - rect.height;
+      const nextX = Math.min(Math.max(padding, desiredX), maxLeft);
+      const nextY = Math.min(Math.max(padding, desiredY), maxTop);
+
+      if (Math.abs(nextX - contextMenu.x) > 0.5 || Math.abs(nextY - contextMenu.y) > 0.5) {
+        setContextMenu(prev => (prev ? { ...prev, x: nextX, y: nextY } : prev));
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [contextMenu]);
 
   const handleDragEnter = (e) => {
     e.preventDefault();
@@ -471,6 +522,14 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   const onDragOverFolder = (e, folderPath) => {
     e.preventDefault();
     e.stopPropagation();
+    const dt = e.dataTransfer;
+    const hasInternalSource = dt?.types && Array.from(dt.types).includes('text/source-path');
+    if (hasInternalSource) {
+      setIsDraggingInternalToRoot(false);
+      setIsDraggingOver(false);
+      setDragFileCount(0);
+      setDragFileTypes([]);
+    }
     setDragOverFolder(folderPath);
   };
 
@@ -484,6 +543,10 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
     e.preventDefault();
     e.stopPropagation();
     setDragOverFolder(null);
+    setIsDraggingInternalToRoot(false);
+    setIsDraggingOver(false);
+    setDragFileCount(0);
+    setDragFileTypes([]);
 
     // 1) movimiento interno
     const sourcePath = e.dataTransfer.getData('text/source-path');
@@ -772,7 +835,9 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
   };
 
   const renderFileTree = (items, path = '') => {
-    return Object.entries(items).map(([key, item]) => {
+    const entries = Object.entries(items);
+    const visibleEntries = path ? entries : entries.filter(([key]) => key !== TRASH_KEY);
+    return visibleEntries.map(([key, item]) => {
       const currentPath = path ? `${path}/${key}` : key;
       const isExpanded = expandedFolders.has(currentPath);
       const isActive = activeFile === currentPath;
@@ -1037,80 +1102,254 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
         {renderFileTree(files)}
       </div>
 
+      {/* Papelera (sección especial) */}
+      <div className="px-2 py-1.5 border-t border-border-color relative z-10" style={{ borderColor: 'var(--theme-border)' }}>
+        <div
+          className="flex items-center justify-between cursor-pointer rounded-md"
+          style={{
+            padding: '6px 8px',
+            backgroundColor: trashExpanded ? 'color-mix(in srgb, var(--theme-surface) 85%, transparent)' : 'transparent',
+            border: trashExpanded ? '1px solid var(--theme-border)' : '1px solid transparent'
+          }}
+          onClick={() => setTrashExpanded(v => !v)}
+          onContextMenu={(e) => handleContextMenu(e, null, 'trash-root')}
+        >
+          <div className="flex items-center gap-2">
+            {trashExpanded ? (
+              <ChevronDown className="w-4 h-4" style={{ color: 'var(--theme-secondary)' }} />
+            ) : (
+              <ChevronRight className="w-4 h-4" style={{ color: 'var(--theme-secondary)' }} />
+            )}
+            <Trash2 className="w-4 h-4" style={{ color: 'var(--theme-secondary)' }} />
+            <span className="text-sm" style={{ color: 'var(--theme-text)' }}>Papelera</span>
+          </div>
+          <div className="text-[11px]" style={{ color: 'var(--theme-text-muted)' }}>
+            {trashCount}
+          </div>
+        </div>
+
+        {trashExpanded && (
+          <div className="mt-1 rounded-md" style={{ border: '1px solid var(--theme-border)', backgroundColor: 'color-mix(in srgb, var(--theme-background-secondary) 94%, transparent)' }}>
+            <div className="flex items-center justify-between px-2 py-1" style={{ borderBottom: '1px solid var(--theme-border)' }}>
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--theme-text-secondary)' }}>
+                Elementos eliminados
+              </span>
+              <button
+                className="px-2 py-1 rounded text-[11px] border"
+                style={{
+                  borderColor: 'var(--theme-border)',
+                  color: 'var(--theme-text)',
+                  backgroundColor: 'transparent'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModal({ open: true, type: 'empty-trash', path: null, value: '' });
+                }}
+              >
+                Vaciar
+              </button>
+            </div>
+
+            {trashCount === 0 ? (
+              <div className="px-3 py-2 text-xs" style={{ color: 'var(--theme-text-muted)' }}>
+                No hay nada en la papelera.
+              </div>
+            ) : (
+              <div className="py-1">
+                {Object.entries(trashChildren).map(([key, item]) => {
+                  const currentPath = `${TRASH_KEY}/${key}`;
+                  return (
+                    <div
+                      key={currentPath}
+                      className="flex items-center justify-between gap-2 px-2 py-1"
+                      onContextMenu={(e) => handleContextMenu(e, currentPath, 'trash-item')}
+                      style={{
+                        borderBottom: '1px solid color-mix(in srgb, var(--theme-border) 70%, transparent)'
+                      }}
+                    >
+                      <div className="min-w-0 flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-text-muted)' }} />
+                        <div className="min-w-0">
+                          <div className="text-xs truncate" style={{ color: 'var(--theme-text)' }}>
+                            {item.name}
+                          </div>
+                          <div className="text-[11px] truncate" style={{ color: 'var(--theme-text-muted)' }}>
+                            {item.__deleted?.originalPath || ''}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          className="px-2 py-1 rounded text-[11px]"
+                          style={{ backgroundColor: 'transparent', color: 'var(--theme-secondary)', border: '1px solid color-mix(in srgb, var(--theme-secondary) 40%, var(--theme-border))' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRestoreFromTrash && onRestoreFromTrash(currentPath);
+                          }}
+                        >
+                          Restaurar
+                        </button>
+                        <button
+                          className="px-2 py-1 rounded text-[11px]"
+                          style={{ backgroundColor: 'transparent', color: 'var(--theme-error)', border: '1px solid color-mix(in srgb, var(--theme-error) 45%, var(--theme-border))' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModal({ open: true, type: 'delete-permanent', path: currentPath, value: '' });
+                          }}
+                        >
+                          Borrar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Menú Contextual */}
       {contextMenu && (
         <div
+          ref={contextMenuRef}
           className="fixed rounded-lg z-50 py-1 min-w-[200px] shadow-xl border"
           style={{ 
             top: contextMenu.y, 
             left: contextMenu.x,
-            backgroundColor: 'var(--theme-background-secondary)',
+            backgroundColor: 'color-mix(in srgb, var(--theme-background-secondary) 92%, transparent)',
             borderColor: 'var(--theme-border)',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+            boxShadow: '0 14px 55px rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            transformOrigin: 'top left'
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            onClick={handleNewFileClick}
-            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all hover:bg-opacity-80"
-            style={{ 
-              color: 'var(--theme-text)', 
-              backgroundColor: 'transparent',
-              borderBottom: '1px solid var(--theme-border)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <Plus className="w-4 h-4" style={{color: 'var(--theme-primary)'}} />
-            <span>Nuevo archivo</span>
-          </button>
-          <button
-            onClick={handleNewFolderClick}
-            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
-            style={{ 
-              color: 'var(--theme-text)', 
-              backgroundColor: 'transparent',
-              borderBottom: '1px solid var(--theme-border)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <FolderPlus className="w-4 h-4" style={{color: 'var(--theme-secondary)'}} />
-            <span>Nueva carpeta</span>
-          </button>
-          <button
-            onClick={handleRenameClick}
-            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
-            style={{ 
-              color: 'var(--theme-text)', 
-              backgroundColor: 'transparent',
-              borderBottom: '1px solid var(--theme-border)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <Edit3 className="w-4 h-4" style={{color: 'var(--theme-accent)'}} />
-            <span>Renombrar {contextMenu.type === 'folder' ? 'carpeta' : 'archivo'}</span>
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-all"
-            style={{ 
-              color: 'var(--theme-text)', 
-              backgroundColor: 'transparent'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-              e.currentTarget.style.color = '#ef4444';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--theme-text)';
-            }}
-          >
-            <Trash2 className="w-4 h-4 text-red-500" />
-            <span>Eliminar {contextMenu.type === 'folder' ? 'carpeta' : 'archivo'}</span>
-          </button>
+          {(contextMenu.type === 'file' || contextMenu.type === 'folder') && (
+            <>
+              <button
+                onClick={handleNewFileClick}
+                className="w-full px-3 py-2 text-left text-sm transition-all hover:bg-opacity-80"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span>Nuevo archivo</span>
+              </button>
+              <button
+                onClick={handleNewFolderClick}
+                className="w-full px-3 py-2 text-left text-sm transition-all"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span>Nueva carpeta</span>
+              </button>
+              <button
+                onClick={handleRenameClick}
+                className="w-full px-3 py-2 text-left text-sm transition-all"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span>Renombrar</span>
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                className="w-full px-3 py-2 text-left text-sm transition-all"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                  e.currentTarget.style.color = 'var(--theme-error)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--theme-text)';
+                }}
+              >
+                <span>Eliminar</span>
+              </button>
+            </>
+          )}
+
+          {contextMenu.type === 'trash-root' && (
+            <button
+              onClick={handleDeleteClick}
+              className="w-full px-3 py-2 text-left text-sm transition-all"
+              style={{ 
+                color: 'var(--theme-text)', 
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.color = 'var(--theme-error)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--theme-text)';
+              }}
+            >
+              <span>Vaciar papelera</span>
+            </button>
+          )}
+
+          {contextMenu.type === 'trash-item' && (
+            <>
+              <button
+                onClick={() => {
+                  if (contextMenu.path && onRestoreFromTrash) onRestoreFromTrash(contextMenu.path);
+                  closeContextMenu();
+                }}
+                className="w-full px-3 py-2 text-left text-sm transition-all"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent',
+                  borderBottom: '1px solid var(--theme-border)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-surface)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span>Restaurar</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.path) setModal({ open: true, type: 'delete-permanent', path: contextMenu.path, value: '' });
+                  closeContextMenu();
+                }}
+                className="w-full px-3 py-2 text-left text-sm transition-all"
+                style={{ 
+                  color: 'var(--theme-text)', 
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                  e.currentTarget.style.color = 'var(--theme-error)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--theme-text)';
+                }}
+              >
+                <span>Borrar definitivamente</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -1121,6 +1360,8 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
             <h3 className="text-sm font-semibold mb-3" style={{color:'var(--theme-text)'}}>
               {modal.type === 'rename' && 'Renombrar'}
               {modal.type === 'delete' && 'Confirmar eliminación'}
+              {modal.type === 'delete-permanent' && 'Borrar definitivamente'}
+              {modal.type === 'empty-trash' && 'Vaciar papelera'}
               {modal.type === 'new-file' && 'Nuevo archivo'}
               {modal.type === 'new-folder' && 'Nueva carpeta'}
             </h3>
@@ -1142,14 +1383,32 @@ function FileExplorer({ files, onFileSelect, activeFile, onDeleteFile, onAddImag
 
             {modal.type === 'delete' && (
               <p className="text-sm mb-4" style={{color:'var(--theme-text-secondary)'}}>
-                ¿Seguro que deseas eliminar <span className="font-semibold" style={{color:'var(--theme-primary)'}}>{modal.path}</span>?
+                Se moverá a la <span className="font-semibold" style={{color:'var(--theme-secondary)'}}>Papelera</span>: <span className="font-semibold" style={{color:'var(--theme-primary)'}}>{modal.path}</span>
+              </p>
+            )}
+
+            {modal.type === 'delete-permanent' && (
+              <p className="text-sm mb-4" style={{color:'var(--theme-text-secondary)'}}>
+                Esto eliminará definitivamente <span className="font-semibold" style={{color:'var(--theme-primary)'}}>{modal.path}</span>.
+              </p>
+            )}
+
+            {modal.type === 'empty-trash' && (
+              <p className="text-sm mb-4" style={{color:'var(--theme-text-secondary)'}}>
+                Esto vaciará la papelera. No se podrá deshacer.
               </p>
             )}
 
             <div className="flex justify-end gap-2">
               <button className="px-3 py-1.5 rounded border" style={{borderColor:'var(--theme-border)', color:'var(--theme-text)'}} onClick={()=>setModal({open:false, type:null, path:null, value:''})}>Cancelar</button>
               {modal.type === 'delete' && (
-                <button className="px-3 py-1.5 rounded" style={{backgroundColor:'var(--theme-primary)', color:'#fff'}} onClick={()=>{ onDeleteFile && onDeleteFile(modal.path); setModal({open:false}); }}>Eliminar</button>
+                <button className="px-3 py-1.5 rounded" style={{backgroundColor:'var(--theme-primary)', color:'#fff'}} onClick={()=>{ onDeleteFile && onDeleteFile(modal.path); setModal({open:false}); }}>Mover a papelera</button>
+              )}
+              {modal.type === 'delete-permanent' && (
+                <button className="px-3 py-1.5 rounded" style={{backgroundColor:'var(--theme-error)', color:'#fff'}} onClick={()=>{ onDeletePermanently && onDeletePermanently(modal.path); setModal({open:false}); }}>Borrar</button>
+              )}
+              {modal.type === 'empty-trash' && (
+                <button className="px-3 py-1.5 rounded" style={{backgroundColor:'var(--theme-error)', color:'#fff'}} onClick={()=>{ onEmptyTrash && onEmptyTrash(); setModal({open:false}); }}>Vaciar</button>
               )}
               {modal.type === 'rename' && (
                 <button className="px-3 py-1.5 rounded" style={{backgroundColor:'var(--theme-primary)', color:'#fff'}} onClick={()=>{ if(onRenameFile && modal.value){ onRenameFile(modal.path, modal.value); setModal({open:false}); } }}>Renombrar</button>
